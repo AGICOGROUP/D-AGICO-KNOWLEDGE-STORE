@@ -23,7 +23,9 @@
 
 - [x] 1. Pinned bootstrap/download/install entry with guards and dependency validation.
 - [x] 2. Database/model/credential initializer and virtual-account service configuration; fresh isolated actual install/start/stop/restart checks, fresh upload/search/MCP test, rollback boundaries.
-- [ ] 3. Review, repository hygiene/history scan, clean-clone instructions, GitHub push to empty target without force. Verify remote revision and separately preserve local preview state.
+- [x] 3. Review, repository hygiene/history scan, clean-clone instructions, GitHub push to empty target without force. Verify remote revision and separately preserve local preview state.
+
+Completed 2026-09-16: 147 pytest tests passed, 2 opt-in tests skipped; PowerShell service fixtures and Ruff passed. Fresh isolated Windows services handled new Word/image uploads and real MCP search/read both before and after service stop/start. Verification registrations were removed and the original preview remained ready. Initial sanitized commit `3142b91` was pushed to `main`, remote SHA verified, and a fresh GitHub clone succeeded. See `docs/validation/server-setup.md` for validation boundaries.
 
 ## Acceptance and limits
 
