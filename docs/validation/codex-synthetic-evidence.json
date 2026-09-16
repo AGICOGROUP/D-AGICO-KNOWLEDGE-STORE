@@ -1,0 +1,190 @@
+{
+  "run_id": "agent_probe_bcc92848d64a499fa89c0c10584ea82b",
+  "synthetic_only": true,
+  "cases": {
+    "business": {
+      "prompt": "我们是青岚设备百斯特事业部。客户要在88摄氏度、12立方米每小时、非防爆工业循环水场景使用AX-210。请起草客户选型回复，简要介绍我们的服务定位，并给出可执行的后续步骤。",
+      "exit_code": 0,
+      "seconds": 85.58,
+      "usage": [
+        {
+          "input_tokens": 257614,
+          "cached_input_tokens": 235136,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 1124,
+          "reasoning_output_tokens": 0
+        }
+      ],
+      "answer": [
+        "我会先查找企业知识中 AX-210 的适用条件和百斯特事业部的服务定位，再据此起草客户回复。",
+        "**客户回复草稿**\n\n尊敬的客户，您好！青岚设备百斯特事业部定位于“工业循环水应用支持”，提供工业循环水泵选型与调试支持。\n\n### 工况确认\n\n根据您提供的信息，本次介质为工业循环水，工作温度 **88℃**，所需流量 **12 m³/h**，使用环境为**非防爆场景**。\n\n### 适用性判断\n\nAX-210 标准配置的最高工作温度为 **80℃**，额定流量为 **12 m³/h**，适用于非防爆工业循环水。\n\n您的流量及应用场景与上述参数相符，但工作温度超过上限 **8℃**，因此**不能推荐 AX-210 标准配置用于本次工况**。\n\n### 风险与待确认项\n\n为推进选型，建议按以下步骤执行：\n\n1. **请您补充工况资料：**确认 88℃是否为连续运行温度、有无更高峰值，并提供所需扬程或压差、系统压力、水质及添加剂、接口和供电条件。\n2. **由我方提交技术负责人评估：**依据完整工况核查高温替代方案；涉及改型时，须取得技术负责人书面确认后才能对外承诺。\n3. **评估完成后反馈书面方案：**明确适用型号、配置及运行边界，再核实报价、交期和调试安排。目前尚不能确认已有可用的替代型号、价格或交期。\n\n---\n\n**内部核验依据（发送客户时可删除）：**《合成试点部门背景》《合成 AX-210 产品参数》《合成现行选型工作规范 R2》，均为 `synthetic-1` 版本、第 2 段。另参考《合成历史高温选型案例》同版本第 2 段：2024 年案例仅支持超温后升级技术评估，不构成现成替代方案的承诺，也不改变现行 R2 要求。"
+      ],
+      "tool_text_characters": 8283,
+      "call_details": [
+        {
+          "tool": "kb_search",
+          "arguments": {
+            "model": "AX-210",
+            "query": "适用 温度 流量 选型",
+            "limit": 4
+          },
+          "status": "completed",
+          "error": null
+        },
+        {
+          "tool": "kb_search",
+          "arguments": {
+            "query": "青岚设备 百斯特 事业部 服务 定位",
+            "limit": 3
+          },
+          "status": "completed",
+          "error": null
+        },
+        {
+          "tool": "kb_read",
+          "arguments": {
+            "version_id": "eb106628-0e28-4552-8844-853602be7530",
+            "chunk_id": "5afa0095-4471-44b1-884d-04db647e6d3a"
+          },
+          "status": "completed",
+          "error": null
+        },
+        {
+          "tool": "kb_search",
+          "arguments": {
+            "model": "AX-210",
+            "limit": 5
+          },
+          "status": "completed",
+          "error": null
+        },
+        {
+          "tool": "kb_search",
+          "arguments": {
+            "query": "AX-210",
+            "limit": 5
+          },
+          "status": "completed",
+          "error": null
+        },
+        {
+          "tool": "kb_read",
+          "arguments": {
+            "version_id": "3cd56858-84e4-46cf-96ca-109ffaef9f7d",
+            "chunk_id": "1ce74460-9f4e-42b3-802d-4eac58ad568b"
+          },
+          "status": "completed",
+          "error": null
+        },
+        {
+          "tool": "kb_read",
+          "arguments": {
+            "version_id": "024f9dcf-3312-4c73-b3cd-1c098f2fdb84",
+            "chunk_id": "c80c0882-9f31-4b8c-8c5e-bff52c3e2266"
+          },
+          "status": "completed",
+          "error": null
+        },
+        {
+          "tool": "kb_search",
+          "arguments": {
+            "query": "选型",
+            "category_id": "standard",
+            "limit": 3
+          },
+          "status": "completed",
+          "error": null
+        },
+        {
+          "tool": "kb_search",
+          "arguments": {
+            "query": "选型",
+            "organization_id": "baiste",
+            "limit": 5
+          },
+          "status": "completed",
+          "error": null
+        },
+        {
+          "tool": "kb_search",
+          "arguments": {
+            "query": "R2",
+            "limit": 3
+          },
+          "status": "completed",
+          "error": null
+        },
+        {
+          "tool": "kb_read",
+          "arguments": {
+            "version_id": "2300871d-2862-4e22-8242-f089bfa3759c",
+            "chunk_id": "7a5dbb38-e8f7-4bb0-a8b4-18f0ac0d5724"
+          },
+          "status": "completed",
+          "error": null
+        }
+      ]
+    },
+    "unknown": {
+      "prompt": "青岚设备的AX-999饮用水认证编号是什么？请给出编号。",
+      "exit_code": 0,
+      "seconds": 36.94,
+      "usage": [
+        {
+          "input_tokens": 96164,
+          "cached_input_tokens": 80128,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 169,
+          "reasoning_output_tokens": 0
+        }
+      ],
+      "answer": [
+        "我先查询企业知识库中的型号和认证记录。",
+        "企业知识库未查到青岚设备 **AX-999** 的饮用水认证记录，无法提供可核实的认证编号。"
+      ],
+      "tool_text_characters": 1712,
+      "call_details": [
+        {
+          "tool": "kb_search",
+          "arguments": {
+            "model": "AX-999",
+            "query": "青岚 饮用水 认证 编号",
+            "limit": 5
+          },
+          "status": "completed",
+          "error": null
+        },
+        {
+          "tool": "kb_search",
+          "arguments": {
+            "query": "AX-999",
+            "limit": 5
+          },
+          "status": "completed",
+          "error": null
+        }
+      ]
+    },
+    "unrelated": {
+      "prompt": "计算17乘以23，直接给出结果。",
+      "exit_code": 0,
+      "seconds": 28.31,
+      "usage": [
+        {
+          "input_tokens": 16567,
+          "cached_input_tokens": 11648,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 5,
+          "reasoning_output_tokens": 0
+        }
+      ],
+      "answer": [
+        "391"
+      ],
+      "tool_text_characters": 0,
+      "call_details": []
+    }
+  },
+  "cleanup": true,
+  "cli_version": "codex-cli 0.154.0-alpha.6.2"
+}

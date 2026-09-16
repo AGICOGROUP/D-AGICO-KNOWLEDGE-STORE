@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "profile_kind": "development",
+  "status": "template_requires_fresh_synthetic_setup",
+  "users": 50,
+  "spawn_rate": 5,
+  "warmup_seconds": 15,
+  "duration_after_warmup_seconds": 75,
+  "wait_time_seconds": 0,
+  "target": {
+    "base_url": null,
+    "server_description": "local single-process uvicorn development server",
+    "client_version": "Locust REST backend probe"
+  },
+  "corpus": {
+    "kind": "fresh_synthetic",
+    "documents": 104,
+    "bytes": null,
+    "chunks": null,
+    "embedding_model_identity": null
+  },
+  "workload": {
+    "transport": "rest_backend",
+    "closed_loop": true,
+    "one_request_in_flight_per_user": true,
+    "search_read_ratio": "1:1",
+    "max_search_results": 5,
+    "parse_concurrency": 1
+  },
+  "slo": {
+    "p50_ms": null,
+    "p95_ms": null,
+    "p99_ms": null,
+    "http_success_rate": null,
+    "business_correctness_rate": null,
+    "max_vector_degraded_rate": null
+  },
+  "cases": []
+}

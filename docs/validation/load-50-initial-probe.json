@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "run_id": "load_143329a5145e4751b544da4fdf4db168",
+  "started_at_unix": 1789528132.8004987,
+  "profile_sha256": "8d34b547bb622de1e8ec9881a81bcd3db0ea48c7dadb1d4fc3a6dbc05c2713d9",
+  "profile_path": "frozen-profile.json",
+  "scope": "50-user closed-loop REST backend probe; not MCP sessions or full Agent tasks",
+  "formal_acceptance": false,
+  "locust_exit_code": 1,
+  "wall_elapsed_seconds": 90.586,
+  "first_query": {
+    "elapsed_ms": 1723.444,
+    "status_code": 200,
+    "expected_top_hit": false,
+    "vector_degraded": false,
+    "warning_count": 0
+  },
+  "withdrawal_and_original": {
+    "search_before_hit": true,
+    "search_after_empty": false,
+    "read_after_status": 404,
+    "original_download_ms": 60.074,
+    "original_bytes": 267,
+    "history_download_status": 200,
+    "history_sha256_matches": true
+  },
+  "concurrent_ingestion": {
+    "completed": true,
+    "elapsed_seconds": 2.032,
+    "search_hit": true,
+    "note": "Added after profile freeze; excluded from frozen corpus counts."
+  },
+  "metrics": {
+    "schema_version": 1,
+    "profile_sha256": "8d34b547bb622de1e8ec9881a81bcd3db0ea48c7dadb1d4fc3a6dbc05c2713d9",
+    "measured_started_at_unix": 1789528148.7352364,
+    "measured_elapsed_seconds": 74.602,
+    "quality": {
+      "read": {
+        "requests": 13177,
+        "http_ok": 10982,
+        "business_ok": 10056,
+        "vector_degraded": 0
+      },
+      "search": {
+        "requests": 13156,
+        "http_ok": 13156,
+        "business_ok": 5748,
+        "vector_degraded": 3814
+      }
+    },
+    "locust": {
+      "requests": 26333,
+      "failures": 10529,
+      "average_requests_per_second": 352.98,
+      "current_requests_per_second_at_stop": 362.0,
+      "p50_ms": 140,
+      "p95_ms": 210,
+      "p99_ms": 250
+    }
+  },
+  "resources": {
+    "samples": 86,
+    "system_cpu_peak_percent": 47.2,
+    "system_memory_peak_percent": 49.1,
+    "server_cpu_peak_percent": 0.0,
+    "server_rss_peak_bytes": 774950912,
+    "db_connections_peak": 8,
+    "db_active_peak": 2,
+    "db_waiting_peak": 8,
+    "queued_jobs_peak": 1,
+    "db_pool_waiters": "not exposed by the current server",
+    "embedding_queue_depth": "not exposed by the current server"
+  },
+  "disk_io": {
+    "read_bytes_delta": 249039360,
+    "write_bytes_delta": 145604608
+  },
+  "unsupported_metrics": [
+    "database pool waiter count",
+    "embedding queue depth; degradation warnings are measured instead",
+    "model-generation latency and token usage; this server does not generate answers"
+  ]
+}

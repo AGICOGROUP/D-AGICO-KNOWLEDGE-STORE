@@ -1,0 +1,18 @@
+# PostgreSQL 16.15 + pgvector 0.8.6, conda-forge win-64; SHA256 URL fragments.
+@EXPLICIT
+https://conda.anaconda.org/conda-forge/noarch/ca-certificates-2026.7.22-h4c7d964_0.conda#95e8e74062a5fe5f870ac8c90302b6e89945165fdaed7810606e84ddee6aac12
+https://conda.anaconda.org/conda-forge/win-64/icu-78.3-h5112557_2.conda#75c549b55b673e15de8785a8e5dd85bca7eb612eee0ff4dc8d7bdaa15eacbdbb
+https://conda.anaconda.org/conda-forge/win-64/krb5-1.22.2-h719d79b_2.conda#63ff03324e903eb01a715ccf357df56d66224e61952fd6615d86490ebefb3285
+https://conda.anaconda.org/conda-forge/win-64/libiconv-1.18-hc1393d2_3.conda#35e04e3ddac7720fc7c550a1c9f998604299d6a7bd1f3ec9b2825d825061daa2
+https://conda.anaconda.org/conda-forge/win-64/liblzma-5.8.3-hfd05255_1.conda#d36c4a1e1f80fd08e18a407e03622ff2f34dfdd022da6488ad19603dea19e6d5
+https://conda.anaconda.org/conda-forge/win-64/libpq-16.15-h43e12c5_0.conda#888a85aae50559ed390d8f1dd78ec708ca8f8a854327c795e2656a1de6ad850d
+https://conda.anaconda.org/conda-forge/win-64/libxml2-16-2.15.4-h3cfd58e_0.conda#9fa71cec30425c9cc8eda6af3574af1faf4fefa5e239c9e037b1f778ef3ce8ac
+https://conda.anaconda.org/conda-forge/win-64/libxml2-2.15.4-he095d88_0.conda#a19bb3821830f6b1281e782844d5dd265f796dfed2e4812b16c9995a8c778c88
+https://conda.anaconda.org/conda-forge/win-64/libzlib-1.3.2-hfd05255_3.conda#0629c2cc0404d3bb29d6baa7b4ba62da80797015e86de050db81ea5a07050527
+https://conda.anaconda.org/conda-forge/win-64/openssl-3.6.4-hf411b9b_0.conda#9dddb559ba49744d5d94092d8d13cb0567f5c3b3f439f3acf28433d1f4256acc
+https://conda.anaconda.org/conda-forge/win-64/pgvector-0.8.6-h2466b09_0.conda#5730998991a2b7349c4253ed7881f339bd43d005949b655edc616cca8caf21dd
+https://conda.anaconda.org/conda-forge/win-64/postgresql-16.15-he837cf3_0.conda#4196f32d39459af329869c376fc616f6505af090cc63f713adb2a182033be14a
+https://conda.anaconda.org/conda-forge/win-64/ucrt-10.0.26100.0-h57928b3_0.conda#3005729dce6f3d3f5ec91dfc49fc75a0095f9cd23bab49efb899657297ac91a5
+https://conda.anaconda.org/conda-forge/win-64/vc-14.5-ha367084_41.conda#35444c55a92e2f7f7ba26bc70f81e56e52344f7d064c0fd4b40a46a58517b79c
+https://conda.anaconda.org/conda-forge/win-64/vc14_runtime-14.51.36247-habf1de7_41.conda#4e4cb599cdc41bf2109d1464c127b5bcbddf548ce3e322e612afb691338b48f8
+https://conda.anaconda.org/conda-forge/win-64/vcomp14-14.51.36247-habf1de7_41.conda#731e043390c9457299484d39e427221fc868a9249540a498a5a4f6456c7744d1

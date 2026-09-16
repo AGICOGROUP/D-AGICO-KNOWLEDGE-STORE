@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "profile_kind": "acceptance",
+  "status": "blocked_pending_business_inputs",
+  "users": 50,
+  "spawn_rate": 5,
+  "warmup_seconds": 120,
+  "duration_after_warmup_seconds": 1800,
+  "wait_time_seconds": 0,
+  "target": {
+    "base_url": null,
+    "server_description": null,
+    "client_version": null
+  },
+  "corpus": {
+    "kind": "approved_company_corpus",
+    "organization": null,
+    "documents": null,
+    "bytes": null,
+    "chunks": null,
+    "embedding_model_identity": null
+  },
+  "business_signoff": {
+    "approved": null,
+    "reviewer": null,
+    "representative_question_set": null,
+    "reviewed_at": null
+  },
+  "workload": {
+    "transport": "rest_backend",
+    "closed_loop": true,
+    "one_request_in_flight_per_user": true,
+    "search_read_ratio": "1:1",
+    "max_search_results": 5,
+    "parse_concurrency": null
+  },
+  "slo": {
+    "p50_ms": null,
+    "p95_ms": null,
+    "p99_ms": null,
+    "http_success_rate": null,
+    "business_correctness_rate": null,
+    "max_vector_degraded_rate": null
+  },
+  "cases": []
+}

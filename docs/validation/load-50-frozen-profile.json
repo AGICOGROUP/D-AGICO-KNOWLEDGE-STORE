@@ -1,0 +1,274 @@
+{
+  "schema_version": 1,
+  "profile_kind": "development",
+  "status": "template_requires_fresh_synthetic_setup",
+  "users": 50,
+  "spawn_rate": 5.0,
+  "warmup_seconds": 15,
+  "duration_after_warmup_seconds": 75,
+  "wait_time_seconds": 0,
+  "target": {
+    "base_url": "http://127.0.0.1:49414",
+    "server_description": "local single-process uvicorn development server",
+    "client_version": "Locust REST backend probe"
+  },
+  "corpus": {
+    "kind": "fresh_synthetic",
+    "documents": 104,
+    "bytes": 24207,
+    "chunks": 188,
+    "embedding_model_identity": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2:5c77a9d2efad18b678486b45e7858af72b58986d1d1f018523e729f69608d29f:384:fastembed-0.8.0:native-v1",
+    "active_documents": 103,
+    "versions": 106,
+    "snapshot_run_id": "load_35831b4a774146fdabe70bbca521b1f9",
+    "profile_frozen_before_concurrent_ingestion": true
+  },
+  "workload": {
+    "transport": "rest_backend",
+    "closed_loop": true,
+    "one_request_in_flight_per_user": true,
+    "search_read_ratio": "1:1",
+    "max_search_results": 5,
+    "parse_concurrency": 1
+  },
+  "slo": {
+    "p50_ms": null,
+    "p95_ms": null,
+    "p99_ms": null,
+    "http_success_rate": null,
+    "business_correctness_rate": null,
+    "max_vector_degraded_rate": null
+  },
+  "cases": [
+    {
+      "id": "baiste-fact",
+      "mode": "content",
+      "query": "BST-STOP-26",
+      "semantic_only": false,
+      "search": {
+        "expect": "hit",
+        "document_id": "3772247b-ab1d-43b5-8a9a-b6c02d9d2bad",
+        "version_id": "9e7869bb-c503-4ee1-b1a8-dd8758c4ad21",
+        "chunk_contains": "BST-STOP-26",
+        "max_rank": 5
+      },
+      "read": {
+        "expect": "content",
+        "version_id": "9e7869bb-c503-4ee1-b1a8-dd8758c4ad21",
+        "source_version": "2026-A",
+        "contains": "BST-STOP-26"
+      }
+    },
+    {
+      "id": "baiste-semantic",
+      "mode": "content",
+      "query": "怎样避免运动机构因热量和摩擦损坏",
+      "semantic_only": true,
+      "filters": {
+        "organization_id": "baiste"
+      },
+      "search": {
+        "expect": "hit",
+        "document_id": "f185112c-7912-486f-a2d8-3126cd7681e6",
+        "version_id": "6b29a89e-c16c-4f2b-9a19-b6c73213a73a",
+        "chunk_contains": "喷淋冷却液",
+        "max_rank": 5
+      },
+      "read": {
+        "expect": "content",
+        "version_id": "6b29a89e-c16c-4f2b-9a19-b6c73213a73a",
+        "source_version": "2026-A",
+        "contains": "喷淋冷却液"
+      }
+    },
+    {
+      "id": "baiste-file",
+      "mode": "files",
+      "query": "联合交付清单",
+      "semantic_only": false,
+      "search": {
+        "expect": "hit",
+        "document_id": "e93cd07a-904f-4a42-b0ab-afd7c46d7ba9",
+        "version_id": "e9a3f4cb-4d95-46d6-9347-1d842942b0ca",
+        "max_rank": 1
+      },
+      "read": {
+        "expect": "content",
+        "version_id": "e9a3f4cb-4d95-46d6-9347-1d842942b0ca",
+        "source_version": "2026-A",
+        "contains": "BST"
+      }
+    },
+    {
+      "id": "baiste-revision",
+      "mode": "content",
+      "query": "液压阀 30 天检验",
+      "semantic_only": false,
+      "filters": {
+        "organization_id": "baiste"
+      },
+      "search": {
+        "expect": "hit",
+        "document_id": "c4fe459f-0eec-49ea-9628-9f0cc5b0500d",
+        "version_id": "525fc01e-29fc-4fae-a3ce-d448277de00e",
+        "chunk_contains": "30 天",
+        "max_rank": 5
+      },
+      "read": {
+        "expect": "content",
+        "version_id": "525fc01e-29fc-4fae-a3ce-d448277de00e",
+        "source_version": "2026-B",
+        "contains": "30 天"
+      }
+    },
+    {
+      "id": "baiste-unknown",
+      "mode": "files",
+      "query": "量子纠缠中继器",
+      "semantic_only": false,
+      "search": {
+        "expect": "empty"
+      },
+      "read": {
+        "expect": "content",
+        "version_id": "ec987df6-bdf9-4cc7-87e2-b9918b8376b3",
+        "source_version": "2026-A",
+        "contains": "技术参数"
+      }
+    },
+    {
+      "id": "baiste-denied",
+      "mode": "content",
+      "query": "受限报价内部复核口令",
+      "semantic_only": false,
+      "filters": {
+        "organization_id": "baiste"
+      },
+      "search": {
+        "expect": "absent",
+        "forbidden_document_ids": [
+          "1e2fbecb-45f2-4d9f-97de-804dc76498bb"
+        ]
+      },
+      "read": {
+        "expect": "denied",
+        "version_id": "e02ac9a2-ea43-43ec-8026-0a21913c256c"
+      }
+    },
+    {
+      "id": "xingyuan-fact",
+      "mode": "content",
+      "query": "XY-STOP-26",
+      "semantic_only": false,
+      "search": {
+        "expect": "hit",
+        "document_id": "a34d43ae-5817-4fdb-b8b0-56d397dcd902",
+        "version_id": "3cf6a5a4-69fa-487f-b89c-1d903f23688e",
+        "chunk_contains": "XY-STOP-26",
+        "max_rank": 5
+      },
+      "read": {
+        "expect": "content",
+        "version_id": "3cf6a5a4-69fa-487f-b89c-1d903f23688e",
+        "source_version": "2026-A",
+        "contains": "XY-STOP-26"
+      }
+    },
+    {
+      "id": "xingyuan-semantic",
+      "mode": "content",
+      "query": "怎样避免运动机构因热量和摩擦损坏",
+      "semantic_only": true,
+      "filters": {
+        "organization_id": "xingyuan"
+      },
+      "search": {
+        "expect": "hit",
+        "document_id": "3c50aea6-e1a2-4e0f-ad7c-8aed1e04f27d",
+        "version_id": "b5cabe1a-acda-4f3f-b90a-8b3f9c1877e1",
+        "chunk_contains": "喷淋冷却液",
+        "max_rank": 5
+      },
+      "read": {
+        "expect": "content",
+        "version_id": "b5cabe1a-acda-4f3f-b90a-8b3f9c1877e1",
+        "source_version": "2026-A",
+        "contains": "喷淋冷却液"
+      }
+    },
+    {
+      "id": "xingyuan-file",
+      "mode": "files",
+      "query": "联合交付清单",
+      "semantic_only": false,
+      "search": {
+        "expect": "hit",
+        "document_id": "12da9670-87a7-48e2-8b39-2595f8276994",
+        "version_id": "83097e1e-6806-485d-ac0b-ce71ff324bbf",
+        "max_rank": 1
+      },
+      "read": {
+        "expect": "content",
+        "version_id": "83097e1e-6806-485d-ac0b-ce71ff324bbf",
+        "source_version": "2026-A",
+        "contains": "XY"
+      }
+    },
+    {
+      "id": "xingyuan-revision",
+      "mode": "content",
+      "query": "液压阀 30 天检验",
+      "semantic_only": false,
+      "filters": {
+        "organization_id": "xingyuan"
+      },
+      "search": {
+        "expect": "hit",
+        "document_id": "c5cde224-65d0-400a-9cab-8637b349ce14",
+        "version_id": "d8271281-dd1f-4dee-a9e0-8951b5414310",
+        "chunk_contains": "30 天",
+        "max_rank": 5
+      },
+      "read": {
+        "expect": "content",
+        "version_id": "d8271281-dd1f-4dee-a9e0-8951b5414310",
+        "source_version": "2026-B",
+        "contains": "30 天"
+      }
+    },
+    {
+      "id": "xingyuan-unknown",
+      "mode": "files",
+      "query": "量子纠缠中继器",
+      "semantic_only": false,
+      "search": {
+        "expect": "empty"
+      },
+      "read": {
+        "expect": "content",
+        "version_id": "6f90076c-9698-4e80-ad4e-caf83b03537d",
+        "source_version": "2026-A",
+        "contains": "技术参数"
+      }
+    },
+    {
+      "id": "xingyuan-denied",
+      "mode": "content",
+      "query": "受限报价内部复核口令",
+      "semantic_only": false,
+      "filters": {
+        "organization_id": "xingyuan"
+      },
+      "search": {
+        "expect": "absent",
+        "forbidden_document_ids": [
+          "eb22fda0-5ab6-4a30-b591-a2da7583387f"
+        ]
+      },
+      "read": {
+        "expect": "denied",
+        "version_id": "95157e89-1d91-4fd4-9221-eabc27088f85"
+      }
+    }
+  ]
+}

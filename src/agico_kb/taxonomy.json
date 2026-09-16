@@ -1,0 +1,11 @@
+{
+  "organizations": {
+    "general-group": "通用国际集团", "baiste": "百斯特事业部", "xingyuan": "星源事业部",
+    "baichuang": "百创事业部", "aijike": "爱吉克事业部", "jimuke": "吉姆克事业部",
+    "business-intelligence": "商情管理中心", "company-common": "公司公共知识"
+  },
+  "categories": {
+    "background": "组织与业务背景", "technical": "产品与技术资料", "projects": "项目与客户资料",
+    "standards": "流程规范与模板", "experience": "经验案例与常见问题", "other": "其他资料"
+  }
+}

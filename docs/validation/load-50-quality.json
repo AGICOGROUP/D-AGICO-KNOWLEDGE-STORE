@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "profile_sha256": "7609cd2740d8dc9e16f836ec1cb60b01a9a55b4782710f226ce07c7f4fbda60e",
+  "measured_started_at_unix": 1789530537.512718,
+  "measured_elapsed_seconds": 74.947,
+  "quality": {
+    "search": {
+      "requests": 11745,
+      "http_ok": 11745,
+      "business_ok": 11745,
+      "vector_degraded": 0
+    },
+    "read": {
+      "requests": 11763,
+      "http_ok": 9806,
+      "business_ok": 11763,
+      "vector_degraded": 0
+    }
+  },
+  "complete_cycle_quality_by_case": {
+    "xingyuan-file": {
+      "search_requests": 976,
+      "search_business_ok": 976,
+      "read_requests": 976,
+      "read_business_ok": 976,
+      "vector_degraded": 0
+    },
+    "baiste-unknown": {
+      "search_requests": 977,
+      "search_business_ok": 977,
+      "read_requests": 977,
+      "read_business_ok": 977,
+      "vector_degraded": 0
+    },
+    "baiste-file": {
+      "search_requests": 977,
+      "search_business_ok": 977,
+      "read_requests": 977,
+      "read_business_ok": 977,
+      "vector_degraded": 0
+    },
+    "xingyuan-unknown": {
+      "search_requests": 977,
+      "search_business_ok": 977,
+      "read_requests": 977,
+      "read_business_ok": 977,
+      "vector_degraded": 0
+    },
+    "xingyuan-semantic": {
+      "search_requests": 977,
+      "search_business_ok": 977,
+      "read_requests": 977,
+      "read_business_ok": 977,
+      "vector_degraded": 0
+    },
+    "baiste-semantic": {
+      "search_requests": 978,
+      "search_business_ok": 978,
+      "read_requests": 978,
+      "read_business_ok": 978,
+      "vector_degraded": 0
+    },
+    "baiste-fact": {
+      "search_requests": 976,
+      "search_business_ok": 976,
+      "read_requests": 976,
+      "read_business_ok": 976,
+      "vector_degraded": 0
+    },
+    "baiste-revision": {
+      "search_requests": 974,
+      "search_business_ok": 974,
+      "read_requests": 974,
+      "read_business_ok": 974,
+      "vector_degraded": 0
+    },
+    "xingyuan-fact": {
+      "search_requests": 976,
+      "search_business_ok": 976,
+      "read_requests": 976,
+      "read_business_ok": 976,
+      "vector_degraded": 0
+    },
+    "baiste-denied": {
+      "search_requests": 977,
+      "search_business_ok": 977,
+      "read_requests": 977,
+      "read_business_ok": 977,
+      "vector_degraded": 0
+    },
+    "xingyuan-denied": {
+      "search_requests": 974,
+      "search_business_ok": 974,
+      "read_requests": 974,
+      "read_business_ok": 974,
+      "vector_degraded": 0
+    },
+    "xingyuan-revision": {
+      "search_requests": 975,
+      "search_business_ok": 975,
+      "read_requests": 975,
+      "read_business_ok": 975,
+      "vector_degraded": 0
+    }
+  },
+  "locust": {
+    "requests": 23508,
+    "failures": 0,
+    "average_requests_per_second": 313.66,
+    "current_requests_per_second_at_stop": 318.0,
+    "p50_ms": 140,
+    "p95_ms": 240,
+    "p99_ms": 270
+  }
+}

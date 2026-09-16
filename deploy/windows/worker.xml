@@ -1,0 +1,16 @@
+<service>
+  <id>AgicoKbWorker</id>
+  <name>AGICO Knowledge Store worker</name>
+  <description>AGICO worker - WinSW 2.12.0</description>
+  <executable>__EXECUTABLE__</executable>
+  <arguments>__ARGUMENTS__</arguments>
+  <workingdirectory>__APP_ROOT__</workingdirectory>
+  <startmode>Automatic</startmode>
+  <delayedAutoStart>true</delayedAutoStart>
+  <stoptimeout>30 sec</stoptimeout>
+  <onfailure action="restart" delay="10 sec" />
+  <resetfailure>1 hour</resetfailure>
+  <logpath>__LOG_PATH__</logpath>
+  <log mode="roll-by-size"><sizeThreshold>10240</sizeThreshold><keepFiles>8</keepFiles></log>
+  <serviceaccount><domain>__ACCOUNT_DOMAIN__</domain><user>__ACCOUNT_USER__</user><allowservicelogon>false</allowservicelogon></serviceaccount>
+</service>

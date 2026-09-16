@@ -1,0 +1,6 @@
+{
+  "synthetic_only": true,
+  "generation": "Fresh UUID content and isolated PostgreSQL schema for each test; explicit retry/idempotency tests reuse their own input.",
+  "component_probe": "Fresh DOCX with three Chinese paragraphs; exact extraction and AX-210 temperature retrieval.",
+  "production_data_imported": false
+}

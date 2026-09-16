@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "python_version": "3.12.14",
+  "artifacts": {
+    "micromamba": {
+      "provenance": "Official GitHub release downloaded over HTTPS; SHA256 computed locally and compared to published checksum when available.",
+      "url": "https://github.com/mamba-org/micromamba-releases/releases/download/2.9.0-0/micromamba-win-64.exe",
+      "sha256": "a6d804394b2418991c4e29562853eaace2f2ce9d9da661a98e74e02e8dbb44b0",
+      "version": "2.9.0",
+      "checksum_source": "https://github.com/mamba-org/micromamba-releases/releases/download/2.9.0-0/micromamba-win-64.sha256"
+    },
+    "uv": {
+      "provenance": "Official GitHub release downloaded over HTTPS; SHA256 computed locally and compared to published checksum when available.",
+      "url": "https://github.com/astral-sh/uv/releases/download/0.12.13/uv-x86_64-pc-windows-msvc.zip",
+      "sha256": "a86c9dc7bad9b03f388583b7187c05fe9951c2e0d392217e8fd43d97787f6ec2",
+      "version": "0.12.13",
+      "checksum_source": "https://github.com/astral-sh/uv/releases/download/0.12.13/uv-x86_64-pc-windows-msvc.zip.sha256"
+    },
+    "winsw": {
+      "provenance": "Official GitHub release downloaded over HTTPS; SHA256 computed locally and compared to published checksum when available.",
+      "url": "https://github.com/winsw/winsw/releases/download/v2.12.0/WinSW-x64.exe",
+      "sha256": "05b82d46ad331cc16bdc00de5c6332c1ef818df8ceefcd49c726553209b3a0da",
+      "version": "2.12.0",
+      "checksum_source": null
+    }
+  }
+}

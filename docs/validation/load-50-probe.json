@@ -1,0 +1,191 @@
+{
+  "schema_version": 1,
+  "run_id": "load_35831b4a774146fdabe70bbca521b1f9",
+  "started_at_unix": 1789530522.042729,
+  "profile_sha256": "7609cd2740d8dc9e16f836ec1cb60b01a9a55b4782710f226ce07c7f4fbda60e",
+  "profile_path": "frozen-profile.json",
+  "scope": "50-user closed-loop REST backend probe; not MCP sessions or full Agent tasks",
+  "formal_acceptance": false,
+  "load_driver": "locust",
+  "load_driver_exit_code": 0,
+  "wall_elapsed_seconds": 90.465,
+  "first_query": {
+    "elapsed_ms": 1683.815,
+    "status_code": 200,
+    "expected_rank": 2,
+    "expected_within_allowed_rank": true,
+    "vector_degraded": false,
+    "warning_count": 0
+  },
+  "natural_language_fact_observation": {
+    "elapsed_ms": 61.348,
+    "status_code": 200,
+    "expected_rank": 1,
+    "expected_within_allowed_rank": true,
+    "vector_degraded": false,
+    "warning_count": 0
+  },
+  "withdrawal_and_original": {
+    "search_before_hit": true,
+    "withdrawn_version_absent_after": true,
+    "read_after_status": 404,
+    "original_download_ms": 43.42,
+    "original_bytes": 267,
+    "history_download_status": 200,
+    "history_sha256_matches": true
+  },
+  "concurrent_ingestion": {
+    "thread_status": "finished",
+    "completed": true,
+    "elapsed_seconds": 2.277,
+    "search_hit": true,
+    "note": "Added after profile freeze; excluded from frozen corpus counts."
+  },
+  "metrics": {
+    "schema_version": 1,
+    "profile_sha256": "7609cd2740d8dc9e16f836ec1cb60b01a9a55b4782710f226ce07c7f4fbda60e",
+    "measured_started_at_unix": 1789530537.512718,
+    "measured_elapsed_seconds": 74.947,
+    "quality": {
+      "search": {
+        "requests": 11745,
+        "http_ok": 11745,
+        "business_ok": 11745,
+        "vector_degraded": 0
+      },
+      "read": {
+        "requests": 11763,
+        "http_ok": 9806,
+        "business_ok": 11763,
+        "vector_degraded": 0
+      }
+    },
+    "complete_cycle_quality_by_case": {
+      "xingyuan-file": {
+        "search_requests": 976,
+        "search_business_ok": 976,
+        "read_requests": 976,
+        "read_business_ok": 976,
+        "vector_degraded": 0
+      },
+      "baiste-unknown": {
+        "search_requests": 977,
+        "search_business_ok": 977,
+        "read_requests": 977,
+        "read_business_ok": 977,
+        "vector_degraded": 0
+      },
+      "baiste-file": {
+        "search_requests": 977,
+        "search_business_ok": 977,
+        "read_requests": 977,
+        "read_business_ok": 977,
+        "vector_degraded": 0
+      },
+      "xingyuan-unknown": {
+        "search_requests": 977,
+        "search_business_ok": 977,
+        "read_requests": 977,
+        "read_business_ok": 977,
+        "vector_degraded": 0
+      },
+      "xingyuan-semantic": {
+        "search_requests": 977,
+        "search_business_ok": 977,
+        "read_requests": 977,
+        "read_business_ok": 977,
+        "vector_degraded": 0
+      },
+      "baiste-semantic": {
+        "search_requests": 978,
+        "search_business_ok": 978,
+        "read_requests": 978,
+        "read_business_ok": 978,
+        "vector_degraded": 0
+      },
+      "baiste-fact": {
+        "search_requests": 976,
+        "search_business_ok": 976,
+        "read_requests": 976,
+        "read_business_ok": 976,
+        "vector_degraded": 0
+      },
+      "baiste-revision": {
+        "search_requests": 974,
+        "search_business_ok": 974,
+        "read_requests": 974,
+        "read_business_ok": 974,
+        "vector_degraded": 0
+      },
+      "xingyuan-fact": {
+        "search_requests": 976,
+        "search_business_ok": 976,
+        "read_requests": 976,
+        "read_business_ok": 976,
+        "vector_degraded": 0
+      },
+      "baiste-denied": {
+        "search_requests": 977,
+        "search_business_ok": 977,
+        "read_requests": 977,
+        "read_business_ok": 977,
+        "vector_degraded": 0
+      },
+      "xingyuan-denied": {
+        "search_requests": 974,
+        "search_business_ok": 974,
+        "read_requests": 974,
+        "read_business_ok": 974,
+        "vector_degraded": 0
+      },
+      "xingyuan-revision": {
+        "search_requests": 975,
+        "search_business_ok": 975,
+        "read_requests": 975,
+        "read_business_ok": 975,
+        "vector_degraded": 0
+      }
+    },
+    "locust": {
+      "requests": 23508,
+      "failures": 0,
+      "average_requests_per_second": 313.66,
+      "current_requests_per_second_at_stop": 318.0,
+      "p50_ms": 140,
+      "p95_ms": 240,
+      "p99_ms": 270
+    }
+  },
+  "complete_cycle_summary": {
+    "cycles": 11714,
+    "searches": 11714,
+    "reads": 11714,
+    "search_business_ok": 11714,
+    "read_business_ok": 11714,
+    "full_hybrid_searches": 11714,
+    "keyword_fallback_searches": 0,
+    "expected_denial_reads": 1951
+  },
+  "resources": {
+    "samples": 85,
+    "system_cpu_peak_percent": 41.9,
+    "system_memory_peak_percent": 44.3,
+    "server_cpu_peak_percent": 293.99474689575817,
+    "server_rss_peak_bytes": 777297920,
+    "db_connections_peak": 8,
+    "db_active_peak": 3,
+    "db_waiting_peak": 8,
+    "queued_jobs_peak": 1,
+    "db_pool_waiters": "not exposed by the current server",
+    "embedding_queue_depth": "not exposed by the current server"
+  },
+  "disk_io": {
+    "read_bytes_delta": 3908608,
+    "write_bytes_delta": 45666304
+  },
+  "unsupported_metrics": [
+    "database pool waiter count",
+    "embedding queue depth; degradation warnings are measured instead",
+    "model-generation latency and token usage; this server does not generate answers"
+  ]
+}

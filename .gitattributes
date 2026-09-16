@@ -1,0 +1,2 @@
+# Preserve hashed evidence bytes across Windows checkouts.
+docs/validation/*-frozen-profile.json -text whitespace=cr-at-eol
