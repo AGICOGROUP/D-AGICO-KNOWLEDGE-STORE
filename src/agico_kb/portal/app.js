@@ -2,6 +2,13 @@
 "use strict";
 const $ = (id) => document.getElementById(id);
 const state = {token: "", catalog: null, limit: 0, files: [], attempt: null, busy: false, tab: "library", offset: 0, next: null, generation: 0, listRequest: 0};
+const credentialKey = "agico.portal.accessToken.v1";
+let connecting = false;
+function savedToken() { try { return localStorage.getItem(credentialKey) || ""; } catch { return ""; } }
+function storeToken(token) {
+  try { if (token) localStorage.setItem(credentialKey, token); else localStorage.removeItem(credentialKey); return true; }
+  catch { return false; }
+}
 const statuses = {queued: "等待解析", processing: "正在解析", ready: "解析完成", partial: "部分解析 · 请核对原件", stored_only: "仅保存原件", failed: "解析失败 · 原件保留"};
 function message(id, text = "", error = false) { $(id).textContent = text; $(id).classList.toggle("error", error); }
 function size(bytes) { return bytes < 1048576 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1048576).toFixed(1)} MB`; }
@@ -22,10 +29,10 @@ async function api(path, options = {}, token = state.token) {
   let response;
   try { response = await fetch(path, {...options, headers, cache: "no-store", redirect: "error", signal: AbortSignal.timeout(60000)}); }
   catch { throw new Error("网络连接中断或请求超时，请检查连接后重试。"); }
-  if (!response.ok) { const body = await response.json().catch(() => ({})); throw new Error(errorText(body, response.status)); }
+  if (!response.ok) { const body = await response.json().catch(() => ({})); const error = new Error(errorText(body, response.status)); error.status = response.status; throw error; }
   return response.json();
 }
-function openAuth() { $("auth-dialog").showModal(); $("access-token").focus(); }
+function openAuth() { if (connecting) return; $("auth-dialog").showModal(); $("access-token").focus(); }
 function resetFile() {
   state.files = []; state.attempt = null;
   $("reset-attempt").hidden = true;
@@ -34,6 +41,7 @@ function resetFile() {
   $("division-summary").textContent = "尚未选择事业部";
 }
 function disconnect() {
+  storeToken("");
   state.generation++; state.listRequest++; state.token = ""; state.catalog = null;
   state.offset = 0; state.next = null; resetFile();
   $("upload-fields").disabled = true; $("submit-button").disabled = true;
@@ -66,20 +74,40 @@ $("empty-connect").addEventListener("click", openAuth);
 $("close-auth").addEventListener("click", () => $("auth-dialog").close());
 $("auth-dialog").addEventListener("close", () => { $("access-token").value = ""; });
 $("auth-dialog").addEventListener("cancel", (e) => { if ($("login-button").disabled) e.preventDefault(); });
-$("auth-form").addEventListener("submit", async (event) => {
-  event.preventDefault(); const token = $("access-token").value.trim(); if (!token) return;
-  $("login-button").disabled = true; $("close-auth").disabled = true; message("auth-message", "正在验证访问权限…");
+async function connect(token, automatic = false) {
+  if (connecting) return;
+  connecting = true;
+  $("login-button").disabled = true; $("close-auth").disabled = true; $("account-button").disabled = true;
+  if (automatic) $("connection").textContent = "正在自动连接…";
+  else message("auth-message", "正在验证访问权限…");
   try {
     const [session, catalog] = await Promise.all([api("/v1/portal-session", {}, token), api("/v1/catalog", {}, token)]);
     state.token = token; state.catalog = catalog; state.limit = session.max_upload_bytes; state.generation++;
+    const remembered = storeToken(token);
     catalogUI(catalog); resetFile(); $("category").value = "";
     $("upload-fields").disabled = !catalog.organizations.length; $("submit-button").disabled = !catalog.organizations.length;
     for (const id of ["search-button", "filter-org", "filter-category", "refresh"]) $(id).disabled = false;
     $("connection").textContent = `已连接 · ${session.identity}`; $("connection").classList.add("online");
     $("account-button").textContent = "断开连接"; $("auth-dialog").close(); message("auth-message");
-    await loadList(); $("file-input").focus();
-  } catch (error) { message("auth-message", error.message, true); }
-  finally { $("login-button").disabled = false; $("close-auth").disabled = false; }
+    await loadList();
+    if (!remembered) message("list-message", "已连接，但浏览器不允许保存访问码，关闭页面后需要重新输入。", true);
+    if (!automatic) $("file-input").focus();
+  } catch (error) {
+    if (automatic) {
+      $("connection").textContent = "尚未连接";
+      if (error.status === 401) {
+        storeToken("");
+        message("list-message", "保存的访问码已失效，请点击连接知识库，重新填写。", true);
+      } else {
+        message("list-message", "暂时无法自动连接，已保留访问码。请在服务恢复后刷新页面重试。", true);
+      }
+    } else message("auth-message", error.message, true);
+  } finally {
+    connecting = false; $("login-button").disabled = false; $("close-auth").disabled = false; $("account-button").disabled = false;
+  }
+}
+$("auth-form").addEventListener("submit", (event) => {
+  event.preventDefault(); const token = $("access-token").value.trim(); if (token) connect(token);
 });
 function renderFiles(items = null) {
   const entries = items || state.attempt?.items || state.files.map((file) => ({file}));
@@ -237,3 +265,6 @@ $("refresh").addEventListener("click", loadList);
 $("previous").addEventListener("click", () => { state.offset = Math.max(0, state.offset - 20); loadList(); });
 $("next").addEventListener("click", () => { if (state.next !== null) { state.offset = state.next; loadList(); } });
 window.addEventListener("beforeunload", (e) => { if (state.busy || state.attempt) { e.preventDefault(); e.returnValue = ""; } });
+
+const rememberedToken = savedToken();
+if (rememberedToken) connect(rememberedToken, true);
