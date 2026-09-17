@@ -9,7 +9,7 @@
 </head>
 <body>
   <a class="skip" href="#upload-form">跳至文件提交</a>
-  <header class="topbar"><a class="brand" href="/" aria-label="AGICO 企业知识库首页"><span class="brand-mark">A<span>·</span></span><span>AGICO<span class="brand-sub">企业知识库</span></span></a><div class="top-actions"><span id="connection" class="connection">尚未连接</span><button id="account-button" class="button secondary" type="button">连接知识库 <span aria-hidden="true">↗</span></button></div></header>
+  <header class="topbar"><a class="brand" href="/" aria-label="AGICO 企业知识库首页"><span class="brand-mark">A<span>·</span></span><span>AGICO<span class="brand-sub">企业知识库</span></span></a><div class="top-actions"><span id="connection" class="connection">尚未连接</span><button id="agent-button" class="button secondary" type="button" disabled>连接 AI 助手</button><button id="account-button" class="button secondary" type="button">连接知识库 <span aria-hidden="true">↗</span></button></div></header>
   <main>
     <section class="intro"><div><p class="eyebrow">COMPANY KNOWLEDGE / 资料中心</p><h1>让每一份资料，都有所归。</h1><p class="intro-copy">汇集业务知识，让同事与 AI 找到可靠依据。</p></div><div class="intro-note"><span class="note-mark" aria-hidden="true">↗</span><p>一次提交，持续共享<span>资料审核发布后，向有权限的同事开放。</span></p></div></section>
     <div class="workspace">
@@ -46,4 +46,17 @@
     <footer><span>AGICO <span class="footer-divider">/</span> 企业知识，共同积累。</span><span>同一份知识，连接员工与 AI。</span></footer>
   </main>
   <dialog id="auth-dialog" aria-labelledby="auth-heading"><form id="auth-form"><div class="dialog-heading"><span class="eyebrow">ACCESS</span><button id="close-auth" class="text-button" type="button" aria-label="关闭连接窗口">✕</button></div><h2 id="auth-heading">连接企业知识库</h2><p class="help">请输入管理员提供的访问码。可操作的事业部由账号权限决定。</p><label for="access-token">访问码</label><input id="access-token" type="password" required autocomplete="off" spellcheck="false" placeholder="粘贴你的访问码"><p class="help">连接后在当前浏览器记住访问码，下次打开自动连接。点击“断开连接”即可清除。</p><p id="auth-message" class="message" role="alert"></p><button id="login-button" class="button primary" type="submit">连接并开始使用 →</button></form></dialog>
+  <dialog id="agent-dialog" aria-labelledby="agent-heading">
+    <div class="dialog-heading"><span class="eyebrow">CONNECT YOUR AGENT</span><button id="close-agent" class="text-button" type="button" aria-label="关闭 AI 连接窗口">✕</button></div>
+    <h2 id="agent-heading">把企业知识交给 AI</h2>
+    <p class="help">选择你使用的助手，复制接入指令并发送给它，让它完成本机配置与验证。自动使用当前访问码，无需重新填写。</p>
+    <label for="agent-client">你使用的 AI 助手</label><select id="agent-client"><option value="accio">Accio</option><option value="codex">Codex</option></select>
+    <p class="help">知识库地址：<span id="agent-endpoint"></span></p>
+    <p id="agent-local-note" class="help" hidden>当前是本机地址，仅适用于这台电脑上的 Agent。其他电脑请从知识库服务器地址打开本页后生成配置。</p>
+    <button id="copy-agent" class="button primary" type="button">复制接入指令 →</button>
+    <button id="download-agent" class="text-button" type="button">下载配置文件</button>
+    <p class="help">指令和文件包含当前访问码，仅交给你要连接的助手。复制后尚未接通，以助手实际调用知识库成功为准；客户端可能需要重启。</p>
+    <label id="agent-manual-label" for="agent-manual" hidden>自动复制不可用，请全选下方指令并复制</label><textarea id="agent-manual" readonly hidden spellcheck="false"></textarea>
+    <p id="agent-message" class="message" role="status" aria-live="polite"></p>
+  </dialog>
 </body></html>

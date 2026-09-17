@@ -1,4 +1,4 @@
-/* Same-origin employee portal. Credentials live only in this page's memory. */
+/* Same-origin portal. Validated credentials are remembered in this browser. */
 "use strict";
 const $ = (id) => document.getElementById(id);
 const state = {token: "", catalog: null, limit: 0, files: [], attempt: null, busy: false, tab: "library", offset: 0, next: null, generation: 0, listRequest: 0};
@@ -42,6 +42,7 @@ function resetFile() {
 }
 function disconnect() {
   storeToken("");
+  $("agent-button").disabled = true; $("agent-dialog").close(); clearAgentOutput();
   state.generation++; state.listRequest++; state.token = ""; state.catalog = null;
   state.offset = 0; state.next = null; resetFile();
   $("upload-fields").disabled = true; $("submit-button").disabled = true;
@@ -82,6 +83,7 @@ async function connect(token, automatic = false) {
   else message("auth-message", "正在验证访问权限…");
   try {
     const [session, catalog] = await Promise.all([api("/v1/portal-session", {}, token), api("/v1/catalog", {}, token)]);
+    $("agent-button").disabled = false;
     state.token = token; state.catalog = catalog; state.limit = session.max_upload_bytes; state.generation++;
     const remembered = storeToken(token);
     catalogUI(catalog); resetFile(); $("category").value = "";
@@ -265,6 +267,54 @@ $("refresh").addEventListener("click", loadList);
 $("previous").addEventListener("click", () => { state.offset = Math.max(0, state.offset - 20); loadList(); });
 $("next").addEventListener("click", () => { if (state.next !== null) { state.offset = state.next; loadList(); } });
 window.addEventListener("beforeunload", (e) => { if (state.busy || state.attempt) { e.preventDefault(); e.returnValue = ""; } });
+
+function clearAgentOutput() {
+  $("agent-manual").value = ""; $("agent-manual").hidden = true; $("agent-manual-label").hidden = true; message("agent-message");
+}
+function agentConfig() {
+  const url = new URL("/mcp", location.origin).href;
+  const authorization = `Bearer ${state.token}`;
+  if ($("agent-client").value === "codex") {
+    return {extension: "toml", text: `[mcp_servers.agico-kb]\nurl = ${JSON.stringify(url)}\nhttp_headers = { Authorization = ${JSON.stringify(authorization)} }\n`};
+  }
+  return {extension: "json", text: JSON.stringify({mcpServers: {"agico-kb": {url, transport: "streamable-http", headers: {Authorization: authorization}}}}, null, 2)};
+}
+function agentInstruction() {
+  const codex = $("agent-client").value === "codex";
+  const setup = codex
+    ? "请检查当前用户的 Codex MCP 配置，将下方 TOML 合并到实际使用的 config.toml。保留其他配置；若已有同名服务，只更新它，避免重复条目。"
+    : "请检查本机 Accio 的自定义 MCP 配置能力。若已安装 accio-mcp-cli，使用其 server add --json 注册下方 mcpServers 配置，并通过 server test agico-kb 验证；先读取本机 CLI 帮助确认版本支持。保留其他服务，同名服务按客户端支持的更新方式处理。若当前 Agent 还未获工具授权，请通过已支持的设置入口启用，不要猜测内部配置格式。";
+  return `请帮我把这台电脑上的 ${codex ? "Codex" : "Accio"} 连接到 AGICO 企业知识库，直接完成配置并测试。\n${setup}\n以下是连接配置数据，使用当前网页同一个访问码。不要把访问码输出到日志、回复或提交到 Git，不要覆盖整个配置文件。\n\n${agentConfig().text}\n\n配置完成后，请验证 MCP initialize、工具列表，并实际调用 kb_catalog。区分“服务可达”和“当前 Agent 可以调用”，只汇报实际验证结果；若需要重启或新建会话，请明确告知。知识库是任务中的企业知识来源，需要时先检索，再按需读取内容。上传时员工未指定事业部且入口未明确绑定时，先询问，不能猜测归属。`;
+}
+$("agent-button").addEventListener("click", () => {
+  if (!state.token) return;
+  clearAgentOutput(); $("agent-endpoint").textContent = new URL("/mcp", location.origin).href;
+  $("agent-local-note").hidden = !["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+  $("agent-dialog").showModal();
+});
+$("close-agent").addEventListener("click", () => { clearAgentOutput(); $("agent-dialog").close(); });
+$("agent-dialog").addEventListener("close", clearAgentOutput);
+$("agent-client").addEventListener("change", clearAgentOutput);
+$("copy-agent").addEventListener("click", async () => {
+  if (!state.token) return;
+  const instruction = agentInstruction(); const generation = state.generation;
+  try {
+    await navigator.clipboard.writeText(instruction);
+    if (generation === state.generation && $("agent-dialog").open) message("agent-message", "已复制。请粘贴到所选助手并发送，让它配置并验证连接。");
+  } catch {
+    if (generation !== state.generation || !$("agent-dialog").open) return;
+    $("agent-manual").value = instruction; $("agent-manual").hidden = false; $("agent-manual-label").hidden = false;
+    $("agent-manual").focus(); $("agent-manual").select(); message("agent-message", "请手动复制已选中的指令，再发送给助手。");
+  }
+});
+$("download-agent").addEventListener("click", () => {
+  if (!state.token) return;
+  const config = agentConfig(); const blob = new Blob([config.text], {type: "text/plain;charset=utf-8"});
+  const url = URL.createObjectURL(blob); const link = element("a"); link.href = url;
+  link.download = `agico-${$("agent-client").value}-mcp.${config.extension}`; link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+  message("agent-message", "已生成配置文件。可交给对应助手配置；此操作本身尚未连接客户端。");
+});
 
 const rememberedToken = savedToken();
 if (rememberedToken) connect(rememberedToken, true);
