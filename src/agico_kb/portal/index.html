@@ -11,14 +11,10 @@
   <a class="skip" href="#upload-form">跳至文件提交</a>
   <header class="topbar"><a class="brand" href="/" aria-label="AGICO 企业知识库首页"><img class="brand-mark" src="/portal/agico-mark.png" alt="" width="46" height="45"><span>AGICO<span class="brand-sub">企业知识库</span></span></a><div class="top-actions"><span id="connection" class="connection">尚未连接</span><button id="agent-button" class="button secondary" type="button" disabled>连接 AI 助手</button><button id="account-button" class="button secondary" type="button">连接知识库 <span aria-hidden="true">↗</span></button></div></header>
   <main>
-    <section class="intro" aria-labelledby="page-heading">
-      <div class="intro-main"><p class="eyebrow">AGICO / KNOWLEDGE HUB</p><h1 id="page-heading">企业知识，<br>连接每一份专业。</h1><p class="intro-copy">汇集业务资料与经验，为同事和 AI 提供可靠依据。</p></div>
-      <div class="intro-note"><span class="intro-index">SHARED KNOWLEDGE.<br>GREATER POSSIBILITIES.</span><p>知识沉淀于此，价值延伸至每一次协作。</p><div class="intro-links"><a href="#upload-heading">提交资料 <span aria-hidden="true">↗</span></a><a href="#library-heading">查找文件 <span aria-hidden="true">↗</span></a></div></div>
-    </section>
-    <div class="workspace-heading"><p>企业资料中心 <span>DOCUMENT CENTER</span></p><span class="workspace-hint">共享有据 · 访问有序</span></div>
+    <section class="intro"><div><p class="eyebrow">COMPANY KNOWLEDGE / 资料中心</p><h1>让每一份资料，都有所归。</h1><p class="intro-copy">汇集业务知识，让同事与 AI 找到可靠依据。</p></div><div class="intro-note"><span class="note-mark" aria-hidden="true">↗</span><p>一次提交，持续共享<span>资料审核发布后，向有权限的同事开放。</span></p></div></section>
     <div class="workspace">
       <section class="upload-panel panel" aria-labelledby="upload-heading">
-        <div class="panel-heading"><div><p class="eyebrow">01 / CONTRIBUTE</p><h2 id="upload-heading">提交知识资料</h2></div><span class="pill">批量上传</span></div>
+        <div class="panel-heading"><div><p class="eyebrow">CONTRIBUTE</p><h2 id="upload-heading">提交知识资料</h2></div><span class="pill">上传入口</span></div>
         <form id="upload-form">
           <fieldset id="upload-fields" disabled>
             <section class="file-section" aria-labelledby="file-heading"><h3 id="file-heading"><span class="step">01</span> 选择文件</h3>
@@ -37,7 +33,7 @@
         </form>
       </section>
       <section class="library-panel panel" aria-labelledby="library-heading">
-        <div class="panel-heading"><div><p class="eyebrow">02 / EXPLORE</p><h2 id="library-heading">找到需要的资料</h2></div><span class="pill">知识检索</span></div>
+        <div class="panel-heading"><div><p class="eyebrow">EXPLORE</p><h2 id="library-heading">找到需要的资料</h2></div><span class="library-icon" aria-hidden="true">⌕</span></div>
         <div class="tabs" role="tablist" aria-label="资料列表"><button id="tab-library" role="tab" aria-selected="true" aria-controls="list-panel" type="button">已发布资料</button><button id="tab-pending" role="tab" aria-selected="false" aria-controls="list-panel" type="button">待审核提交</button></div>
         <form id="search-form"><div class="search-box"><span aria-hidden="true">⌕</span><input id="query" type="search" maxlength="500" aria-label="搜索文件" placeholder="搜索文件名称、型号或关键词"><button class="button search-button" type="submit" disabled id="search-button">搜索</button></div><div class="filters"><label for="filter-org" class="sr-only">按事业部筛选</label><select id="filter-org" disabled><option value="">全部可见事业部</option></select><label for="filter-category" class="sr-only">按类型筛选</label><select id="filter-category" disabled><option value="">全部资料类型</option></select></div></form>
         <div class="list-meta"><span id="list-caption">仅显示你有权访问的资料</span><button id="refresh" class="text-button" type="button" disabled>刷新 ↻</button></div>
@@ -47,7 +43,7 @@
         <aside class="library-note"><strong>找文件，也找依据。</strong><p>这里可以下载原始资料；需要理解文件内容时，让已连接知识库的 AI 助手帮你查阅。</p></aside>
       </section>
     </div>
-    <footer><span>AGICO <span class="footer-divider">/</span> KNOWLEDGE HUB</span><span>企业知识，共同积累。</span></footer>
+    <footer><span>AGICO <span class="footer-divider">/</span> 企业知识，共同积累。</span><span>同一份知识，连接员工与 AI。</span></footer>
   </main>
   <dialog id="auth-dialog" aria-labelledby="auth-heading"><form id="auth-form"><div class="dialog-heading"><span class="eyebrow">ACCESS</span><button id="close-auth" class="text-button" type="button" aria-label="关闭连接窗口">✕</button></div><h2 id="auth-heading">连接企业知识库</h2><p class="help">请输入管理员提供的访问码。可操作的事业部由账号权限决定。</p><label for="access-token">访问码</label><input id="access-token" type="password" required autocomplete="off" spellcheck="false" placeholder="粘贴你的访问码"><p class="help">连接后在当前浏览器记住访问码，下次打开自动连接。点击“断开连接”即可清除。</p><p id="auth-message" class="message" role="alert"></p><button id="login-button" class="button primary" type="submit">连接并开始使用 →</button></form></dialog>
   <dialog id="agent-dialog" aria-labelledby="agent-heading">
