@@ -107,7 +107,7 @@ def create_app(settings: Settings) -> FastAPI:
 
     @app.get("/portal/{asset}", include_in_schema=False)
     def portal_asset(asset: str):
-        if asset not in {"app.js", "styles.css"}:
+        if asset not in {"app.js", "styles.css", "agico-logo.png"}:
             raise HTTPException(status_code=404)
         return FileResponse(portal_root / asset, headers={"X-Content-Type-Options": "nosniff"})
 
