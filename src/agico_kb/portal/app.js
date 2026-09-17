@@ -1,7 +1,7 @@
 /* Same-origin employee portal. Credentials live only in this page's memory. */
 "use strict";
 const $ = (id) => document.getElementById(id);
-const state = {token: "", catalog: null, limit: 0, file: null, attempt: null, busy: false, tab: "library", offset: 0, next: null, generation: 0, listRequest: 0};
+const state = {token: "", catalog: null, limit: 0, files: [], attempt: null, busy: false, tab: "library", offset: 0, next: null, generation: 0, listRequest: 0};
 const statuses = {queued: "等待解析", processing: "正在解析", ready: "解析完成", partial: "部分解析 · 请核对原件", stored_only: "仅保存原件", failed: "解析失败 · 原件保留"};
 function message(id, text = "", error = false) { $(id).textContent = text; $(id).classList.toggle("error", error); }
 function size(bytes) { return bytes < 1048576 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1048576).toFixed(1)} MB`; }
@@ -27,10 +27,10 @@ async function api(path, options = {}, token = state.token) {
 }
 function openAuth() { $("auth-dialog").showModal(); $("access-token").focus(); }
 function resetFile() {
-  state.file = null; state.attempt = null;
+  state.files = []; state.attempt = null;
   $("reset-attempt").hidden = true;
-  $("upload-form").reset(); $("file-label").textContent = "点击选择，或将文件拖到这里";
-  $("file-help").textContent = `支持 Office、PDF、图片、CAD 等 · 每次 1 份 · 最大 ${size(state.limit)}`;
+  $("upload-form").reset(); $("optional-fields").open = false; $("selected-files").replaceChildren(); $("file-label").textContent = "点击选择多个文件，或拖到这里";
+  $("file-help").textContent = `支持批量选择或拖入文件 · 单个文件最大 ${size(state.limit)}`;
   $("division-summary").textContent = "尚未选择事业部";
 }
 function disconnect() {
@@ -57,9 +57,9 @@ function catalogUI(catalog) {
     $("filter-org").add(new Option(org.name, org.id));
   }
   if (!catalog.organizations.length) $("division-options").append(element("p", "connect-hint", "当前账号没有事业部权限，请联系管理员。"));
-  $("category").replaceChildren(); $("filter-category").replaceChildren(new Option("全部资料类型", ""));
+  $("category").replaceChildren(new Option("不填写", "")); $("filter-category").replaceChildren(new Option("全部资料类型", ""));
   for (const c of catalog.categories) { $("category").add(new Option(c.name, c.id)); $("filter-category").add(new Option(c.name, c.id)); }
-  $("category").value = "other";
+  $("category").value = "";
 }
 $("account-button").addEventListener("click", () => { if (state.token) disconnect(); else openAuth(); });
 $("empty-connect").addEventListener("click", openAuth);
@@ -72,89 +72,113 @@ $("auth-form").addEventListener("submit", async (event) => {
   try {
     const [session, catalog] = await Promise.all([api("/v1/portal-session", {}, token), api("/v1/catalog", {}, token)]);
     state.token = token; state.catalog = catalog; state.limit = session.max_upload_bytes; state.generation++;
-    catalogUI(catalog); resetFile(); $("category").value = "other";
+    catalogUI(catalog); resetFile(); $("category").value = "";
     $("upload-fields").disabled = !catalog.organizations.length; $("submit-button").disabled = !catalog.organizations.length;
     for (const id of ["search-button", "filter-org", "filter-category", "refresh"]) $(id).disabled = false;
     $("connection").textContent = `已连接 · ${session.identity}`; $("connection").classList.add("online");
     $("account-button").textContent = "断开连接"; $("auth-dialog").close(); message("auth-message");
-    await loadList(); $("division-options").querySelector("input")?.focus();
+    await loadList(); $("file-input").focus();
   } catch (error) { message("auth-message", error.message, true); }
   finally { $("login-button").disabled = false; $("close-auth").disabled = false; }
 });
-function chooseFile(file) {
-  if (state.busy || state.attempt || !state.token) return;
-  if (!file || !file.size || file.size > state.limit) {
-    state.file = null; $("file-input").value = ""; $("file-label").textContent = "点击选择，或将文件拖到这里";
-    message("upload-message", `请选择非空文件，大小不超过 ${size(state.limit)}。`, true); return;
+function renderFiles(items = null) {
+  const entries = items || state.attempt?.items || state.files.map((file) => ({file}));
+  $("selected-files").replaceChildren();
+  for (const [index, item] of entries.entries()) {
+    const row = element("div", "selected-file");
+    const info = element("div", "selected-file-info");
+    info.append(element("strong", "", item.file.name));
+    const detail = item.versionId ? "已提交 · 待审核" : item.error ? item.error : item.status || size(item.file.size);
+    info.append(element("span", item.error ? "file-error" : "", detail)); row.append(info);
+    if (!state.attempt && !items) {
+      const remove = element("button", "text-button", "移除"); remove.type = "button";
+      remove.setAttribute("aria-label", `移除 ${item.file.name}`);
+      remove.addEventListener("click", () => { state.files.splice(index, 1); renderFiles(); }); row.append(remove);
+    }
+    $("selected-files").append(row);
   }
-  if ([...file.name].length > 240 || /[\\/:\x00-\x1f]/.test(file.name) || [".", ".."].includes(file.name)) {
-    state.file = null; $("file-input").value = ""; $("file-label").textContent = "点击选择，或将文件拖到这里";
-    message("upload-message", "文件名最多 240 个字符，不能包含路径符号或控制字符。请重命名后选择。", true); return;
-  }
-  state.file = file; $("title").value = file.name.slice(0, 300);
-  $("file-label").textContent = file.name; $("file-help").textContent = `${size(file.size)} · 点击可重新选择`; message("upload-message");
+  $("file-label").textContent = state.files.length ? `已选择 ${state.files.length} 份文件 · 点击继续添加` : "点击选择多个文件，或拖到这里";
 }
-$("file-input").addEventListener("change", () => chooseFile($("file-input").files[0]));
+function chooseFiles(files) {
+  if (state.busy || state.attempt || !state.token) return;
+  const rejected = [];
+  for (const file of files) {
+    if (!file.size || file.size > state.limit) { rejected.push(`${file.name}：文件不能为空或超过 ${size(state.limit)}`); continue; }
+    if ([...file.name].length > 240 || /[\\/:\x00-\x1f]/.test(file.name) || [".", ".."].includes(file.name)) {
+      rejected.push(`${file.name}：文件名最多 240 个字符，不能包含路径符号或控制字符`); continue;
+    }
+    // Files from different folders may share names, sizes and timestamps.
+    state.files.push(file);
+  }
+  $("file-input").value = ""; renderFiles();
+  message("upload-message", rejected.length ? rejected.join("\n") : "", !!rejected.length);
+}
+$("file-input").addEventListener("change", () => chooseFiles(Array.from($("file-input").files)));
 for (const ev of ["dragenter", "dragover"]) $("dropzone").addEventListener(ev, (e) => { e.preventDefault(); if (state.token && !state.attempt && !state.busy) $("dropzone").classList.add("dragging"); });
 for (const ev of ["dragleave", "drop"]) $("dropzone").addEventListener(ev, (e) => { e.preventDefault(); $("dropzone").classList.remove("dragging"); });
-$("dropzone").addEventListener("drop", (e) => {
-  if (!state.token || state.busy || state.attempt) return;
-  if (e.dataTransfer.files.length !== 1) { message("upload-message", "请每次选择一份文件。", true); return; }
-  $("file-input").files = e.dataTransfer.files; chooseFile(e.dataTransfer.files[0]);
-});
-function putFile(id, file) {
+$("dropzone").addEventListener("drop", (e) => chooseFiles(Array.from(e.dataTransfer.files)));
+function putFile(id, file, onProgress) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest(); xhr.open("PUT", `/v1/uploads/${encodeURIComponent(id)}/content`);
     xhr.setRequestHeader("Authorization", `Bearer ${state.token}`); xhr.timeout = 300000;
-    xhr.upload.onprogress = (e) => { if (e.lengthComputable) { $("upload-progress").value = Math.round(e.loaded / e.total * 100); message("upload-message", `正在上传 · ${Math.round(e.loaded / e.total * 100)}%`); } };
+    xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(e.loaded / e.total); };
     xhr.onload = () => { let body = {}; try { body = JSON.parse(xhr.responseText); } catch { /* Non-JSON proxy errors. */ } if (xhr.status >= 200 && xhr.status < 300) resolve(body); else reject(new Error(errorText(body, xhr.status))); };
-    xhr.onerror = xhr.ontimeout = () => reject(new Error("上传中断，请点击重试。已填写的归属与文件会保留。")); xhr.send(file);
+    xhr.onerror = xhr.ontimeout = () => reject(new Error("上传中断，可重试此文件。")); xhr.send(file);
   });
 }
 $("upload-form").addEventListener("submit", async (e) => {
   e.preventDefault(); if (state.busy || !state.token) return;
   if (!state.attempt) {
+    if (!state.files.length) { message("upload-message", "请先选择要上传的文件。", true); $("file-input").focus(); return; }
     const org = document.querySelector('input[name="organization"]:checked');
-    if (!org) { message("upload-message", "请先选择所属事业部。", true); $("division-options").querySelector("input")?.focus(); return; }
-    if (!state.file || !$("title").value.trim()) { message("upload-message", "请选择文件并填写资料名称。", true); return; }
-    state.attempt = {key: crypto.randomUUID(), file: state.file, body: {organization_id: org.value, category_id: $("category").value, title: $("title").value.trim(), model: $("model").value.trim() || null, visibility: "department"}};
+    if (!org) { message("upload-message", "提交前请选择所属事业部。", true); $("division-options").querySelector("input")?.focus(); return; }
+    state.attempt = {
+      items: state.files.map((file) => ({key: crypto.randomUUID(), file})),
+      body: {organization_id: org.value, ...($("category").value ? {category_id: $("category").value} : {}), ...($("model").value.trim() ? {model: $("model").value.trim()} : {}), visibility: "department"}
+    };
   }
-  const attempt = state.attempt; const generation = state.generation;
-  state.busy = true; $("upload-fields").disabled = true; $("submit-button").disabled = true; $("account-button").disabled = true;
-  $("upload-progress").hidden = false; $("submit-button").textContent = "正在提交…";
+  const attempt = state.attempt;
+  state.busy = true; $("upload-fields").disabled = true; $("submit-button").disabled = true; $("account-button").disabled = true; $("reset-attempt").hidden = true;
+  $("upload-progress").hidden = false; $("upload-progress").value = 0; $("submit-button").textContent = "正在批量提交…";
+  let processed = attempt.items.filter((item) => item.versionId).length;
   try {
-    if (!attempt.uploadId) { message("upload-message", "正在准备上传…"); const prepared = await api("/v1/uploads", {method: "POST", headers: {"Idempotency-Key": attempt.key}, body: {filename: attempt.file.name, size: attempt.file.size}}); attempt.uploadId = prepared.upload_id; }
-    if (!attempt.uploaded) { await putFile(attempt.uploadId, attempt.file); attempt.uploaded = true; }
-    message("upload-message", "上传完成，正在登记资料…");
-    const result = await api("/v1/submissions", {method: "POST", body: {...attempt.body, upload_id: attempt.uploadId}});
-    resetFile(); $("category").value = "other"; $("upload-fields").disabled = false;
-    message("upload-message", `已提交至「${orgName(attempt.body.organization_id)}」。\n资料进入待审核区，后台正在处理。`);
-    $("submit-button").textContent = "提交到知识库 →";
-    switchTab("pending"); pollStatus(result.version_id, generation, attempt.body.organization_id);
-  } catch (error) {
-    message("upload-message", `${error.message}\n归属和文件已锁定，重试会继续同一份提交。若要重新填写，请先查看待审核列表，确认之前是否已提交成功。`, true);
-    $("submit-button").textContent = "重试本次提交 →";
-    $("reset-attempt").hidden = false;
+    for (const item of attempt.items) {
+      if (item.versionId) continue;
+      item.error = ""; item.status = "正在上传…"; renderFiles();
+      message("upload-message", `正在提交 ${processed + 1} / ${attempt.items.length}：${item.file.name}`);
+      try {
+        if (!item.uploadId) {
+          const prepared = await api("/v1/uploads", {method: "POST", headers: {"Idempotency-Key": item.key}, body: {filename: item.file.name, size: item.file.size}});
+          item.uploadId = prepared.upload_id;
+        }
+        if (!item.uploaded) {
+          await putFile(item.uploadId, item.file, (fraction) => { $("upload-progress").value = (processed + fraction) / attempt.items.length * 100; });
+          item.uploaded = true;
+        }
+        const result = await api("/v1/submissions", {method: "POST", body: {...attempt.body, title: item.file.name, upload_id: item.uploadId}});
+        item.versionId = result.version_id;
+      } catch (error) { item.error = error.message; }
+      processed++; $("upload-progress").value = processed / attempt.items.length * 100; renderFiles();
+    }
+    const completed = attempt.items.filter((item) => item.versionId).length;
+    const failed = attempt.items.length - completed;
+    if (!failed) {
+      resetFile(); $("category").value = ""; $("upload-fields").disabled = false; renderFiles(attempt.items);
+      message("upload-message", `${completed} 份文件已提交至「${orgName(attempt.body.organization_id)}」。后台正在处理，审核发布后可供查找。`);
+      $("submit-button").textContent = "提交到知识库 →";
+    } else {
+      message("upload-message", `已提交 ${completed} 份，${failed} 份未确认完成。重试只处理未完成项，已成功的文件不会重复提交。\n若要重新选择，请先检查待审核列表，避免重复提交。`, true);
+      $("submit-button").textContent = `重试未完成的 ${failed} 份 →`; $("reset-attempt").hidden = false;
+    }
+    switchTab("pending");
   } finally { state.busy = false; $("submit-button").disabled = false; $("account-button").disabled = false; $("upload-progress").hidden = true; }
 });
 $("reset-attempt").addEventListener("click", () => {
   if (state.busy) return;
-  resetFile(); $("category").value = "other"; $("upload-fields").disabled = !state.token;
+  resetFile(); $("category").value = ""; $("upload-fields").disabled = !state.token;
   $("submit-button").textContent = "提交到知识库 →";
-  message("upload-message", "已清空表单。已上传或已提交的资料不会删除，请先检查待审核列表，避免重复提交。");
+  message("upload-message", "可以重新选择文件。服务器上已有的资料不会删除，请先检查待审核列表，避免重复提交。");
 });
-async function pollStatus(id, generation, org) {
-  for (let i = 0; i < 20; i++) {
-    await new Promise((r) => setTimeout(r, 3000));
-    if (generation !== state.generation || state.busy || state.file) return;
-    try {
-      const item = await api(`/v1/versions/${encodeURIComponent(id)}`);
-      if (generation !== state.generation || state.busy || state.file) return;
-      message("upload-message", `已提交至「${orgName(org)}」 · ${statuses[item.processing_status] || item.processing_status}。\n审核发布后，其他有权限的同事即可查找。${item.warnings?.length ? "\n" + item.warnings.join("；") : ""}`);
-      if (!["queued", "processing"].includes(item.processing_status)) { if (state.tab === "pending") await loadList(); return; }
-    } catch { return; }
-  }
-}
 function empty(title, detail) { const box = element("div", "empty"); box.append(element("span", "empty-art", "▤"), element("h3", "", title), element("p", "", detail)); $("results").replaceChildren(box); }
 async function download(item, button) {
   button.disabled = true; const generation = state.generation;
