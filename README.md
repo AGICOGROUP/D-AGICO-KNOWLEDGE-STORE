@@ -46,6 +46,10 @@ uv run uvicorn agico_kb.main:app_factory --factory --host 127.0.0.1 --port 8000
 
 ## Agent 与文件适配
 
+### 员工网页入口
+
+浏览器打开服务根地址（本机 `http://127.0.0.1:8765/`），输入成员访问码即可提交和查找文件。上传前必须显式选择所属事业部，不自动代选；提交后进入待审核区。页面支持处理状态、已发布资料搜索、事业部／类型筛选和原件下载。详见[网页使用与验证](docs/validation/employee-portal.md)。
+
 业务 MCP 地址为 API 的 `/mcp`，使用独立 Bearer token。`kb_context` 按需查背景；`kb_search` 默认返回 5 项相关资料，`kb_read` 读取必要原文；上传、提交、状态与文件工具共用同一后台。负责人另有发布、撤下、恢复与历史管理工具。
 
 将[简短使用约定](client/agent-usage.md)放入客户端现有指令机制，让 Agent 在需要公司知识时主动查阅并应用，复用任务内已有依据，避免全库读取。真实 Codex 合成任务已验证背景、事实、规范和经验会影响产出，见[结果与用量](docs/validation/codex.md)。Accio、网页和钉钉仍需实机联调。

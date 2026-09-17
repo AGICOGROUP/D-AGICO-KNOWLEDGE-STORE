@@ -1,8 +1,9 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 from uuid import UUID
 
 from anyio import to_thread
-from fastapi import FastAPI, Header, Query, Request
+from fastapi import FastAPI, Header, HTTPException, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import FileResponse, JSONResponse
 
@@ -80,6 +81,35 @@ def create_app(settings: Settings) -> FastAPI:
     @app.get("/v1/catalog")
     def get_catalog(request: Request):
         return catalog.catalog(db, request.state.principal)
+
+    @app.get("/v1/portal-session")
+    def portal_session(request: Request):
+        return {
+            "identity": request.state.principal.id,
+            "max_upload_bytes": settings.max_upload_bytes,
+        }
+
+    portal_root = Path(__file__).parent / "portal"
+
+    @app.get("/", include_in_schema=False)
+    def portal():
+        return FileResponse(
+            portal_root / "index.html",
+            headers={
+                "Cache-Control": "no-store",
+                "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; "
+                "img-src 'self' blob:; connect-src 'self'; object-src 'none'; "
+                "base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
+                "Referrer-Policy": "no-referrer",
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
+
+    @app.get("/portal/{asset}", include_in_schema=False)
+    def portal_asset(asset: str):
+        if asset not in {"app.js", "styles.css"}:
+            raise HTTPException(status_code=404)
+        return FileResponse(portal_root / asset, headers={"X-Content-Type-Options": "nosniff"})
 
     @app.post("/v1/uploads", status_code=201)
     def prepare_upload(body: PrepareUpload, request: Request, idempotency_key: str = Header()):

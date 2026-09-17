@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>AGICO · 企业知识库</title>
+  <link rel="stylesheet" href="/portal/styles.css">
+  <script src="/portal/app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#upload-form">跳至文件提交</a>
+  <header class="topbar"><a class="brand" href="/" aria-label="AGICO 企业知识库首页"><span class="brand-mark">A<span>·</span></span><span>AGICO<span class="brand-sub">企业知识库</span></span></a><div class="top-actions"><span id="connection" class="connection">尚未连接</span><button id="account-button" class="button secondary" type="button">连接知识库 <span aria-hidden="true">↗</span></button></div></header>
+  <main>
+    <section class="intro"><div><p class="eyebrow">COMPANY KNOWLEDGE / 资料中心</p><h1>让每一份资料，都有所归。</h1><p class="intro-copy">汇集业务知识，让同事与 AI 找到可靠依据。</p></div><div class="intro-note"><span class="note-mark" aria-hidden="true">↗</span><p>一次提交，持续共享<span>资料审核发布后，向有权限的同事开放。</span></p></div></section>
+    <div class="workspace">
+      <section class="upload-panel panel" aria-labelledby="upload-heading">
+        <div class="panel-heading"><div><p class="eyebrow">CONTRIBUTE</p><h2 id="upload-heading">提交知识资料</h2></div><span class="pill">上传入口</span></div>
+        <form id="upload-form">
+          <fieldset id="upload-fields" disabled>
+            <fieldset class="division-section" id="division-fieldset" aria-describedby="division-help">
+              <legend><span class="step">01</span> 选择所属事业部 <span class="required">必选</span></legend>
+              <p id="division-help" class="help">请明确资料归属。不会自动选择，也不会默认存入公共知识。</p>
+              <div id="division-options" class="division-grid"><p class="connect-hint">连接后，显示你可提交资料的事业部。</p></div>
+              <p id="division-summary" class="division-summary" aria-live="polite">尚未选择事业部</p>
+            </fieldset>
+            <section class="file-section" aria-labelledby="file-heading"><h3 id="file-heading"><span class="step muted">02</span> 添加文件</h3>
+              <label class="dropzone" id="dropzone" for="file-input"><span class="upload-symbol" aria-hidden="true">↥</span><strong id="file-label">点击选择，或将文件拖到这里</strong><span id="file-help">支持 Office、PDF、图片、CAD 等原始文件 · 每次 1 份</span><input id="file-input" type="file" required aria-describedby="file-help"></label>
+              <div class="fields"><div class="full"><label for="title">资料名称</label><input id="title" maxlength="300" required placeholder="选择文件后自动填写，可修改"></div><div><label for="category">资料类型</label><select id="category"><option value="other">其他资料</option></select></div><div><label for="model">产品型号 <span class="optional">选填</span></label><input id="model" maxlength="300" placeholder="如 AX-210"></div></div>
+            </section>
+          </fieldset>
+          <div class="submit-area"><p><span aria-hidden="true">◎</span> 提交后进入待审核区，解析由后台自动完成。</p><button id="submit-button" class="button primary" type="submit" disabled>提交到知识库 <span aria-hidden="true">→</span></button><progress id="upload-progress" max="100" value="0" hidden aria-label="上传进度"></progress><p id="upload-message" class="message" role="status" aria-live="polite"></p><button id="reset-attempt" class="text-button" type="button" hidden>放弃重试，重新填写</button></div>
+        </form>
+      </section>
+      <section class="library-panel panel" aria-labelledby="library-heading">
+        <div class="panel-heading"><div><p class="eyebrow">EXPLORE</p><h2 id="library-heading">找到需要的资料</h2></div><span class="library-icon" aria-hidden="true">⌕</span></div>
+        <div class="tabs" role="tablist" aria-label="资料列表"><button id="tab-library" role="tab" aria-selected="true" aria-controls="list-panel" type="button">已发布资料</button><button id="tab-pending" role="tab" aria-selected="false" aria-controls="list-panel" type="button">待审核提交</button></div>
+        <form id="search-form"><div class="search-box"><span aria-hidden="true">⌕</span><input id="query" type="search" maxlength="500" aria-label="搜索文件" placeholder="搜索文件名称、型号或关键词"><button class="button search-button" type="submit" disabled id="search-button">搜索</button></div><div class="filters"><label for="filter-org" class="sr-only">按事业部筛选</label><select id="filter-org" disabled><option value="">全部可见事业部</option></select><label for="filter-category" class="sr-only">按类型筛选</label><select id="filter-category" disabled><option value="">全部资料类型</option></select></div></form>
+        <div class="list-meta"><span id="list-caption">仅显示你有权访问的资料</span><button id="refresh" class="text-button" type="button" disabled>刷新 ↻</button></div>
+        <div id="list-panel" role="tabpanel" aria-labelledby="tab-library"><div id="results" aria-live="polite"><div class="empty"><span class="empty-art" aria-hidden="true">▤</span><h3>你的企业资料，从这里连接</h3><p>输入访问码后，即可上传文件、查找资料。</p><button class="button secondary" id="empty-connect" type="button">连接知识库 ↗</button></div></div></div>
+        <p id="list-message" class="message" role="status"></p>
+        <nav class="pagination" aria-label="结果分页"><button id="previous" class="text-button" type="button" disabled>← 上一页</button><span id="page-label">第 1 页</span><button id="next" class="text-button" type="button" disabled>下一页 →</button></nav>
+        <aside class="library-note"><strong>找文件，也找依据。</strong><p>这里可以下载原始资料；需要理解文件内容时，让已连接知识库的 AI 助手帮你查阅。</p></aside>
+      </section>
+    </div>
+    <footer><span>AGICO <span class="footer-divider">/</span> 企业知识，共同积累。</span><span>同一份知识，连接员工与 AI。</span></footer>
+  </main>
+  <dialog id="auth-dialog" aria-labelledby="auth-heading"><form id="auth-form"><div class="dialog-heading"><span class="eyebrow">ACCESS</span><button id="close-auth" class="text-button" type="button" aria-label="关闭连接窗口">✕</button></div><h2 id="auth-heading">连接企业知识库</h2><p class="help">请输入管理员提供的访问码。可操作的事业部由账号权限决定。</p><label for="access-token">访问码</label><input id="access-token" type="password" required autocomplete="off" spellcheck="false" placeholder="粘贴你的访问码"><p class="help">访问码仅在当前页面内存中使用，刷新或关闭页面后需重新输入。</p><p id="auth-message" class="message" role="alert"></p><button id="login-button" class="button primary" type="submit">连接并开始使用 →</button></form></dialog>
+</body></html>
