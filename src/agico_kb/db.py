@@ -70,6 +70,13 @@ class Database:
                     .read_text(encoding="utf-8")
                 )
                 conn.execute("INSERT INTO schema_migrations VALUES (2)")
+            if not conn.execute("SELECT 1 FROM schema_migrations WHERE version=3").fetchone():
+                conn.execute(
+                    files("agico_kb")
+                    .joinpath("migrations/003_access_management.sql")
+                    .read_text(encoding="utf-8-sig")
+                )
+                conn.execute("INSERT INTO schema_migrations VALUES (3)")
             data = json.loads(
                 files("agico_kb").joinpath("taxonomy.json").read_text(encoding="utf-8")
             )

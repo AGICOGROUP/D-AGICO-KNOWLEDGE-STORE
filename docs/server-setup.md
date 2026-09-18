@@ -29,11 +29,31 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\setup.ps1 -DataRoot "D
 | 数据目录 `config` | 安装归属、受保护凭证和服务配置 |
 | 数据目录 `logs`、`temp`、`services` | 运行日志、临时文件和服务包装器 |
 
-安装结束后，管理员从 `config/initial-access.json` 读取初始化管理员的 MCP 地址、令牌和到期时间。令牌有效期为 30 天，仅用于初始化验证；后续按员工或 Agent 身份分配权限与令牌，不能把它当成全公司共用账号。不要将配置内容粘贴到日志、聊天或 Git。
+安装结束后，管理员从 `config/initial-access.json` 读取初始化管理员的 MCP 地址、令牌和到期时间。令牌有效期为 30 天，拥有初始化管理员权限。打开网页底部“管理员 · 访问码管理”，首次使用此令牌登录后，可为员工或团队签发普通访问码。管理员码不可作为全公司共用账号。不要将配置内容粘贴到日志、聊天或 Git。
 
 浏览器访问 `/health/ready` 用于检查就绪状态；直接打开 `/mcp` 出现 `UNAUTHENTICATED` 表示没有携带凭证，并非安装失败。MCP 客户端需要配置 Bearer token，并使用 MCP 协议调用。
 
 API 默认只允许本机访问。让其他电脑、现有网页或钉钉适配服务连接时，需要另行配置可信域名、HTTPS 反向代理与防火墙，以及调用者身份。仅选择一个文件夹无法推断这些网络和身份信息；知识库本身不重复建设员工聊天入口。
+
+## 已有安装升级访问码管理（运维一次性操作）
+
+先备份，停止 API 和 worker，更新程序及依赖。使用运行该安装的 Python 环境，加载受保护配置后执行 `python -m agico_kb.admin migrate`（本次新增迁移 003）。随后显式选定一个专用管理身份，例如 `python -m agico_kb.admin set-admin bootstrap-admin true`；该身份必须已存在且没有将令牌分享给员工。没有合适身份时，通过 `set-identity` 创建专用身份后再 `set-admin`、`issue-token`。
+
+旧安装、旧备份的已有身份全部默认无新增管理员权限；升级不会自动提升 publisher，也不会重新启用曾被降权的管理员。首次新安装才自动授权 bootstrap-admin。管理身份的令牌过期后仍需由本地运维签发新管理员令牌（`issue-token`），恢复网页管理；网页只能签发普通成员访问码。撤销管理员权限使用 `set-admin <身份> false`。
+
+加载配置的示例（使用当前操作者可访问的受保护配置文件）：
+
+```powershell
+. .\deploy\windows\config-loader.ps1
+Import-ProtectedKbConfig -ConfigFile "D:\企业知识库\config\runtime.json" -Account ([Security.Principal.WindowsIdentity]::GetCurrent().Name)
+# 以下为 setup 安装路径；本机开发环境则使用 .venv\Scripts\python.exe。
+$PythonExe = Join-Path $PWD.Path ".runtime\venv\Scripts\python.exe"
+if (-not (Test-Path -LiteralPath $PythonExe)) { throw "请确认当前目录和 Python 运行环境路径。" }
+& $PythonExe -m agico_kb.admin migrate
+& $PythonExe -m agico_kb.admin set-admin bootstrap-admin true
+```
+
+每步成功后再继续，最后启动服务。现有 001/002 格式备份和含 003 的新备份均可恢复；恢复旧备份时自动补齐数据库结构，管理员授权仍需显式指定。
 
 ## 服务管理
 

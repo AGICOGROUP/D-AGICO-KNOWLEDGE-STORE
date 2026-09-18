@@ -7,7 +7,7 @@ from fastapi import FastAPI, Header, HTTPException, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import FileResponse, JSONResponse
 
-from . import catalog, files, lifecycle
+from . import access_management, catalog, files, lifecycle
 from .auth import authenticate
 from .config import Settings
 from .contracts import (
@@ -43,6 +43,7 @@ def create_app(settings: Settings) -> FastAPI:
     app.state.db = db
     app.state.settings = settings
     app.state.search = search_service
+    app.include_router(access_management.router(db))
 
     @app.exception_handler(KBError)
     async def business_error(request, exc):
@@ -58,7 +59,11 @@ def create_app(settings: Settings) -> FastAPI:
             if principal is None:
                 return JSONResponse({"error": {"code": "UNAUTHENTICATED"}}, status_code=401)
             request.state.principal = principal
-        return await call_next(request)
+        response = await call_next(request)
+        if request.url.path.startswith("/v1/admin/"):
+            response.headers["Cache-Control"] = "no-store"
+            response.headers["Referrer-Policy"] = "no-referrer"
+        return response
 
     @app.get("/health/live")
     def live():
@@ -107,7 +112,7 @@ def create_app(settings: Settings) -> FastAPI:
 
     @app.get("/portal/{asset}", include_in_schema=False)
     def portal_asset(asset: str):
-        if asset not in {"app.js", "styles.css", "agico-logo.png", "agico-mark.png"}:
+        if asset not in {"app.js", "styles.css", "agico-logo.png", "agico-mark.png", "admin.js"}:
             raise HTTPException(status_code=404)
         return FileResponse(portal_root / asset, headers={"X-Content-Type-Options": "nosniff"})
 

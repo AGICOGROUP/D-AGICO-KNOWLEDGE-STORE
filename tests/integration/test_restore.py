@@ -60,7 +60,8 @@ def test_backup_waits_for_existing_writer_and_releases_on_timeout(kb):
         pass
 
 
-def test_restore_new_database_and_storage_preserves_permissions(kb, tmp_path):
+@pytest.mark.parametrize("legacy", [False, True])
+def test_restore_new_database_and_storage_preserves_permissions(kb, tmp_path, legacy):
     client, db, root = kb
     response, _, content = submit(client, visibility="private")
     assert response.status_code == 201
@@ -71,6 +72,24 @@ def test_restore_new_database_and_storage_preserves_permissions(kb, tmp_path):
             "UPDATE jobs SET state='running',generation=%s,attempts=1,lease_until=now()+interval '1 hour'",
             (uuid4(),),
         )
+    if legacy:
+        with db.connection(write=True) as conn:
+            conn.execute("DROP TABLE managed_access")
+            conn.execute("ALTER TABLE principals DROP COLUMN is_admin")
+            conn.execute("DELETE FROM schema_migrations WHERE version=3")
+    else:
+        with db.connection(write=True) as conn:
+            conn.execute("UPDATE principals SET is_admin=true WHERE id='chief'")
+        issued = client.post(
+            "/v1/admin/access",
+            headers=headers("chief"),
+            json={
+                "request_id": str(uuid4()),
+                "name": "restore test",
+                "organizations": ["baiste"],
+                "days": 7,
+            },
+        ).json()
     archive = root.parent / ("backup_" + uuid4().hex)
     operations.backup(db.settings, archive, PG_BIN)
     manifest = json.loads((archive / "manifest.json").read_text(encoding="utf-8"))
@@ -85,6 +104,22 @@ def test_restore_new_database_and_storage_preserves_permissions(kb, tmp_path):
         )
         app = create_app(restored)
         with TestClient(app) as recovered:
+            if legacy:
+                assert (
+                    recovered.get("/v1/admin/session", headers=headers("chief")).status_code == 403
+                )
+            else:
+                listing = recovered.get("/v1/admin/access", headers=headers("chief")).json()
+                assert listing["items"][0]["id"] == issued["id"]
+                auth = {"Authorization": "Bearer " + issued["token"]}
+                assert recovered.get("/v1/catalog", headers=auth).status_code == 200
+                assert (
+                    recovered.post(
+                        "/v1/admin/access/" + issued["id"] + "/revoke", headers=headers("chief")
+                    ).status_code
+                    == 200
+                )
+                assert recovered.get("/v1/catalog", headers=auth).status_code == 401
             assert (
                 recovered.get(f"/v1/versions/{version}/content", headers=headers()).content
                 == content

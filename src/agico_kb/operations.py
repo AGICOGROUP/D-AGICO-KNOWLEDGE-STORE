@@ -20,6 +20,7 @@ from psycopg.conninfo import conninfo_to_dict, make_conninfo
 from psycopg.rows import dict_row
 
 from .config import Settings
+from .db import Database
 
 
 @contextmanager
@@ -279,7 +280,7 @@ def validate_backup(archive):
         r"[a-zA-Z][a-zA-Z0-9_]{0,62}", manifest.get("schema", "")
     ):
         raise ValueError("Unsupported backup format or schema")
-    if manifest["migrations"] != [1, 2]:
+    if manifest["migrations"] not in ([1, 2], [1, 2, 3]):
         raise ValueError("Unsupported database migrations")
     for name, key in [("database.dump", "dump_sha256"), ("uv.lock", "lock_sha256")]:
         if digest(safe_path(archive, name)) != manifest[key]:
@@ -354,8 +355,17 @@ def restore(archive, maintenance_dsn, database_name, storage, binary_dir, timeou
         conn.execute(
             "UPDATE versions SET processing_status='queued' WHERE active_generation IS NULL AND processing_status='processing' AND id IN (SELECT version_id FROM jobs WHERE state='queued')"
         )
+    settings = Settings(
+        dsn, storage, manifest["schema"], embedding_model=manifest["embedding_model"]
+    )
+    # Restore old archives into the current schema before the service can be started.
+    restored_db = Database(settings)
+    try:
+        restored_db.migrate()
+    finally:
+        restored_db.close()
     (storage / "RESTORE_INCOMPLETE").unlink()
-    return Settings(dsn, storage, manifest["schema"], embedding_model=manifest["embedding_model"])
+    return settings
 
 
 def main():

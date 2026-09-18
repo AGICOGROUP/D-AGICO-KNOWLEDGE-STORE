@@ -60,6 +60,9 @@ def main():
     issue.add_argument("--days", type=int, default=30)
     revoke = commands.add_parser("revoke-tokens")
     revoke.add_argument("subject")
+    admin = commands.add_parser("set-admin")
+    admin.add_argument("subject")
+    admin.add_argument("enabled", choices=["true", "false"])
     args = parser.parse_args()
     if args.command == "issue-token" and not 1 <= args.days <= 365:
         parser.error("--days 必须为 1 至 365")
@@ -69,6 +72,16 @@ def main():
             db.migrate()
         elif args.command == "set-identity":
             set_identity(db, args.subject, args.name, args.organization, args.role)
+        elif args.command == "set-admin":
+            with db.connection(write=True) as conn:
+                if (
+                    conn.execute(
+                        "UPDATE principals SET is_admin=%s WHERE id=%s AND active RETURNING id",
+                        (args.enabled == "true", args.subject),
+                    ).fetchone()
+                    is None
+                ):
+                    raise ValueError("身份不存在或已停用")
         elif args.command == "issue-token":
             # Only this explicit operator action prints the secret, once. Do not log stdout.
             print(issue_token(db, args.subject, datetime.now(UTC) + timedelta(days=args.days)))

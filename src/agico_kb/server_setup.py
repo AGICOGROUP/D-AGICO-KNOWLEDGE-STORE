@@ -289,6 +289,8 @@ def _initialize_owned(app_root, data_root, api_port, database_port, service_pref
                         organization["id"],
                         "publisher",
                     )
+                with db.connection(write=True) as conn:
+                    conn.execute("UPDATE principals SET is_admin=true WHERE id='bootstrap-admin'")
                 expires = datetime.now(UTC) + timedelta(days=30)
                 write_json_once(
                     access_path,
