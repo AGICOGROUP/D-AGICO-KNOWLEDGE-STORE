@@ -2,7 +2,7 @@
 
 import secrets
 from datetime import UTC, datetime, timedelta
-from uuid import UUID
+from uuid import UUID, uuid5
 
 from fastapi import APIRouter, Query, Request
 from psycopg.errors import UniqueViolation
@@ -18,6 +18,7 @@ class NewAccess(Contract):
     name: str = Field(min_length=1, max_length=100)
     organizations: list[str] = Field(min_length=1, max_length=100)
     days: int = Field(default=30, ge=1, le=365)
+    count: int = Field(default=1, ge=1, le=100)
 
 
 def require_admin(conn, principal):
@@ -66,7 +67,6 @@ def router(db):
     @routes.post("/access", status_code=201)
     def create(body: NewAccess, request: Request):
         # A fresh identity per credential makes revocation and department boundaries unambiguous.
-        principal_id = "shared-" + body.request_id.hex
         try:
             with db.connection(write=True) as conn:
                 require_admin(conn, request.state.principal)
@@ -84,30 +84,43 @@ def router(db):
                         "这次生成已完成。原访问码只显示一次；如未保存，请在列表停用后重新生成。",
                         409,
                     )
-                token = secrets.token_urlsafe(32)
-                digest = token_hash(token)
                 expires = datetime.now(UTC) + timedelta(days=body.days)
-                conn.execute(
-                    "INSERT INTO principals(id,name) VALUES (%s,%s)", (principal_id, body.name)
-                )
-                for org in organizations:
-                    conn.execute(
-                        "INSERT INTO memberships VALUES (%s,%s,'member')", (principal_id, org)
+                items = []
+                for index in range(body.count):
+                    # First ID is the request key: retries with any count cannot mint another batch.
+                    access_id = (
+                        body.request_id if index == 0 else uuid5(body.request_id, str(index))
                     )
-                conn.execute(
-                    "INSERT INTO access_tokens(token_hash,principal_id,expires_at) VALUES (%s,%s,%s)",
-                    (digest, principal_id, expires),
-                )
-                conn.execute(
-                    "INSERT INTO managed_access(id,principal_id,token_hash,created_by) VALUES (%s,%s,%s,%s)",
-                    (body.request_id, principal_id, digest, request.state.principal.id),
-                )
-                return {
-                    "id": str(body.request_id),
-                    "principal_id": principal_id,
-                    "token": token,
-                    "expires_at": expires,
-                }
+                    principal_id = "shared-" + access_id.hex
+                    name = body.name if body.count == 1 else f"{body.name} #{index + 1:02d}"
+                    token = secrets.token_urlsafe(32)
+                    digest = token_hash(token)
+                    conn.execute(
+                        "INSERT INTO principals(id,name) VALUES (%s,%s)", (principal_id, name)
+                    )
+                    for org in organizations:
+                        conn.execute(
+                            "INSERT INTO memberships VALUES (%s,%s,'member')", (principal_id, org)
+                        )
+                    conn.execute(
+                        "INSERT INTO access_tokens(token_hash,principal_id,expires_at) VALUES (%s,%s,%s)",
+                        (digest, principal_id, expires),
+                    )
+                    conn.execute(
+                        "INSERT INTO managed_access(id,principal_id,token_hash,created_by) VALUES (%s,%s,%s,%s)",
+                        (access_id, principal_id, digest, request.state.principal.id),
+                    )
+                    items.append(
+                        {
+                            "id": str(access_id),
+                            "principal_id": principal_id,
+                            "name": name,
+                            "token": token,
+                            "expires_at": expires,
+                        }
+                    )
+                # Preserve the single-code API response for existing clients.
+                return {"items": items, **(items[0] if body.count == 1 else {})}
         except UniqueViolation:
             raise KBError(
                 "ALREADY_CREATED", "这次生成已完成，请刷新列表确认；不要重复生成。", 409

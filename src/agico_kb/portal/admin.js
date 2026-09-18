@@ -15,11 +15,11 @@
     if (!value) { el("admin-prev").disabled = offset===0; el("admin-next").disabled = !hasMore; }
     for (const button of el("admin-access-list").querySelectorAll("button")) button.disabled = value;
   }
-  function clearIssued() { issued = null; el("admin-share").value = ""; el("admin-issued").hidden = true; }
+  function clearIssued() { issued = null; el("admin-share").value = ""; el("admin-share-item").replaceChildren(); el("admin-issued").hidden = true; }
   function reset() {
     token = ""; generation++; listSequence++; offset = 0; hasMore = false; requestId = null;
     clearIssued(); el("admin-token").value = ""; el("admin-access-list").replaceChildren(); el("admin-org-options").replaceChildren();
-    el("admin-create-form").reset(); el("admin-workspace").hidden = true; el("admin-login").hidden = false;
+    el("admin-create-form").reset(); updateSelectAll(); el("admin-workspace").hidden = true; el("admin-login").hidden = false;
   }
   async function api(path, options = {}, credential = token) {
     let response;
@@ -47,6 +47,7 @@
         input.type="checkbox";input.name="access-org";input.value=org.id;input.dataset.name=org.name;
         label.append(input,textNode("span",org.name));el("admin-org-options").append(label);
       }
+      updateSelectAll();
       note(saved ? "" : "浏览器禁止保存管理员访问码，关闭后需要重新填写。"); await loadList();
     } catch (error) { if ([401,403].includes(error.status)) save(""); note(error.message,true); }
     finally { lock(false); }
@@ -67,7 +68,7 @@
         button.addEventListener("click",async()=>{
           if(busy || !confirm(`停用「${item.name}」？所有使用此访问码的人都将失去访问权限。`)) return;
           lock(true);note("");
-          try { await api(`/v1/admin/access/${encodeURIComponent(item.id)}/revoke`,{method:"POST"});if(issued?.id===item.id)clearIssued();await loadList();note("已停用，此访问码不能继续访问知识库。"); }
+          try { await api(`/v1/admin/access/${encodeURIComponent(item.id)}/revoke`,{method:"POST"});if(issued){issued.items=issued.items.filter(code=>code.id!==item.id);if(issued.items.length)renderIssued();else clearIssued();}await loadList();note("已停用，此访问码不能继续访问知识库。"); }
           catch(error){note(error.message,true);} finally{lock(false);}
         });row.append(button);
       }
@@ -76,16 +77,44 @@
     el("admin-page").textContent=`第 ${Math.floor(offset/20)+1} 页`;
     el("admin-prev").disabled=busy || offset===0;el("admin-next").disabled=busy || !hasMore;
   }
+  function updateSelectAll() {
+    const boxes=[...el("admin-org-options").querySelectorAll("input")];
+    el("admin-select-all").textContent=boxes.length && boxes.every(box=>box.checked) ? "取消全选" : "全选";
+  }
+  el("admin-select-all").addEventListener("click",()=>{
+    const boxes=[...el("admin-org-options").querySelectorAll("input")];
+    const checked=!boxes.every(box=>box.checked);for(const box of boxes)box.checked=checked;updateSelectAll();
+  });
+  el("admin-org-options").addEventListener("change",updateSelectAll);
+  function shareText(item, origin) {
+    return `企业知识库：${origin}/\n访问码：${item.token}\n用途：${item.name}\n可访问：${issued.orgNames.join("、")}\n有效至：${date(item.expires_at)}\n\n打开网页输入访问码即可使用。需要连接 Accio 或 Codex 时，点击“连接 AI 助手”，使用同一访问码。`;
+  }
+  function shareOrigin() {
+    const url=new URL(el("share-address").value.trim());
+    if(!["http:","https:"].includes(url.protocol) || url.username || url.password || url.search || url.hash || url.pathname!=="/") throw new Error();
+    return url;
+  }
+  function renderIssued() {
+    const selected=el("admin-share-item").value;
+    el("admin-share-item").replaceChildren();
+    for(const item of issued.items)el("admin-share-item").add(new Option(item.name,item.id));
+    if(issued.items.some(item=>item.id===selected))el("admin-share-item").value=selected;
+    sharing();
+  }
   function sharing() {
     if(!issued)return;
     try {
-      const url=new URL(el("share-address").value.trim());
-      if(!["http:","https:"].includes(url.protocol) || url.username || url.password || url.search || url.hash || url.pathname!=="/") throw new Error();
-      el("admin-share").value=`企业知识库：${url.origin}/\n访问码：${issued.token}\n用途：${issued.name}\n可访问：${issued.orgNames.join("、")}\n有效至：${date(issued.expires_at)}\n\n打开网页输入访问码即可使用。需要连接 Accio 或 Codex 时，点击“连接 AI 助手”，使用同一访问码。`;
+      const url=shareOrigin();
+      const item=issued.items.find(item=>item.id===el("admin-share-item").value);
+      el("admin-share").value=shareText(item,url.origin);
       const local=["localhost","127.0.0.1","[::1]"].includes(url.hostname);
       el("share-address-note").textContent=local ? "当前地址仅限本机。跨城市测试请在公网接通后填写 https://kb.agicogroup.com/。" : "请确认同事能够访问该地址；此处填写地址不会自动配置域名或公网入口。";
-      el("admin-copy").disabled=false;
-    } catch {el("admin-share").value="";el("admin-copy").disabled=true;el("share-address-note").textContent="请输入完整的网页根地址，例如 https://kb.agicogroup.com/，不要包含访问码或其他参数。";}
+      for(const id of ["admin-copy","admin-copy-all","admin-download"])el(id).disabled=false;
+    } catch {
+      el("admin-share").value="";
+      for(const id of ["admin-copy","admin-copy-all","admin-download"])el(id).disabled=true;
+      el("share-address-note").textContent="请输入完整的网页根地址，例如 https://kb.agicogroup.com/，不要包含访问码或其他参数。";
+    }
   }
   el("manage-access").addEventListener("click",()=>{
     reset();note("");el("admin-dialog").showModal();const value=remembered();if(value)login(value);else el("admin-token").focus();
@@ -101,14 +130,14 @@
     if(!selected.length){note("请至少选择一个事业部。",true);return;}
     const name=el("access-name").value.trim();if(!name){note("请填写用途或团队名称。",true);return;}
     requestId ||= crypto.randomUUID();
-    const body={request_id:requestId,name,organizations:selected.map(i=>i.value),days:Number(el("access-days").value)};
+    const body={request_id:requestId,name,organizations:selected.map(i=>i.value),days:Number(el("access-days").value),count:Number(el("access-count").value)};
     lock(true);clearIssued();note("正在生成…");
     try {
       const result=await api("/v1/admin/access",{method:"POST",body:JSON.stringify(body)});
-      issued={...result,name,orgNames:selected.map(i=>i.dataset.name)};requestId=null;
-      el("admin-issued").hidden=false;el("share-address").value=location.origin+"/";sharing();
-      el("admin-create-form").reset();offset=0;
-      note("已生成。请复制分享说明，原访问码仅本次显示。");
+      issued={items:result.items,orgNames:selected.map(i=>i.dataset.name)};requestId=null;
+      el("admin-issued").hidden=false;el("share-address").value=location.origin+"/";renderIssued();
+      el("admin-create-form").reset();updateSelectAll();offset=0;
+      note(`已生成 ${issued.items.length} 个独立访问码，请复制或下载保存，原访问码仅本次显示。`);
       try{await loadList();}catch(error){note(`访问码已生成，请先保存。列表刷新失败：${error.message}`,true);}
     } catch(error){
       note(error.message,true);if(error.status===409)requestId=null;
@@ -119,9 +148,27 @@
     if(busy)return;offset=Math.max(0,offset+change);lock(true);note("");try{await loadList();}catch(error){note(error.message,true);}finally{lock(false);}
   });
   el("share-address").addEventListener("input",sharing);
+  el("admin-share-item").addEventListener("change",sharing);
   el("admin-copy").addEventListener("click",async()=>{
     if(!issued)return;
+    sharing();
+    if(el("admin-copy").disabled)return;
     try{await navigator.clipboard.writeText(el("admin-share").value);note("已复制，可以发给同事了。");}
     catch{el("admin-share").focus();el("admin-share").select();note("浏览器不支持自动复制，已选中分享说明，请手动复制。");}
+  });
+  function batchText() {
+    return issued.items.map(item=>shareText(item,shareOrigin().origin)).join("\n\n--------------------\n\n");
+  }
+  el("admin-copy-all").addEventListener("click",async()=>{
+    if(!issued)return;
+    const text=batchText();
+    try{await navigator.clipboard.writeText(text);note(`已复制本批 ${issued.items.length} 个访问码。请按编号分别分发。`);}
+    catch{el("admin-share").value=text;el("admin-share").focus();el("admin-share").select();note("已选中本批全部清单，请手动复制；单份分享可重新选择访问码。");}
+  });
+  el("admin-download").addEventListener("click",()=>{
+    if(!issued)return;
+    const url=URL.createObjectURL(new Blob(["\uFEFF"+batchText()],{type:"text/plain;charset=utf-8"}));
+    const link=document.createElement("a");link.href=url;link.download=`AGICO-访问码清单-${new Date().toISOString().slice(0,10)}.txt`;link.click();
+    setTimeout(()=>URL.revokeObjectURL(url),30000);note("已下载本批访问码清单，请妥善保存并按编号分发。");
   });
 })();
