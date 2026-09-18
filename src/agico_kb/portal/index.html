@@ -63,7 +63,7 @@
   <dialog id="admin-dialog" aria-labelledby="admin-heading">
     <div class="dialog-heading"><span class="eyebrow">ACCESS MANAGEMENT</span><button id="close-admin" class="text-button" type="button" aria-label="关闭访问码管理">✕</button></div>
     <h2 id="admin-heading">访问码管理</h2>
-    <form id="admin-login"><p class="help">仅管理员可进入。输入一次管理员访问码后，本浏览器会记住；给员工分享的是在这里生成的普通访问码。</p><label for="admin-token">管理员访问码</label><input id="admin-token" type="password" autocomplete="off" required><button class="button primary" id="admin-login-button" type="submit">进入管理</button></form>
+    <form id="admin-login"><p class="help">仅管理员可进入。已用管理员访问码连接知识库时可直接进入，无需重复填写；否则可在此使用独立管理员访问码登录。</p><label for="admin-token">管理员访问码</label><input id="admin-token" type="password" autocomplete="off" required><button class="button primary" id="admin-login-button" type="submit">进入管理</button></form>
     <div id="admin-workspace" hidden>
       <div class="admin-toolbar"><p id="admin-identity" class="help"></p><button id="admin-logout" class="text-button" type="button">退出管理并清除记忆</button></div>
       <div class="admin-columns"><section class="admin-create"><h3>新建普通访问码</h3><p class="help">同一访问码可以分享给一个团队，所有使用者具有相同权限。不能用它管理访问码或审核发布。</p>

@@ -41,6 +41,7 @@ function resetFile() {
   $("division-summary").textContent = "尚未选择事业部";
 }
 function disconnect() {
+  window.dispatchEvent(new Event("agico:disconnect"));
   storeToken("");
   $("agent-button").disabled = true; $("agent-dialog").close(); clearAgentOutput();
   state.generation++; state.listRequest++; state.token = ""; state.catalog = null;

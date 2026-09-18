@@ -1,9 +1,9 @@
-/* Separate administrator authentication; employee credentials never grant administration. */
+/* Reuse a connected administrator credential; the server always verifies administrator rights. */
 (() => {
   "use strict";
   const el = (id) => document.getElementById(id);
   const key = "agico.portal.adminToken.v1";
-  let token = "", busy = false, generation = 0, offset = 0, hasMore = false, requestId = null, issued = null, listSequence = 0;
+  let token = "", usingPortal = false, busy = false, generation = 0, offset = 0, hasMore = false, requestId = null, issued = null, listSequence = 0;
   const note = (text = "", error = false) => { el("admin-message").textContent = text; el("admin-message").classList.toggle("error", error); };
   const textNode = (tag, text, cls = "") => { const node = document.createElement(tag); node.textContent = text; node.className = cls; return node; };
   const save = (value) => { try { if(value) localStorage.setItem(key,value); else localStorage.removeItem(key); return true; } catch { return false; } };
@@ -17,7 +17,7 @@
   }
   function clearIssued() { issued = null; el("admin-share").value = ""; el("admin-share-item").replaceChildren(); el("admin-issued").hidden = true; }
   function reset() {
-    token = ""; generation++; listSequence++; offset = 0; hasMore = false; requestId = null;
+    token = ""; usingPortal = false; generation++; listSequence++; offset = 0; hasMore = false; requestId = null;
     clearIssued(); el("admin-token").value = ""; el("admin-access-list").replaceChildren(); el("admin-org-options").replaceChildren();
     el("admin-create-form").reset(); updateSelectAll(); el("admin-workspace").hidden = true; el("admin-login").hidden = false;
   }
@@ -29,17 +29,22 @@
     if (!response.ok) {
       const error = new Error(response.status===401 ? "管理员访问码无效或已过期，请重新登录。" : body.error?.message || "操作未完成，请检查输入或稍后重试。");
       error.status = response.status;
-      if ((response.status===401 || response.status===403) && credential===token) { save(""); reset(); }
+      if ((response.status===401 || response.status===403) && credential===token) { save(""); reset(); lock(false); }
       throw error;
     }
     return body;
   }
-  async function login(credential) {
-    lock(true);note("正在验证管理员权限…");
+  async function login(credential, fromPortal = false) {
+    const attemptGeneration=generation;
+    lock(true);note(fromPortal ? "正在使用当前访问码验证管理员权限…" : "正在验证管理员权限…");
+    if(fromPortal)el("admin-login").hidden=true;
     try {
       const session = await api("/v1/admin/session", {}, credential);
-      token = credential; generation++; const saved = save(token);
-      el("admin-token").value = ""; el("admin-identity").textContent = `管理员：${session.identity}`;
+      if(attemptGeneration!==generation)return 0;
+      token = credential; usingPortal=fromPortal;
+      // The portal already remembers this credential. Do not leave a second saved login on logout.
+      const saved = fromPortal || save(token);
+      el("admin-token").value = ""; el("admin-identity").textContent = `管理员：${session.identity}${fromPortal ? " · 使用当前登录" : ""}`;
       el("admin-login").hidden = true; el("admin-workspace").hidden = false;
       el("admin-org-options").replaceChildren();
       for (const org of session.organizations) {
@@ -49,8 +54,15 @@
       }
       updateSelectAll();
       note(saved ? "" : "浏览器禁止保存管理员访问码，关闭后需要重新填写。"); await loadList();
-    } catch (error) { if ([401,403].includes(error.status)) save(""); note(error.message,true); }
-    finally { lock(false); }
+      return 200;
+    } catch (error) {
+      if(attemptGeneration!==generation)return 0;
+      if (!fromPortal && [401,403].includes(error.status)) save("");
+      // A list-only failure must not ask an already authenticated administrator to log in again.
+      el("admin-login").hidden=!!token;
+      note(fromPortal && error.status===403 ? "当前访问码是普通成员权限。如需管理，请使用管理员访问码。" : error.message,true);
+      return error.status || 0;
+    } finally { if(attemptGeneration===generation)lock(false); }
   }
   async function loadList() {
     const ticket=++listSequence, authGeneration=generation;
@@ -116,13 +128,31 @@
       el("share-address-note").textContent="请输入完整的网页根地址，例如 https://kb.agicogroup.com/，不要包含访问码或其他参数。";
     }
   }
-  el("manage-access").addEventListener("click",()=>{
-    reset();note("");el("admin-dialog").showModal();const value=remembered();if(value)login(value);else el("admin-token").focus();
+  el("manage-access").addEventListener("click",async()=>{
+    if(busy)return;
+    reset();note("");el("admin-dialog").showModal();
+    const current=state.token, cached=remembered(), openingGeneration=generation;
+    if(current){
+      const status=await login(current,true);
+      if(generation!==openingGeneration || !el("admin-dialog").open || ![401,403].includes(status))return;
+    }
+    if(cached && cached!==current)await login(cached);
+    else {if(cached===current && current)save("");el("admin-token").focus();}
+  });
+  window.addEventListener("agico:disconnect",()=>{
+    if(remembered()===state.token)save("");
+    reset();lock(false);el("admin-dialog").close();
   });
   el("close-admin").addEventListener("click",()=>{if(!busy){reset();el("admin-dialog").close();}});
   el("admin-dialog").addEventListener("cancel",e=>{if(busy)e.preventDefault();});
   el("admin-dialog").addEventListener("close",reset);
-  el("admin-logout").addEventListener("click",()=>{if(!busy){save("");reset();note("已退出管理并清除本浏览器的管理员访问码。");}});
+  el("admin-logout").addEventListener("click",()=>{
+    if(busy)return;
+    const shared=usingPortal;save("");
+    if(shared)disconnect();
+    else reset();
+    note(shared ? "已退出当前管理员登录并断开知识库。" : "已退出管理并清除本浏览器的管理员访问码。");
+  });
   el("admin-login").addEventListener("submit",e=>{e.preventDefault();if(!busy)login(el("admin-token").value.trim());});
   el("admin-create-form").addEventListener("submit",async e=>{
     e.preventDefault();if(busy || !token)return;
