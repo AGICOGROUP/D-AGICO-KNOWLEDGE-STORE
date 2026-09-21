@@ -134,6 +134,58 @@ def test_shared_file_permissions_change_immediately(kb):
         assert conn.execute("SELECT count(*) AS n FROM uploads").fetchone()["n"] == 1
 
 
+def test_unit_approver_rejects_another_authors_draft(kb):
+    client, db, _ = kb
+    created, _, _ = submit(client, person="peer")  # peer uploads, chief approves
+    version = created.json()["version_id"]
+    # The approval queue lists the newest submission first, so a fresh upload is not buried.
+    queue = client.get("/v1/submissions", headers=headers("chief")).json()["items"]
+    assert queue and queue[0]["version_id"] == version
+    # Another unit's approver and the author's own unit members must not touch this draft.
+    assert (
+        client.post(
+            f"/v1/submissions/{version}/withdraw", headers=headers("otherchief")
+        ).status_code
+        == 404
+    )
+    assert (
+        client.post(f"/v1/submissions/{version}/withdraw", headers=headers("alice")).status_code
+        == 404
+    )
+    rejected = client.post(f"/v1/submissions/{version}/withdraw", headers=headers("chief"))
+    assert rejected.status_code == 200, rejected.text
+    assert rejected.json()["rejected"] is True
+    assert rejected.json()["state"] == "withdrawn"
+    with db.connection() as conn:
+        assert (
+            conn.execute("SELECT state FROM versions WHERE id=%s", (version,)).fetchone()["state"]
+            == "withdrawn"
+        )
+        latest = conn.execute(
+            "SELECT action,actor_id FROM audit_events WHERE version_id=%s ORDER BY created_at DESC,id DESC LIMIT 1",
+            (version,),
+        ).fetchone()
+        assert latest["action"] == "reject" and latest["actor_id"] == "chief"
+    # A rejected submission no longer appears in the unit's approval queue.
+    assert all(
+        item["version_id"] != version
+        for item in client.get("/v1/submissions", headers=headers("chief")).json()["items"]
+    )
+    # An author withdrawing their own draft stays a plain withdrawal, not a rejection.
+    own, _, _ = submit(client, person="peer")
+    own_version = own.json()["version_id"]
+    assert (
+        client.post(f"/v1/submissions/{own_version}/withdraw", headers=headers("peer")).status_code
+        == 200
+    )
+    with db.connection() as conn:
+        action = conn.execute(
+            "SELECT action FROM audit_events WHERE version_id=%s ORDER BY created_at DESC,id DESC LIMIT 1",
+            (own_version,),
+        ).fetchone()
+        assert action["action"] == "withdraw_submission"
+
+
 def test_publisher_discovers_withdrawn_file_without_retained_identifiers(kb):
     client, _, _ = kb
     created, _, _ = submit(client)

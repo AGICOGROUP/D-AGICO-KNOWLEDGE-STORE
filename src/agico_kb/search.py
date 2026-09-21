@@ -2,10 +2,12 @@
 
 import re
 
+from psycopg.types.json import Jsonb
+
 from .catalog import get_version
 from .contracts import SearchRequest
-from .embeddings import QueryEmbedding, vector_literal
-from .errors import KBError
+from .embeddings import LocalEmbedding, QueryEmbedding, vector_literal
+from .errors import KBError, not_found
 from .tokenizer import normalize, segmented
 
 
@@ -72,6 +74,7 @@ FROM = "FROM documents d JOIN versions v ON v.document_id=d.id JOIN uploads u ON
 class SearchService:
     def __init__(self, db, settings):
         self.db = db
+        self.settings = settings
         self.query_model = QueryEmbedding(settings)
 
     def close(self):
@@ -233,3 +236,81 @@ class SearchService:
                 organization_id=request.organization_id,
             ),
         )
+
+    def review_chunks(self, principal, version_id):
+        """Full parsed content of a pending draft, for the approver's review drawer.
+
+        Same access rule as get_version: the unit's approver (publisher) or the author.
+        """
+        with self.db.connection() as conn:
+            version = get_version(conn, principal, version_id)
+            if version["state"] != "draft":
+                raise KBError("VERSION_CONFLICT", "只有待审核草稿可以查看解析结果。")
+            rows = conn.execute(
+                """SELECT id AS chunk_id,ordinal,locator,text,
+                (embedding IS NOT NULL) AS has_vector FROM chunks
+                WHERE version_id=%s AND generation=%s ORDER BY ordinal""",
+                (version_id, version["active_generation"]),
+            ).fetchall()
+            return {
+                "version_id": version_id,
+                "title": version["title"],
+                "processing_status": version["processing_status"],
+                "warnings": list(version["warnings"]),
+                "capabilities": version["capabilities"],
+                "chunk_count": len(rows),
+                "items": rows,
+            }
+
+    def edit_chunk(self, principal, version_id, body):
+        """Fix a wrong/untidy chunk in a pending draft. Re-derives keywords and re-embeds the
+        chunk so search and AI references reflect the correction. Approver or author, draft only.
+        """
+        with self.db.connection(write=True) as conn:
+            version = get_version(conn, principal, version_id)
+            if version["state"] != "draft":
+                raise KBError("VERSION_CONFLICT", "只有待审核草稿可以修改解析结果。")
+            locked = conn.execute(
+                "SELECT id,active_generation FROM versions WHERE id=%s FOR UPDATE", (version_id,)
+            ).fetchone()
+            row = conn.execute(
+                """SELECT id,ordinal,locator FROM chunks WHERE id=%s AND version_id=%s
+                AND generation=%s""",
+                (body.chunk_id, version_id, locked["active_generation"]),
+            ).fetchone()
+            if not row:
+                not_found()
+            try:
+                embedder = LocalEmbedding(self.settings)
+            except Exception as error:  # offline model missing or identity pin mismatch
+                raise KBError("INVALID_ARGUMENT", "向量模型不可用，无法保存修改。", 503) from error
+            text = body.text.strip()
+            conn.execute(
+                """UPDATE chunks SET text=%s,
+                keywords=to_tsvector('simple',%s), embedding=%s::public.vector,
+                model_identity=%s WHERE id=%s""",
+                (
+                    text,
+                    segmented(text),
+                    vector_literal(embedder.embed([text])[0]),
+                    embedder.identity,
+                    body.chunk_id,
+                ),
+            )
+            conn.execute(
+                """INSERT INTO audit_events(actor_id,document_id,version_id,action,details)
+                VALUES (%s,%s,%s,'edit_chunk',%s)""",
+                (
+                    principal.id,
+                    version["document_id"],
+                    version_id,
+                    Jsonb(
+                        {
+                            "chunk_id": str(body.chunk_id),
+                            "ordinal": row["ordinal"],
+                            "length": len(text),
+                        }
+                    ),
+                ),
+            )
+            return {"chunk_id": body.chunk_id, "ordinal": row["ordinal"], "updated": True}

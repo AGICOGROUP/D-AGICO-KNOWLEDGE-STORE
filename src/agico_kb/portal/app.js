@@ -1,7 +1,7 @@
 /* Same-origin portal. Validated credentials are remembered in this browser. */
 "use strict";
 const $ = (id) => document.getElementById(id);
-const state = {token: "", catalog: null, limit: 0, files: [], attempt: null, busy: false, tab: "library", offset: 0, next: null, generation: 0, listRequest: 0};
+const state = {token: "", catalog: null, session: null, limit: 0, files: [], attempt: null, busy: false, tab: "library", offset: 0, next: null, generation: 0, listRequest: 0};
 const credentialKey = "agico.portal.accessToken.v1";
 let connecting = false;
 function savedToken() { try { return localStorage.getItem(credentialKey) || ""; } catch { return ""; } }
@@ -15,6 +15,14 @@ function size(bytes) { return bytes < 1048576 ? `${(bytes / 1024).toFixed(1)} KB
 function orgName(id) { return state.catalog?.organizations.find((o) => o.id === id)?.name || id; }
 function categoryName(id) { return state.catalog?.categories.find((c) => c.id === id)?.name || "其他资料"; }
 function element(tag, cls, text) { const el = document.createElement(tag); if (cls) el.className = cls; if (text !== undefined) el.textContent = text; return el; }
+function canApprove(organizationId) { return (state.session?.publisher_organizations || []).includes(organizationId); }
+async function fileSha256(file) {
+  // Lets a known duplicate be skipped before any bytes are uploaded. Needs a secure context
+  // (https or localhost); without it the server still detects duplicates after receiving the file.
+  if (!crypto.subtle) return "";
+  const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
 function errorText(body, status) {
   if (status === 401) return "访问码无效或已过期，请重新连接。";
   if (status === 403) return "当前账号没有这项操作的权限。";
@@ -44,7 +52,7 @@ function disconnect() {
   window.dispatchEvent(new Event("agico:disconnect"));
   storeToken("");
   $("agent-button").disabled = true; $("agent-dialog").close(); clearAgentOutput();
-  state.generation++; state.listRequest++; state.token = ""; state.catalog = null;
+  state.generation++; state.listRequest++; state.token = ""; state.catalog = null; state.session = null;
   state.offset = 0; state.next = null; resetFile();
   $("upload-fields").disabled = true; $("submit-button").disabled = true;
   for (const id of ["search-button", "filter-org", "filter-category", "refresh", "previous", "next"]) $(id).disabled = true;
@@ -85,7 +93,7 @@ async function connect(token, automatic = false) {
   try {
     const [session, catalog] = await Promise.all([api("/v1/portal-session", {}, token), api("/v1/catalog", {}, token)]);
     $("agent-button").disabled = false;
-    state.token = token; state.catalog = catalog; state.limit = session.max_upload_bytes; state.generation++;
+    state.token = token; state.catalog = catalog; state.session = session; state.limit = session.max_upload_bytes; state.generation++;
     const remembered = storeToken(token);
     catalogUI(catalog); resetFile(); $("category").value = "";
     $("upload-fields").disabled = !catalog.organizations.length; $("submit-button").disabled = !catalog.organizations.length;
@@ -119,8 +127,8 @@ function renderFiles(items = null) {
     const row = element("div", "selected-file");
     const info = element("div", "selected-file-info");
     info.append(element("strong", "", item.file.name));
-    const detail = item.versionId ? "已提交 · 待审核" : item.error ? item.error : item.status || size(item.file.size);
-    info.append(element("span", item.error ? "file-error" : "", detail)); row.append(info);
+    const detail = item.versionId ? "已提交 · 待审核" : item.skipped ? item.status || "重复文件 · 已跳过" : item.error ? item.error : item.status || size(item.file.size);
+    info.append(element("span", item.error ? "file-error" : item.skipped ? "file-skipped" : "", detail)); row.append(info);
     if (!state.attempt && !items) {
       const remove = element("button", "text-button", "移除"); remove.type = "button";
       remove.setAttribute("aria-label", `移除 ${item.file.name}`);
@@ -178,27 +186,36 @@ $("upload-form").addEventListener("submit", async (e) => {
       item.error = ""; item.status = "正在上传…"; renderFiles();
       message("upload-message", `正在提交 ${processed + 1} / ${attempt.items.length}：${item.file.name}`);
       try {
-        if (!item.uploadId) {
-          const prepared = await api("/v1/uploads", {method: "POST", headers: {"Idempotency-Key": item.key}, body: {filename: item.file.name, size: item.file.size}});
-          item.uploadId = prepared.upload_id;
+        if (!item.uploadId && !item.skipped) {
+          if (item.sha256 === undefined) { item.status = "正在计算校验值…"; renderFiles(); item.sha256 = await fileSha256(item.file); }
+          const prepared = await api("/v1/uploads", {method: "POST", headers: {"Idempotency-Key": item.key}, body: {filename: item.file.name, size: item.file.size, ...(item.sha256 ? {sha256: item.sha256} : {})}});
+          if (prepared.skipped) {
+            item.skipped = true;
+            item.status = `重复文件 · 已跳过${prepared.duplicate_of?.title ? `（库中已有：${prepared.duplicate_of.title}）` : ""}`;
+          } else item.uploadId = prepared.upload_id;
         }
-        if (!item.uploaded) {
+        if (!item.uploaded && !item.skipped) {
           await putFile(item.uploadId, item.file, (fraction) => { $("upload-progress").value = (processed + fraction) / attempt.items.length * 100; });
           item.uploaded = true;
         }
-        const result = await api("/v1/submissions", {method: "POST", body: {...attempt.body, title: item.file.name, upload_id: item.uploadId}});
-        item.versionId = result.version_id;
+        if (!item.skipped) {
+          const result = await api("/v1/submissions", {method: "POST", body: {...attempt.body, title: item.file.name, upload_id: item.uploadId}});
+          if (result.skipped) { item.skipped = true; item.status = "重复文件 · 已跳过（内容与库中已有资料完全相同）"; }
+          else item.versionId = result.version_id;
+        }
       } catch (error) { item.error = error.message; }
       processed++; $("upload-progress").value = processed / attempt.items.length * 100; renderFiles();
     }
     const completed = attempt.items.filter((item) => item.versionId).length;
-    const failed = attempt.items.length - completed;
+    const skipped = attempt.items.filter((item) => item.skipped).length;
+    const failed = attempt.items.length - completed - skipped;
+    const skippedNote = skipped ? `，${skipped} 份与库中已有文件完全相同已跳过` : "";
     if (!failed) {
       resetFile(); $("category").value = ""; $("upload-fields").disabled = false; renderFiles(attempt.items);
-      message("upload-message", `${completed} 份文件已提交至「${orgName(attempt.body.organization_id)}」。后台正在处理，审核发布后可供查找。`);
+      message("upload-message", `${completed} 份文件已提交至「${orgName(attempt.body.organization_id)}」${skippedNote}。后台正在处理，管理员审批通过后可供查找。`);
       $("submit-button").textContent = "提交到知识库 →";
     } else {
-      message("upload-message", `已提交 ${completed} 份，${failed} 份未确认完成。重试只处理未完成项，已成功的文件不会重复提交。\n若要重新选择，请先检查待审核列表，避免重复提交。`, true);
+      message("upload-message", `已提交 ${completed} 份${skippedNote}，${failed} 份未确认完成。重试只处理未完成项，已成功的文件不会重复提交。\n若要重新选择，请先检查待审核列表，避免重复提交。`, true);
       $("submit-button").textContent = `重试未完成的 ${failed} 份 →`; $("reset-attempt").hidden = false;
     }
     switchTab("pending");
@@ -224,6 +241,29 @@ async function download(item, button) {
   } catch (error) { if (generation === state.generation) message("list-message", error.message || "下载失败，请重试。", true); }
   finally { button.disabled = false; }
 }
+async function approveItem(item, button) {
+  // Approval is the publish action: one click, and the system publishes it in the same transaction.
+  const incomplete = item.processing_status !== "ready";
+  if (incomplete && !window.confirm(`「${item.title}」的正文不完整（${statuses[item.processing_status] || item.processing_status}）。\n仍然通过并发布吗？发布后只能按文件本身查找，正文内容无法检索。`)) return;
+  button.disabled = true;
+  try {
+    await api(`/v1/versions/${encodeURIComponent(item.version_id)}/publish`, {method: "POST", body: {expected_revision: item.revision, accept_incomplete: incomplete}});
+    await loadList();  // loadList clears the message, so confirm after it returns
+    message("list-message", `已审批通过并发布：${item.title}`);
+    if (state.review) closeReview();
+  } catch (error) { message("list-message", error.message, true); }
+  finally { button.disabled = false; }
+}
+async function rejectItem(item, button) {
+  if (!window.confirm(`驳回「${item.title}」？\n该提交会退回，上传者可修改后重新提交。`)) return;
+  button.disabled = true;
+  try {
+    await api(`/v1/submissions/${encodeURIComponent(item.version_id)}/withdraw`, {method: "POST"});
+    await loadList();
+    message("list-message", `已驳回：${item.title}`);
+  } catch (error) { message("list-message", error.message, true); }
+  finally { button.disabled = false; }
+}
 function rows(items) {
   $("results").replaceChildren();
   for (const item of items) {
@@ -233,9 +273,104 @@ function rows(items) {
     const status = element("span", "status-tag", `${state.tab === "pending" ? "待审核 · " : ""}${statuses[item.processing_status] || "已发布"}`);
     status.classList.toggle("warning", ["partial", "failed", "stored_only"].includes(item.processing_status)); info.append(status);
     const button = element("button", "text-button", "下载 ↓"); button.type = "button"; button.setAttribute("aria-label", `下载 ${item.title}`); button.addEventListener("click", () => download(item, button));
-    row.append(element("span", "file-badge", ext || "FILE"), info, button); $("results").append(row);
+    row.append(element("span", "file-badge", ext || "FILE"), info, button);
+    if (state.tab === "pending" && canApprove(item.organization_id)) {
+      const title = element("span", "text-button", "查看解析结果"); title.type = "button";
+      title.setAttribute("aria-label", `查看 ${item.title} 的解析结果`);
+      title.addEventListener("click", () => openReview(item));
+      info.append(title);
+      const actions = element("div", "row-actions");
+      const approve = element("button", "button primary", "审批通过"); approve.type = "button";
+      approve.setAttribute("aria-label", `审批通过并发布 ${item.title}`);
+      approve.addEventListener("click", () => approveItem(item, approve));
+      const reject = element("button", "button secondary reject", "驳回"); reject.type = "button";
+      reject.setAttribute("aria-label", `驳回 ${item.title}`);
+      reject.addEventListener("click", () => rejectItem(item, reject));
+      actions.append(approve, reject); row.append(actions);
+    }
+    $("results").append(row);
   }
 }
+function locatorText(locator) {
+  if (!locator) return "";
+  if (locator.kind === "table") return `第 ${locator.page} 页 · 表格 ${locator.table}`;
+  if (locator.kind === "paragraph" && locator.section) return locator.section.trim() || "正文段落";
+  if (locator.kind === "page") return `第 ${locator.page} 页`;
+  if (locator.kind === "sheet") return `工作表 ${locator.sheet}`;
+  return locator.kind || "";
+}
+function chunkCard(chunk) {
+  const card = element("div", "chunk-card");
+  const head = element("div", "chunk-head");
+  head.append(element("span", "chunk-ordinal", `块 ${chunk.ordinal}`), element("span", "chunk-locator", locatorText(chunk.locator)));
+  const edit = element("button", "text-button", "编辑"); edit.type = "button";
+  edit.addEventListener("click", () => startChunkEdit(chunk, card, edit));
+  head.append(edit); card.append(head);
+  const body = element("pre", "chunk-text", chunk.text); card.append(body);
+  return card;
+}
+function startChunkEdit(chunk, card, editButton) {
+  if (card.querySelector("textarea")) return;
+  card.classList.add("editing");
+  const body = card.querySelector(".chunk-text");
+  const area = element("textarea", "chunk-editor"); area.value = chunk.text;
+  area.maxLength = 20000; area.rows = Math.min(18, Math.max(4, Math.ceil(chunk.text.length / 60)));
+  body.replaceWith(area); area.focus(); editButton.textContent = "保存";
+  const cancel = element("button", "text-button", "取消"); cancel.type = "button";
+  cancel.addEventListener("click", () => { area.replaceWith(body); card.classList.remove("editing"); cancel.remove(); editButton.textContent = "编辑"; });
+  card.querySelector(".chunk-head").append(cancel);
+  editButton.onclick = async () => {
+    const text = area.value.trim();
+    if (!text || text === chunk.text) { area.replaceWith(body); card.classList.remove("editing"); cancel.remove(); editButton.textContent = "编辑"; editButton.onclick = () => startChunkEdit(chunk, card, editButton); return; }
+    editButton.disabled = cancel.disabled = true; editButton.textContent = "正在保存…";
+    try {
+      await api(`/v1/versions/${encodeURIComponent(state.review.version_id)}/chunks`, {method: "PATCH", body: {chunk_id: chunk.chunk_id, text}});
+      chunk.text = text;
+      const fresh = body.cloneNode(false); fresh.textContent = text;
+      area.replaceWith(fresh); card.classList.remove("editing"); cancel.remove();
+      editButton.textContent = "编辑"; editButton.disabled = false; editButton.onclick = () => startChunkEdit(chunk, card, editButton);
+      message("review-message", `块 ${chunk.ordinal} 已保存，关键词与向量已重新计算。`);
+    } catch (error) { editButton.textContent = "编辑"; editButton.disabled = cancel.disabled = false; message("review-message", error.message, true); }
+  };
+}
+async function openReview(item) {
+  closeReview();
+  const drawer = element("aside", "review-drawer"); drawer.id = "review-drawer";
+  const head = element("div", "review-head");
+  const headInfo = element("div");
+  headInfo.append(element("h3", "file-name", item.title), element("p", "chunk-locator", `${orgName(item.organization_id)} · 正在加载解析结果…`));
+  const close = element("button", "text-button", "关闭 ✕"); close.type = "button"; close.addEventListener("click", closeReview);
+  head.append(headInfo, close); drawer.append(head);
+  const body = element("div", "review-body", "正在加载…"); drawer.append(body);
+  const foot = element("div", "review-foot");
+  const reject = element("button", "button secondary reject", "驳回"); reject.type = "button";
+  reject.addEventListener("click", () => rejectItem(item, reject));
+  const approve = element("button", "button primary", "审批通过"); approve.type = "button";
+  approve.addEventListener("click", () => approveItem(item, approve));
+  foot.append(reject, approve); drawer.append(foot);
+  document.body.append(drawer);
+  state.review = {version_id: item.version_id, element: drawer};
+  try {
+    const data = await api(`/v1/versions/${encodeURIComponent(item.version_id)}/chunks`);
+    if (!state.review || state.review.version_id !== item.version_id) return;
+    state.review.chunks = data.items;
+    headInfo.replaceChildren(
+      element("h3", "file-name", item.title),
+      element("p", "chunk-locator", `${orgName(item.organization_id)} · ${data.chunk_count} 个知识块 · ${statuses[data.processing_status] || data.processing_status}`),
+    );
+    body.replaceChildren();
+    if (data.warnings?.length) body.append(element("p", "review-warning", "⚠ " + data.warnings.join("；")));
+    if (!data.items.length) body.append(element("p", "review-warning", "该文件没有解析出可读正文（仅保存原件）。审批只能按文件本身判断。"));
+    for (const chunk of data.items) body.append(chunkCard(chunk));
+  } catch (error) {
+    body.replaceChildren(element("p", "review-warning", error.message));
+  }
+}
+function closeReview() {
+  if (state.review?.element) state.review.element.remove();
+  state.review = null;
+}
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeReview(); });
 async function loadList() {
   if (!state.token) return;
   const request = ++state.listRequest; const generation = state.generation; message("list-message");
@@ -245,7 +380,7 @@ async function loadList() {
     const data = pending ? await api(`/v1/submissions?limit=20&offset=${state.offset}`) : await api("/v1/search", {method: "POST", body: {mode: "files", query: $("query").value.trim(), organization_id: $("filter-org").value || null, category_id: $("filter-category").value || null, limit: 20, offset: state.offset}});
     if (request !== state.listRequest || generation !== state.generation) return;
     state.next = data.has_more ? data.next_offset : null;
-    if (data.items.length) rows(data.items); else empty(pending ? "暂无待审核资料" : "没有找到符合条件的资料", pending ? "上传完成后，可在这里查看处理状态。" : "试试其他关键词或筛选条件；仅显示已发布且有权访问的资料。");
+    if (data.items.length) rows(data.items); else empty(pending ? "暂无待审核资料" : "没有找到符合条件的资料", pending ? ((state.session?.publisher_organizations || []).length ? "你是审批人：点“审批通过”即发布，点“驳回”则退回上传者。" : "上传完成后，可在这里查看处理状态。") : "试试其他关键词或筛选条件；仅显示已发布且有权访问的资料。");
     $("list-caption").textContent = `${pending ? "有权查看的待审核提交" : "已发布 · 当前页"} · ${data.items.length} 份`;
     $("page-label").textContent = `第 ${Math.floor(state.offset / 20) + 1} 页`;
     $("previous").disabled = state.offset === 0; $("next").disabled = state.next === null || (!pending && state.next > 1000);

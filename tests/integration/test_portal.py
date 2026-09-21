@@ -19,7 +19,13 @@ def test_portal_session_metadata_scopes_organizations(kb):
     client, _, _ = kb
     assert client.get("/v1/portal-session").status_code == 401
     session = client.get("/v1/portal-session", headers=headers()).json()
-    assert session == {"identity": "alice", "max_upload_bytes": 1024}
+    assert session == {"identity": "alice", "max_upload_bytes": 1024, "publisher_organizations": []}
+    # The approval actions are gated on the units this account approves for.
+    approver = client.get("/v1/portal-session", headers=headers("chief")).json()
+    assert approver["publisher_organizations"] == ["baiste"]
+    assert client.get("/v1/portal-session", headers=headers("otherchief")).json()[
+        "publisher_organizations"
+    ] == ["xingyuan"]
     catalog = client.get("/v1/catalog", headers=headers()).json()
     assert [o["id"] for o in catalog["organizations"]] == ["baiste"]
     # Missing division remains a validation error, never a default assignment.

@@ -11,6 +11,7 @@ from . import access_management, catalog, files, lifecycle
 from .auth import authenticate
 from .config import Settings
 from .contracts import (
+    ChunkEdit,
     ContextRequest,
     Grants,
     LinkRequest,
@@ -89,9 +90,14 @@ def create_app(settings: Settings) -> FastAPI:
 
     @app.get("/v1/portal-session")
     def portal_session(request: Request):
+        principal = request.state.principal
         return {
-            "identity": request.state.principal.id,
+            "identity": principal.id,
             "max_upload_bytes": settings.max_upload_bytes,
+            # The portal shows the approval actions only for the units this account approves for.
+            "publisher_organizations": sorted(
+                key for key in principal.memberships if principal.publisher(key)
+            ),
         }
 
     portal_root = Path(__file__).parent / "portal"
@@ -114,11 +120,17 @@ def create_app(settings: Settings) -> FastAPI:
     def portal_asset(asset: str):
         if asset not in {"app.js", "styles.css", "agico-logo.png", "agico-mark.png", "admin.js"}:
             raise HTTPException(status_code=404)
-        return FileResponse(portal_root / asset, headers={"X-Content-Type-Options": "nosniff"})
+        # No caching: without Cache-Control the browser applies heuristic freshness to app.js and
+        # keeps running an older portal after the service is updated.
+        return FileResponse(
+            portal_root / asset,
+            headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "no-store"},
+        )
 
     @app.post("/v1/uploads", status_code=201)
     def prepare_upload(body: PrepareUpload, request: Request, idempotency_key: str = Header()):
-        return files.prepare(db, settings, request.state.principal, body, idempotency_key)
+        result, code = files.prepare(db, settings, request.state.principal, body, idempotency_key)
+        return JSONResponse(jsonable_encoder(result), status_code=code)
 
     @app.put("/v1/uploads/{upload_id}/content")
     async def upload(upload_id: UUID, request: Request):
@@ -161,6 +173,14 @@ def create_app(settings: Settings) -> FastAPI:
     @app.post("/v1/versions/{version_id}/publish")
     def publish(version_id: UUID, body: Publish, request: Request):
         return lifecycle.publish(db, request.state.principal, version_id, body)
+
+    @app.get("/v1/versions/{version_id}/chunks")
+    def review_chunks(version_id: UUID, request: Request):
+        return search_service.review_chunks(request.state.principal, version_id)
+
+    @app.patch("/v1/versions/{version_id}/chunks")
+    def edit_chunk(version_id: UUID, body: ChunkEdit, request: Request):
+        return search_service.edit_chunk(request.state.principal, version_id, body)
 
     @app.post("/v1/documents/{document_id}/withdraw")
     def withdraw(document_id: UUID, body: Revision, request: Request):

@@ -19,7 +19,12 @@ function Get-OwnedProcess($entry) {
 
 $entries = @()
 if (Test-Path -LiteralPath $stateFile) {
-    $entries = @(Get-Content -LiteralPath $stateFile -Raw | ConvertFrom-Json)
+    # ConvertFrom-Json emits a JSON array as ONE object (PowerShell 5.1), so it must be assigned
+    # before piping - otherwise the loop below sees a single array item and never matches a PID.
+    # It also returns $null for '[]', and a $null entry breaks Get-OwnedProcess with a parameter
+    # binding error that makes 'start' fail right after a 'stop' wrote '[]'.
+    $parsed = Get-Content -LiteralPath $stateFile -Raw | ConvertFrom-Json
+    $entries = @($parsed | Where-Object { $_ })
 }
 if ($Action -eq 'stop') {
     foreach ($entry in $entries) {

@@ -27,6 +27,8 @@ def test_bootstrap_rejects_drive_root_before_install():
         check=False,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     assert result.returncode != 0
     assert "drive root" in result.stderr
@@ -47,6 +49,8 @@ def test_bootstrap_rejects_application_overlap():
         check=False,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     assert result.returncode != 0
     assert "overlap" in result.stderr
@@ -70,6 +74,8 @@ def test_bootstrap_refuses_unowned_data(tmp_path):
         check=False,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     assert result.returncode != 0
     assert "unowned DataRoot" in result.stderr
@@ -107,6 +113,7 @@ def test_chinese_marker_is_decoded_before_target_mismatch(tmp_path):
         check=False,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         errors="replace",
     )
     assert result.returncode != 0
@@ -135,6 +142,8 @@ def test_concurrent_setup_is_refused_without_writing(tmp_path, locked_root):
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     ) as holder:
         try:
             assert holder.stdout.readline().strip() == "ready"
@@ -152,6 +161,7 @@ def test_concurrent_setup_is_refused_without_writing(tmp_path, locked_root):
                 check=False,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
                 errors="replace",
             )
             assert result.returncode != 0
@@ -201,6 +211,7 @@ def test_initialized_resume_checks_runtime_without_reprovisioning(tmp_path):
         check=False,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         errors="replace",
     )
     assert result.returncode != 0

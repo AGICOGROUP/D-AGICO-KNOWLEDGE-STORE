@@ -26,6 +26,70 @@ def test_upload_submit_download_and_repeat(kb):
         assert conn.execute("SELECT count(*) AS n FROM jobs").fetchone()["n"] == 1
 
 
+def test_identical_content_is_skipped_as_duplicate(kb):
+    client, db, _root = kb
+    content = b"identical-bytes-dedupe-check"
+    digest = hashlib.sha256(content).hexdigest()
+    body = {
+        "organization_id": "baiste",
+        "category_id": "technical",
+        "title": "重复资料",
+        "visibility": "department",
+        "base_revision": 0,
+    }
+
+    def prepare(person="alice", declared=True):
+        payload = {"filename": "重复资料.md", "size": len(content)}
+        if declared:
+            payload["sha256"] = digest
+        return client.post("/v1/uploads", headers=headers(person, uuid4().hex), json=payload)
+
+    first = prepare()
+    assert first.status_code == 201
+    upload_id = first.json()["upload_id"]
+    assert (
+        client.put(
+            f"/v1/uploads/{upload_id}/content", headers=headers(), content=content
+        ).status_code
+        == 200
+    )
+    created = client.post(
+        "/v1/submissions", headers=headers(), json={**body, "upload_id": upload_id}
+    )
+    assert created.status_code == 201, created.text
+    version = created.json()["version_id"]
+
+    # A declared hash is rejected before any bytes are transferred.
+    early = prepare()
+    assert early.status_code == 200
+    assert early.json()["skipped"] is True
+    assert early.json()["duplicate_of"]["title"] == "重复资料"
+    assert "upload_id" not in early.json()
+
+    # A client that declares no hash is still caught by the server-computed hash.
+    silent = prepare(declared=False)
+    assert silent.status_code == 201
+    silent_id = silent.json()["upload_id"]
+    assert (
+        client.put(
+            f"/v1/uploads/{silent_id}/content", headers=headers(), content=content
+        ).status_code
+        == 200
+    )
+    skipped = client.post(
+        "/v1/submissions", headers=headers(), json={**body, "upload_id": silent_id}
+    )
+    assert skipped.status_code == 200
+    assert skipped.json()["skipped"] is True
+    with db.connection() as conn:
+        assert conn.execute("SELECT count(*) AS n FROM versions").fetchone()["n"] == 1
+
+    # A withdrawn file is no longer considered a duplicate, so it can be uploaded again.
+    assert client.post(f"/v1/submissions/{version}/withdraw", headers=headers()).status_code == 200
+    again = prepare()
+    assert again.status_code == 201, again.text
+
+
 def test_incomplete_hash_limit_and_idempotency(kb):
     client, _db, root = kb
     body = {

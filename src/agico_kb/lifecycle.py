@@ -129,20 +129,37 @@ def restore(db, principal, version_id, body):
 def withdraw_submission(db, principal, version_id):
     with db.connection(write=True) as conn:
         ref = conn.execute(
-            "SELECT document_id,created_by FROM versions WHERE id=%s", (version_id,)
+            """SELECT v.document_id,v.created_by,d.organization_id FROM versions v
+            JOIN documents d ON d.id=v.document_id WHERE v.id=%s""",
+            (version_id,),
         ).fetchone()
-        if not ref or ref["created_by"] != principal.id:
+        # The author can withdraw their own draft; the unit's approver (publisher) can reject it.
+        if not ref or (
+            ref["created_by"] != principal.id and not principal.publisher(ref["organization_id"])
+        ):
             not_found()
         conn.execute("SELECT id FROM documents WHERE id=%s FOR UPDATE", (ref["document_id"],))
         version = conn.execute(
             "SELECT * FROM versions WHERE id=%s FOR UPDATE", (version_id,)
         ).fetchone()
         if version["state"] != "draft":
-            raise KBError("VERSION_CONFLICT", "只能撤回自己尚未发布的提交。")
+            raise KBError("VERSION_CONFLICT", "只能处理尚未发布的提交。")
         conn.execute("UPDATE versions SET state='withdrawn' WHERE id=%s", (version_id,))
         conn.execute("UPDATE jobs SET state='cancelled' WHERE version_id=%s", (version_id,))
-        audit(conn, principal, ref["document_id"], version_id, "withdraw_submission")
-        return submission_result(conn, version_id)
+        rejected = ref["created_by"] != principal.id
+        audit(
+            conn,
+            principal,
+            ref["document_id"],
+            version_id,
+            "reject" if rejected else "withdraw_submission",
+            **({"author_id": ref["created_by"]} if rejected else {}),
+        )
+        result = submission_result(conn, version_id)
+        if rejected:
+            result["rejected"] = True
+            result["message"] = "已驳回该提交，上传者可修改后重新提交。"
+        return result
 
 
 def pending(db, principal, limit, offset):
@@ -152,7 +169,7 @@ def pending(db, principal, limit, offset):
             d.revision,v.base_revision,v.processing_status,v.created_by FROM versions v
             JOIN documents d ON d.id=v.document_id WHERE v.state='draft'
             AND (v.created_by=%s OR d.organization_id=ANY(%s))
-            ORDER BY v.created_at,v.id LIMIT %s OFFSET %s""",
+            ORDER BY v.created_at DESC,v.id DESC LIMIT %s OFFSET %s""",
             (
                 principal.id,
                 [k for k in principal.memberships if principal.publisher(k)],

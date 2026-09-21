@@ -30,7 +30,7 @@
             </fieldset>
             <details class="optional-fields" id="optional-fields"><summary>补充信息 <span class="optional">选填，可直接跳过</span></summary><div class="fields"><div><label for="category">资料类型 <span class="optional">选填</span></label><select id="category"><option value="">不填写</option></select></div><div><label for="model">产品型号 <span class="optional">选填</span></label><input id="model" maxlength="300" placeholder="不填写也可提交"></div></div><p class="help">填写后应用于本批全部文件，资料名称沿用各自文件名。</p></details>
           </fieldset>
-          <div class="submit-area"><p><span aria-hidden="true">◎</span> 提交后进入待审核区，解析由后台自动完成。</p><button id="submit-button" class="button primary" type="submit" disabled>提交到知识库 <span aria-hidden="true">→</span></button><progress id="upload-progress" max="100" value="0" hidden aria-label="上传进度"></progress><p id="upload-message" class="message" role="status" aria-live="polite"></p><button id="reset-attempt" class="text-button" type="button" hidden>放弃未完成项，重新选择</button></div>
+          <div class="submit-area"><p><span aria-hidden="true">◎</span> 提交后进入待审核区，解析由后台自动完成；与库中完全相同的文件会自动跳过。</p><button id="submit-button" class="button primary" type="submit" disabled>提交到知识库 <span aria-hidden="true">→</span></button><progress id="upload-progress" max="100" value="0" hidden aria-label="上传进度"></progress><p id="upload-message" class="message" role="status" aria-live="polite"></p><button id="reset-attempt" class="text-button" type="button" hidden>放弃未完成项，重新选择</button></div>
         </form>
       </section>
       <section class="library-panel panel" aria-labelledby="library-heading">

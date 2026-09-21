@@ -24,11 +24,51 @@ def audit(conn, principal, document_id, version_id, action, **details):
     )
 
 
+def duplicate_version(conn, checksum, exclude_upload_id=None):
+    """An existing non-withdrawn version whose stored original has the same SHA-256.
+
+    Withdrawn versions do not count, so a deliberately removed file can be uploaded again.
+    """
+    if not checksum:
+        return None
+    sql = """SELECT v.id AS version_id,v.state,d.id AS document_id,d.title,d.organization_id,
+        v.created_by,u.filename FROM versions v JOIN documents d ON d.id=v.document_id
+        JOIN uploads u ON u.id=v.upload_id WHERE u.sha256=%s AND v.state <> 'withdrawn'"""
+    params = [checksum]
+    if exclude_upload_id is not None:
+        sql += " AND u.id <> %s"
+        params.append(exclude_upload_id)
+    sql += " ORDER BY v.created_at LIMIT 1"
+    return conn.execute(sql, tuple(params)).fetchone()
+
+
+def duplicate_result(row, checksum):
+    """Same bytes are already in the knowledge base: skip instead of storing a second copy."""
+    return {
+        "status": "duplicate",
+        "skipped": True,
+        "message": "该文件与库中已有资料完全相同（SHA-256 一致），已自动跳过。",
+        "sha256": checksum,
+        "duplicate_of": {
+            "version_id": row["version_id"],
+            "document_id": row["document_id"],
+            "title": row["title"],
+            "organization_id": row["organization_id"],
+            "filename": row["filename"],
+            "state": row["state"],
+        },
+    }
+
+
 def prepare(db, settings, principal, body, key):
     if not key or len(key) > 128 or body.size > settings.max_upload_bytes:
         raise KBError("INVALID_ARGUMENT", "需要有效幂等键，且文件大小不能超过配置上限。", 422)
     request_hash = fingerprint(body)
     with db.connection(write=True) as conn:
+        # Declared hash lets a known duplicate be skipped before any bytes are transferred.
+        existing = duplicate_version(conn, body.sha256)
+        if existing:
+            return duplicate_result(existing, body.sha256), 200
         conn.execute(
             """INSERT INTO uploads(id,owner_id,filename,expected_size,expected_sha256,idempotency_key,request_hash)
             VALUES (%s,%s,%s,%s,%s,%s,%s) ON CONFLICT(owner_id,idempotency_key) DO NOTHING""",
@@ -44,7 +84,7 @@ def prepare(db, settings, principal, body, key):
             "state": row["state"],
             "expires_at": row["expires_at"],
             "upload_url": f"/v1/uploads/{row['id']}/content",
-        }
+        }, 201
 
 
 def owned_upload(conn, principal, upload_id, lock=False):
@@ -120,6 +160,11 @@ def submit(db, principal, body):
             ).fetchone()
             result = version_result(get_version(conn, principal, row["id"]))
             return submission_response(result, 200)
+        # Authoritative duplicate check: the hash is always computed by the server while receiving
+        # the bytes, so identical content is skipped even when the client never declared a hash.
+        existing = duplicate_version(conn, upload["sha256"], exclude_upload_id=body.upload_id)
+        if existing:
+            return duplicate_result(existing, upload["sha256"]), 200
         if body.organization_id not in principal.memberships:
             not_found()
         if not conn.execute("SELECT 1 FROM categories WHERE id=%s", (body.category_id,)).fetchone():

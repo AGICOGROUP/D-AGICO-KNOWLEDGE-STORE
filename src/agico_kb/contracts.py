@@ -83,3 +83,10 @@ class ContextRequest(Contract):
 class LinkRequest(Contract):
     child_version_id: UUID
     label: str = Field(min_length=1, max_length=100)
+
+
+class ChunkEdit(Contract):
+    """A reviewer's correction to one parsed knowledge chunk of a pending draft."""
+
+    chunk_id: UUID
+    text: str = Field(min_length=1, max_length=20000)
