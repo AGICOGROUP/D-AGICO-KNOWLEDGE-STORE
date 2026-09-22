@@ -47,13 +47,32 @@ def _docx(path, result):
     doc = Document(path)
     section = ""
     paragraph = table = 0
+    # Stacked and artistic titles reach us as one character per paragraph (the .doc -> .docx
+    # conversion splits 方案简介 into 方/案/简/介). Held here and joined, they read as the title
+    # they were; left alone they become four one-character chunks that match everything.
+    pending = []
+    pending_at = 0
+
+    def flush_pending():
+        if pending:
+            result.add("".join(pending), kind="paragraph", paragraph=pending_at, section=section)
+            pending.clear()
+
     for block in doc.iter_inner_content():
         if isinstance(block, Paragraph):
             paragraph += 1
             if block.style and block.style.name.startswith("Heading"):
                 section = block.text
+            text = block.text.strip()
+            if len(text) <= 2 and not any(character.isdigit() for character in text):
+                if not pending:
+                    pending_at = paragraph
+                pending.append(text)
+                continue
+            flush_pending()
             result.add(block.text, kind="paragraph", paragraph=paragraph, section=section)
         elif isinstance(block, Table):
+            flush_pending()
             table += 1
             result.add(
                 _table_text([[c.text for c in row.cells] for row in block.rows]),
@@ -61,6 +80,7 @@ def _docx(path, result):
                 table=table,
                 section=section,
             )
+    flush_pending()
     if doc.inline_shapes:
         result.warnings.append("Word 内嵌图片／图形未解释，请查看原文件。")
     if doc._element.xpath(".//w:txbxContent"):

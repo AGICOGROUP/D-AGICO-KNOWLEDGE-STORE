@@ -26,6 +26,24 @@ def test_docx_paragraph_table_and_real_source(tmp_path):
     assert "page" not in table_chunk.locator
 
 
+def test_docx_stacked_title_characters_are_joined_into_one_chunk(tmp_path):
+    """A stacked title arrives as one character per paragraph; it must not become four chunks."""
+    from docx import Document
+
+    path = tmp_path / (uuid4().hex + ".docx")
+    doc = Document()
+    doc.add_paragraph("300t/d回转窑活性石灰生产线")
+    for character in "方案简介":
+        doc.add_paragraph(character)
+    doc.add_paragraph("本方案适用于菏泽双龙冶金机械有限公司的活性石灰生产线。")
+    doc.save(path)
+    result = parse_file(path, path.name)
+    texts = [c.text for c in result.chunks]
+    assert "方案简介" in texts
+    assert not any(t in {"方", "案", "简", "介"} for t in texts)
+    assert any("菏泽双龙" in t for t in texts)
+
+
 def test_xlsx_preserves_formula_cache_distinction_and_coordinates(tmp_path):
     from openpyxl import Workbook
 
