@@ -299,15 +299,11 @@ function rows(items) {
 }
 function canDelete(organizationId) { return canApprove(organizationId) || state.session?.is_admin; }
 async function deleteDocument(item, button) {
-  // Irreversible: require typing the first characters of the title, not just a confirm click.
-  const typed = window.prompt(`永久删除「${item.title}」？\n此操作不可恢复（原文件进入隔离区 30 天后清除）。\n请输入文件名的前 4 个字符以确认：`);
-  if (typed === null) return;
-  if (typed.trim() !== item.title.slice(0, 4)) { message("list-message", "确认文字不匹配，已取消删除。", true); return; }
   button.disabled = true;
   try {
     const result = await api(`/v1/documents/${encodeURIComponent(item.document_id)}`, {method: "DELETE", body: {expected_revision: item.revision ?? 0}});
     await loadList();
-    message("list-message", `已删除：${result.title}（${result.deleted_versions} 个版本，原文件已隔离 30 天）`);
+    message("list-message", `已删除：${result.title}`);
   } catch (error) { message("list-message", error.message, true); }
   finally { button.disabled = false; }
 }
