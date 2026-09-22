@@ -90,6 +90,25 @@ def test_identical_content_is_skipped_as_duplicate(kb):
     assert again.status_code == 201, again.text
 
 
+def test_lock_file_names_are_rejected(kb):
+    client, _, _ = kb
+    for name in ["~$初始填充材料清单.docx", ".~设计文档.xlsx"]:
+        prepared = client.post(
+            "/v1/uploads",
+            headers=headers(key=uuid4().hex),
+            json={"filename": name, "size": 10},
+        )
+        assert prepared.status_code == 422, prepared.text
+        assert "临时锁文件" in prepared.json()["error"]["message"]
+    # A normal name with a tilde elsewhere is fine.
+    ok = client.post(
+        "/v1/uploads",
+        headers=headers(key=uuid4().hex),
+        json={"filename": "价格~清单.docx", "size": 10},
+    )
+    assert ok.status_code == 201
+
+
 def test_incomplete_hash_limit_and_idempotency(kb):
     client, _db, root = kb
     body = {

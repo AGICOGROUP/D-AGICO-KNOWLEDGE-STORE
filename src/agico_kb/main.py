@@ -5,6 +5,7 @@ from uuid import UUID
 from anyio import to_thread
 from fastapi import FastAPI, Header, HTTPException, Query, Request
 from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 
 from . import access_management, catalog, files, lifecycle
@@ -49,6 +50,16 @@ def create_app(settings: Settings) -> FastAPI:
     @app.exception_handler(KBError)
     async def business_error(request, exc):
         return JSONResponse(jsonable_encoder(exc.payload), status_code=exc.status)
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error(request, exc):
+        # Field validation messages (e.g. Office lock-file names) must reach the portal in the
+        # same envelope as business errors, so errorText() can show them verbatim.
+        first = exc.errors()[0] if exc.errors() else {}
+        message = first.get("msg", "提交信息不符合要求。")
+        return JSONResponse(
+            {"error": {"code": "INVALID_ARGUMENT", "message": message}}, status_code=422
+        )
 
     @app.middleware("http")
     async def check_identity(request: Request, call_next):

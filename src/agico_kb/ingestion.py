@@ -8,7 +8,7 @@ from dataclasses import asdict, dataclass, field
 from functools import lru_cache
 from pathlib import Path
 
-PARSER_VERSION = "native-v1"
+PARSER_VERSION = "native-v2"
 
 
 @dataclass
@@ -198,22 +198,34 @@ def _ocr(image_input, result, **locator):
     )
 
 
-def _pdf(path, result):
+def _ocr_page(page, result, index):
+    """Render a scanned page at higher DPI for better OCR accuracy, then OCR it."""
     import numpy as np
+    import pymupdf
+
+    pix = page.get_pixmap(dpi=300, colorspace=pymupdf.csRGB, alpha=False)
+    _ocr(
+        np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, 3),
+        result,
+        page=index,
+    )
+
+
+def _pdf(path, result, first_page=None, last_page=None):
+    """Parse a PDF. first_page/last_page (1-based, inclusive) bound the work so the worker can
+    split huge scans into segments that each fit the parse timeout."""
     import pymupdf
 
     with pymupdf.open(path) as doc:
         if doc.needs_pass:
             raise ValueError("PDF 已加密，需提供可读取版本。")
-        for index, page in enumerate(doc, 1):
+        start = max(1, first_page or 1)
+        end = min(doc.page_count, last_page or doc.page_count)
+        for index in range(start, end + 1):
+            page = doc[index - 1]
             text = page.get_text(sort=True).strip()
             if len(text) < 15 and page.get_images():
-                pix = page.get_pixmap(dpi=150, colorspace=pymupdf.csRGB, alpha=False)
-                _ocr(
-                    np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, 3),
-                    result,
-                    page=index,
-                )
+                _ocr_page(page, result, index)
                 continue
             tables = page.find_tables().tables
             for ti, table in enumerate(tables, 1):
@@ -231,13 +243,15 @@ def _pdf(path, result):
             result.warnings.append("PDF 表格按原页保留；跨页表头和脚注需结合相邻页读取。")
 
 
-def parse_file(path: Path, filename: str) -> Parsed:
+def parse_file(path: Path, filename: str, first_page=None, last_page=None) -> Parsed:
     result = Parsed()
     suffix = Path(filename).suffix.lower()
     if suffix in {".docx", ".xlsx", ".pptx"}:
         _office_guard(path)
-    adapters = {".docx": _docx, ".xlsx": _xlsx, ".pptx": _pptx, ".pdf": _pdf}
-    if suffix in adapters:
+    adapters = {".docx": _docx, ".xlsx": _xlsx, ".pptx": _pptx}
+    if suffix == ".pdf":
+        _pdf(path, result, first_page=first_page, last_page=last_page)
+    elif suffix in adapters:
         adapters[suffix](path, result)
     elif suffix in {".md", ".txt", ".csv", ".json"}:
         raw = path.read_bytes()
@@ -277,5 +291,8 @@ def parse_file(path: Path, filename: str) -> Parsed:
 
 if __name__ == "__main__":
     # The worker invokes this in a bounded subprocess, with server-generated paths only.
-    parsed = parse_file(Path(sys.argv[1]), sys.argv[2])
+    # Optional argv[4]/argv[5] bound the page range for segmented PDF parsing.
+    first = int(sys.argv[4]) if len(sys.argv) > 4 and sys.argv[4] else None
+    last = int(sys.argv[5]) if len(sys.argv) > 5 and sys.argv[5] else None
+    parsed = parse_file(Path(sys.argv[1]), sys.argv[2], first_page=first, last_page=last)
     Path(sys.argv[3]).write_text(json.dumps(asdict(parsed), ensure_ascii=False), encoding="utf-8")

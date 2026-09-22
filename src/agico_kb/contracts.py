@@ -23,6 +23,9 @@ class PrepareUpload(Contract):
             or any(ord(c) < 32 for c in value)
         ):
             raise ValueError("文件名不能包含路径或控制字符")
+        if value.startswith(("~$", ".~")):
+            # Office/编辑器临时锁文件（文档被打开时产生），不是真文档，解析必失败。
+            raise ValueError("这是 Office 临时锁文件，不是文档本身；请关闭文档后重新选择对应文件。")
         return value
 
 

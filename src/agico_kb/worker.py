@@ -46,7 +46,7 @@ class Worker:
                     )
         with self.db.connection(write=True) as conn:
             row = conn.execute(
-                """SELECT j.*,u.blob_key,u.filename FROM jobs j JOIN versions v ON v.id=j.version_id
+                """SELECT j.*,u.blob_key,u.filename,u.size FROM jobs j JOIN versions v ON v.id=j.version_id
                 JOIN uploads u ON u.id=v.upload_id WHERE j.attempts<%s AND
                 ((j.state='queued' AND j.next_attempt_at<=now()) OR (j.state='running' AND j.lease_until<now()))
                 ORDER BY j.created_at FOR UPDATE OF j SKIP LOCKED LIMIT 1""",
@@ -86,23 +86,28 @@ class Worker:
                 (version_id,),
             )
 
-    def _parse(self, claim):
+    def _parse(self, claim, first_page=None, last_page=None, blob_key=None, filename=None):
+        blob_key = blob_key or claim["blob_key"]
+        filename = filename or claim["filename"]
         self.settings.storage_root.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix="parse-", dir=self.settings.storage_root) as folder:
             result = Path(folder) / "result.json"
+            arguments = [
+                sys.executable,
+                "-m",
+                "agico_kb.ingestion",
+                str(self.settings.storage_root / blob_key),
+                filename,
+                str(result),
+            ]
+            if first_page is not None:
+                arguments += [str(first_page), str(last_page or first_page)]
             try:
                 completed = subprocess.run(
-                    [
-                        sys.executable,
-                        "-m",
-                        "agico_kb.ingestion",
-                        str(self.settings.storage_root / claim["blob_key"]),
-                        claim["filename"],
-                        str(result),
-                    ],
+                    arguments,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.PIPE,
-                    timeout=self.settings.parse_timeout_seconds,
+                    timeout=self.settings.timeout_for(claim["size"]),
                     creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
                     check=False,
                 )
@@ -113,6 +118,74 @@ class Worker:
                 raise ValueError("解析失败，请检查文件格式、加密状态或损坏情况。")
             data = json.loads(result.read_text(encoding="utf-8"))
             return Parsed([Chunk(**c) for c in data["chunks"]], data["status"], data["warnings"])
+
+    def _parse_with_conversion(self, claim):
+        """Legacy Office formats are converted to OOXML in a temp dir, then parsed there.
+
+        The stored original is untouched; the converted copy lives only for this parse run.
+        """
+        from .convert import convert_to_modern, needs_conversion
+
+        if not needs_conversion(claim["filename"]):
+            return self._parse(claim)
+        self.settings.storage_root.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(
+            prefix="convert-", dir=self.settings.storage_root
+        ) as folder:
+            converted, converted_name = convert_to_modern(
+                self.settings.storage_root / claim["blob_key"], claim["filename"], Path(folder)
+            )
+            # _parse reads from storage_root, so copy the converted file there under a temp key.
+            import shutil
+
+            temp_key = f"convert-{uuid4().hex}.blob"
+            shutil.copy2(converted, self.settings.storage_root / temp_key)
+            try:
+                return self._parse(claim, blob_key=temp_key, filename=converted_name)
+            finally:
+                (self.settings.storage_root / temp_key).unlink(missing_ok=True)
+
+    def _pdf_page_count(self, claim):
+        import pymupdf
+
+        with pymupdf.open(self.settings.storage_root / claim["blob_key"]) as doc:
+            return doc.page_count
+
+    def _parse_segmented(self, claim):
+        """Large-PDF strategy: parse page ranges as separate bounded subprocesses and merge.
+
+        A whole-document timeout kill loses everything; per-segment failures only lose pages,
+        and the merged result keeps every page that did parse.
+        """
+        try:
+            page_count = self._pdf_page_count(claim)
+        except Exception as error:
+            raise ValueError("解析失败，请检查文件格式、加密状态或损坏情况。") from error
+        if page_count <= 0:
+            raise ValueError("解析失败，请检查文件格式、加密状态或损坏情况。")
+        segment = max(1, int(page_count // 8) or 1)
+        merged, warnings, failures = [], [], 0
+        for start in range(1, page_count + 1, segment):
+            try:
+                parsed = self._parse(
+                    claim, first_page=start, last_page=min(start + segment - 1, page_count)
+                )
+            except ValueError:
+                failures += 1
+                warnings.append(
+                    f"第 {start}-{min(start + segment - 1, page_count)} 页解析未完成，该范围请核对原文件。"
+                )
+                continue
+            merged.extend(parsed.chunks)
+            warnings.extend(parsed.warnings)
+            if parsed.status != "ready":
+                failures += 1
+        if not merged:
+            raise ValueError("分段解析后仍未取得可读取文字，原文件保留。")
+        status = "ready"
+        if failures or any("未" in w or "OCR" in w for w in warnings):
+            status = "partial"
+        return Parsed(merged, status, warnings)
 
     def _valid(self, conn, claim):
         row = conn.execute(
@@ -131,7 +204,14 @@ class Worker:
             if not self._valid(conn, claim):
                 return False
         try:
-            parsed = self._parse(claim)
+            try:
+                parsed = self._parse_with_conversion(claim)
+            except ValueError as error:
+                # A whole-document timeout on a big PDF is retried page-range by page-range;
+                # everything that parses within its segment budget is kept.
+                if "解析超时" not in str(error) or not claim["filename"].lower().endswith(".pdf"):
+                    raise
+                parsed = self._parse_segmented(claim)
             if parsed.status == "failed":
                 raise ValueError("文件未提取到可读取文字，原文件保留。")
             vectors = None
