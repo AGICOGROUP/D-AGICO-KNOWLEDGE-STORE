@@ -310,6 +310,20 @@ def _ocr_page(page, result, index):
     )
 
 
+def _image_coverage(page):
+    """Fraction of the page area covered by placed images (0..1), used to spot picture pages."""
+    import pymupdf
+
+    rect = page.rect
+    area = abs(rect.width * rect.height) or 1.0
+    covered = 0.0
+    for item in page.get_image_info():
+        box = pymupdf.Rect(item["bbox"]).intersect(rect)
+        if not box.is_empty:
+            covered += abs(box.width * box.height)
+    return min(1.0, covered / area)
+
+
 def _pdf(path, result, first_page=None, last_page=None):
     """Parse a PDF. first_page/last_page (1-based, inclusive) bound the work so the worker can
     split huge scans into segments that each fit the parse timeout."""
@@ -323,8 +337,23 @@ def _pdf(path, result, first_page=None, last_page=None):
         for index in range(start, end + 1):
             page = doc[index - 1]
             text = page.get_text(sort=True).strip()
-            if len(text) < 15 and page.get_images():
+            # An image-dominant page (slide decks exported as pictures, full-bleed scans) still
+            # carries a thin text layer: the header/footer furniture. Judging by "is there any
+            # text" would skip the whole document, so judge by how little text there is against
+            # how much of the page is picture.
+            coverage = _image_coverage(page)
+            image_dominant = bool(page.get_images()) and coverage >= 0.2 and len(text) < 400
+            if (len(text) < 15 and page.get_images()) or image_dominant:
                 _ocr_page(page, result, index)
+                if len(text) < 15:
+                    result.warnings.append(
+                        f"PDF 第 {index} 页为扫描页，已 OCR 识别；关键数字请核对原文件。"
+                    )
+                else:
+                    result.warnings.append(
+                        f"PDF 第 {index} 页以图片为主（图片覆盖 {coverage * 100:.0f}%），"
+                        f"已对整页做 OCR；页眉页脚文字未单独收录，图形语义仍需核对原文件。"
+                    )
                 continue
             tables = page.find_tables().tables
             for ti, table in enumerate(tables, 1):
