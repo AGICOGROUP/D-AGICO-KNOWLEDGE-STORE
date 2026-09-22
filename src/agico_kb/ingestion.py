@@ -188,11 +188,110 @@ def _ocr_engine():
     return RapidOCR(params=params)
 
 
+def _ocr_rect(box):
+    xs = [float(point[0]) for point in box]
+    ys = [float(point[1]) for point in box]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def _ocr_gaps(intervals, minimum):
+    """Split points where whitespace wider than `minimum` separates covered spans."""
+    ordered = sorted(intervals)
+    found = []
+    reach = ordered[0][1]
+    for start, end in ordered[1:]:
+        if start - reach > minimum:
+            found.append((reach, start))
+        reach = max(reach, end)
+    return found
+
+
+def _ocr_blocks(items, width, height, depth=0):
+    """Recursive XY-cut: split a region on whitespace that spans it entirely, so multi-column
+    and staggered layouts (timelines, radial charts) do not interleave their text."""
+    if len(items) <= 1 or depth > 8:
+        return [items]
+    for axis in ("v", "h"):
+        if axis == "v":
+            found = _ocr_gaps([(item[0], item[2]) for item in items], max(14.0, width * 0.02))
+        else:
+            found = _ocr_gaps([(item[1], item[3]) for item in items], max(10.0, height * 0.015))
+        if not found:
+            continue
+        cut = (found[0][0] + found[0][1]) / 2
+        index = 0 if axis == "v" else 1
+        before = [i for i in items if (i[index] + i[index + 2]) / 2 < cut]
+        after = [i for i in items if (i[index] + i[index + 2]) / 2 >= cut]
+        if not before or not after:
+            continue
+        return _ocr_blocks(before, width, height, depth + 1) + _ocr_blocks(
+            after, width, height, depth + 1
+        )
+    return [items]
+
+
+def _ocr_block_text(block):
+    """Order one block into lines, stitching lines the layout wrapped mid-word."""
+    lines = []
+    for item in sorted(block, key=lambda i: (i[1], i[0])):
+        for line in lines:
+            overlap = min(line["y1"], item[3]) - max(line["y0"], item[1])
+            if overlap > 0.5 * min(line["y1"] - line["y0"], item[3] - item[1]):
+                line["items"].append(item)
+                line["y0"] = min(line["y0"], item[1])
+                line["y1"] = max(line["y1"], item[3])
+                break
+        else:
+            lines.append({"y0": item[1], "y1": item[3], "items": [item]})
+    lines.sort(key=lambda line: line["y0"])
+    left = min(item[0] for item in block)
+    right = max(item[2] for item in block)
+    margin = 0.12 * (right - left)
+    text = ""
+    for index, line in enumerate(lines):
+        line["items"].sort(key=lambda i: i[0])
+        joined = "".join(item[4] for item in line["items"])
+        if index == 0:
+            text = joined
+            continue
+        previous = lines[index - 1]
+        wrapped = (
+            max(item[2] for item in previous["items"]) >= right - margin
+            and min(item[0] for item in line["items"]) <= left + margin
+        )
+        text += ("" if wrapped else "\n") + joined
+    return text
+
+
+def _ocr_reading_order(boxes, texts):
+    """Rebuild OCR reading order from detection geometry instead of trusting detector order."""
+    items = []
+    for box, text in zip(boxes, texts):
+        x0, y0, x1, y1 = _ocr_rect(box)
+        items.append((x0, y0, x1, y1, text))
+    if not items:
+        return "\n".join(texts)
+    width = max(item[2] for item in items)
+    height = max(item[3] for item in items)
+    blocks = _ocr_blocks(items, width, height)
+    return "\n".join(_ocr_block_text(block) for block in blocks if block)
+
+
 def _ocr(image_input, result, **locator):
     output = _ocr_engine()(image_input)
     texts = getattr(output, "txts", None)
     if texts:
-        result.add("\n".join(texts), kind="ocr", ocr=True, **locator)
+        boxes = getattr(output, "boxes", None)
+        try:
+            text = (
+                _ocr_reading_order(boxes, texts)
+                if boxes is not None and len(boxes)
+                else "\n".join(texts)
+            )
+        except (AttributeError, IndexError, TypeError, ValueError):
+            # Geometry from an unexpected detector build must never lose the recognised text.
+            text = "\n".join(texts)
+        result.add(text, kind="ocr", ocr=True, **locator)
     result.warnings.append(
         "OCR 识别文字未经人工核对；表格结构与图形语义可能不完整，关键数字请核对原文件。"
     )
