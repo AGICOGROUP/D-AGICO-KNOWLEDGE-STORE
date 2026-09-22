@@ -14,6 +14,7 @@ from psycopg.types.json import Jsonb
 from .config import Settings
 from .db import Database
 from .embeddings import LocalEmbedding, vector_literal
+from .failures import log_failure
 from .ingestion import Chunk, Parsed
 from .tokenizer import segmented
 
@@ -328,6 +329,15 @@ class Worker:
                     warnings=warnings || %s::jsonb WHERE id=%s""",
                     ("failed" if terminal else "queued", Jsonb([message]), claim["version_id"]),
                 )
+            log_failure(
+                self.settings,
+                "parse_failed" if terminal else "parse_retry",
+                message,
+                version_id=claim["version_id"],
+                filename=claim["filename"],
+                attempt=claim["attempts"],
+                error=f"{type(error).__name__}: {error}",
+            )
             return True
 
     def run_once(self):

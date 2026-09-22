@@ -24,7 +24,9 @@ def test_portal_session_metadata_scopes_organizations(kb):
         "max_upload_bytes": 1024,
         "publisher_organizations": [],
         "is_admin": False,
+        "failure_log": session["failure_log"],
     }
+    assert session["failure_log"].endswith("failures.log")
     # The approval actions are gated on the units this account approves for.
     approver = client.get("/v1/portal-session", headers=headers("chief")).json()
     assert approver["publisher_organizations"] == ["baiste"]

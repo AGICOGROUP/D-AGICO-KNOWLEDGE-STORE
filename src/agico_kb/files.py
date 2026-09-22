@@ -9,6 +9,7 @@ from psycopg.types.json import Jsonb
 
 from .catalog import can_read_document, get_version, version_result
 from .errors import KBError, not_found
+from .failures import log_failure
 
 
 def fingerprint(body):
@@ -119,10 +120,37 @@ async def upload_content(db, settings, principal, upload_id, request):
                 await to_thread.run_sync(target.write, chunk)
             await to_thread.run_sync(target.flush)
             await to_thread.run_sync(os.fsync, target.fileno())
+    except Exception as error:
+        # A dropped transfer (browser closed, proxy timeout, tunnel cut) must leave a trace: the
+        # portal can only show a generic message, so the reason is written here.
+        temp.unlink(missing_ok=True)
+        log_failure(
+            settings,
+            "upload_interrupted",
+            "上传中断：文件未传完",
+            filename=row["filename"] or upload_id,
+            declared_bytes=row["expected_size"],
+            received_bytes=count,
+            actor=principal.id,
+            error=f"{type(error).__name__}: {error}",
+        )
+        raise
+    try:
         checksum = digest.hexdigest()
         if count != row["expected_size"] or (
             row["expected_sha256"] and checksum != row["expected_sha256"]
         ):
+            # A truncated transfer can also end cleanly (proxy cut without a connection error);
+            # that shows up here as a size or checksum mismatch, and must be logged just the same.
+            log_failure(
+                settings,
+                "upload_incomplete",
+                "上传不完整：收到字节数与申报不一致",
+                filename=row["filename"] or upload_id,
+                declared_bytes=row["expected_size"],
+                received_bytes=count,
+                actor=principal.id,
+            )
             raise KBError("INVALID_ARGUMENT", "文件大小或 SHA-256 校验不匹配。", 422)
 
         def finalize():

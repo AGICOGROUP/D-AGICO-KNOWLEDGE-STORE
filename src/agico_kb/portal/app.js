@@ -220,7 +220,8 @@ $("upload-form").addEventListener("submit", async (e) => {
     } else {
       const failures = attempt.items.filter((item) => !item.versionId && !item.skipped);
       const reasons = failures.map((item) => `· ${item.file.name}（${size(item.file.size)}）：${item.error || "原因未记录"}`).join("\n");
-      message("upload-message", `已提交 ${completed} 份${skippedNote}，${failed} 份失败：\n${reasons}\n\n重试只处理未完成项，已成功的文件不会重复提交；重试前可先核对上面的原因。`, true);
+      const log = state.session?.failure_log ? `\n\n详细记录：${state.session.failure_log}` : "";
+      message("upload-message", `已提交 ${completed} 份${skippedNote}，${failed} 份失败：\n${reasons}${log}\n\n重试只处理未完成项，已成功的文件不会重复提交；重试前可先核对上面的原因。`, true);
       $("submit-button").textContent = `重试未完成的 ${failed} 份 →`; $("reset-attempt").hidden = false;
     }
     switchTab("pending");
@@ -278,6 +279,7 @@ function rows(items) {
     const status = element("span", "status-tag", `${state.tab === "pending" ? "待审核 · " : ""}${statuses[item.processing_status] || "已发布"}`);
     status.classList.toggle("warning", ["partial", "failed", "stored_only"].includes(item.processing_status)); info.append(status);
     if (item.failure_reason) info.append(element("p", "file-error", `失败原因：${item.failure_reason}`));
+    else if (item.warnings?.length) info.append(element("p", "file-warning", `解析提示：${item.warnings.join("；")}`));
     const button = element("button", "text-button", "下载 ↓"); button.type = "button"; button.setAttribute("aria-label", `下载 ${item.title}`); button.addEventListener("click", () => download(item, button));
     row.append(element("span", "file-badge", ext || "FILE"), info, button);
     if (state.tab === "pending" && canApprove(item.organization_id)) {

@@ -11,6 +11,57 @@ def publish(client, version, revision, person="chief", accept=True):
     )
 
 
+def test_failure_reason_and_warnings_reach_the_pending_list(kb):
+    """A failed or incomplete parse must say why: the portal renders failure_reason / warnings."""
+    client, db, _ = kb
+    result, _, _ = submit(client)
+    version = result.json()["version_id"]
+
+    def pending():
+        return client.get("/v1/submissions", headers=headers("alice")).json()["items"]
+
+    assert pending()[0]["failure_reason"] is None
+
+    # A failed job is what an employee sees as "解析失败"; the reason must travel with the row.
+    with db.connection(write=True) as conn:
+        conn.execute(
+            """UPDATE jobs SET state='failed',last_error='解析失败，请检查文件格式、加密状态或损坏情况。'
+            WHERE version_id=%s""",
+            (version,),
+        )
+        conn.execute(
+            "UPDATE versions SET processing_status='failed',warnings=%s::jsonb WHERE id=%s",
+            ('["OCR 识别文字未经人工核对。"]', version),
+        )
+    row = pending()[0]
+    assert row["job_state"] == "failed"
+    assert "解析失败" in row["failure_reason"]
+    assert row["warnings"] == ["OCR 识别文字未经人工核对。"]
+
+
+def test_interrupted_upload_is_recorded_in_the_failure_log(kb):
+    """A transfer cut mid-flight leaves no API error the user can act on, so it must be logged."""
+    from agico_kb.failures import failure_log_path, log_failure
+
+    client, _, root = kb
+    response = client.post(
+        "/v1/uploads",
+        headers=headers("alice", "log-probe"),
+        json={"filename": "半途中断.bin", "size": 512},
+    )
+    upload_id = response.json()["upload_id"]
+    # Declared 512 bytes but only 10 arrive: the endpoint rejects it, and the attempt is logged.
+    response = client.put(
+        f"/v1/uploads/{upload_id}/content", headers=headers("alice"), content=b"x" * 10
+    )
+    assert response.status_code == 422
+    log = failure_log_path(type("S", (), {"storage_root": root})())
+    assert log.exists(), f"expected a failure log at {log}"
+    text = log.read_text(encoding="utf-8")
+    assert "半途中断.bin" in text and "declared_bytes=512" in text and "received_bytes=10" in text
+    assert log_failure(type("S", (), {"storage_root": root})(), "probe", "直接写入") == str(log)
+
+
 def test_publish_permissions_and_incomplete_disclosure(kb):
     client, _, _ = kb
     result, _, _ = submit(client)

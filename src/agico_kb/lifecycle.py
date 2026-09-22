@@ -168,7 +168,7 @@ def pending(db, principal, limit, offset):
     with db.connection() as conn:
         rows = conn.execute(
             """SELECT v.id AS version_id,v.document_id,d.title,d.organization_id,
-            d.revision,v.base_revision,v.processing_status,v.created_by,
+            d.revision,v.base_revision,v.processing_status,v.created_by,v.warnings,
             j.state AS job_state,j.last_error AS failure_reason FROM versions v
             JOIN documents d ON d.id=v.document_id
             LEFT JOIN jobs j ON j.version_id=v.id WHERE v.state='draft'

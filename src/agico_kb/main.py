@@ -1,3 +1,4 @@
+import traceback
 from contextlib import asynccontextmanager
 from pathlib import Path
 from uuid import UUID
@@ -26,6 +27,7 @@ from .contracts import (
 )
 from .db import Database
 from .errors import KBError
+from .failures import failure_log_path, log_failure
 from .mcp_server import create_mcp
 from .search import SearchService
 
@@ -100,6 +102,28 @@ def create_app(settings: Settings) -> FastAPI:
     def get_catalog(request: Request):
         return catalog.catalog(db, request.state.principal)
 
+    @app.exception_handler(Exception)
+    async def unexpected_error(request, exc):
+        # Anything not modelled as a KBError is a defect: record the reason with a traceback so the
+        # failure can be diagnosed after the fact, and still answer in the business envelope.
+        path = log_failure(
+            settings,
+            "request_failed",
+            f"{type(exc).__name__}: {exc}",
+            method=request.method,
+            path=request.url.path,
+            traceback=traceback.format_exc().replace("\n", " ")[:2000],
+        )
+        return JSONResponse(
+            {
+                "error": {
+                    "code": "INTERNAL",
+                    "message": f"服务器处理失败：{type(exc).__name__}。原因已记入 {path}",
+                }
+            },
+            status_code=500,
+        )
+
     @app.get("/v1/portal-session")
     def portal_session(request: Request):
         principal = request.state.principal
@@ -111,6 +135,8 @@ def create_app(settings: Settings) -> FastAPI:
                 key for key in principal.memberships if principal.publisher(key)
             ),
             "is_admin": principal.is_admin,
+            # So a failure message can point at the exact file to inspect.
+            "failure_log": str(failure_log_path(settings)),
         }
 
     portal_root = Path(__file__).parent / "portal"
