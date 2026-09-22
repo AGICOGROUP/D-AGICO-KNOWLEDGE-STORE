@@ -253,6 +253,11 @@ def parse_file(path: Path, filename: str, first_page=None, last_page=None) -> Pa
         _pdf(path, result, first_page=first_page, last_page=last_page)
     elif suffix in adapters:
         adapters[suffix](path, result)
+    elif suffix in {".xls", ".doc", ".ppt"}:
+        # Pure-Python recovery path (LibreOffice absence or failure): values over fidelity.
+        from .fallback_parse import FALLBACKS
+
+        FALLBACKS[suffix](path, result)
     elif suffix in {".md", ".txt", ".csv", ".json"}:
         raw = path.read_bytes()
         try:

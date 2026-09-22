@@ -1,6 +1,8 @@
 import hashlib
+from pathlib import Path
 from uuid import uuid4
 
+import pytest
 from conftest import headers, submit
 
 
@@ -107,6 +109,65 @@ def test_lock_file_names_are_rejected(kb):
         json={"filename": "价格~清单.docx", "size": 10},
     )
     assert ok.status_code == 201
+
+
+def test_xls_fallback_recovers_values(kb):
+    """With LibreOffice unavailable, .xls still parses via the pure-Python fallback."""
+    import xlrd  # noqa: F401 - proves the dependency is importable in the test venv
+
+    from agico_kb.convert import CONVERTIBLE
+    from agico_kb.fallback_parse import _xls_fallback
+    from agico_kb.ingestion import Parsed, parse_file
+
+    _client, _db, root = kb
+    xls_path = root / "报价.xls"
+    import subprocess
+
+    soffice = None
+    for candidate in [
+        Path("C:/Program Files/LibreOffice/program/soffice.exe"),
+        Path("C:/Program Files (x86)/LibreOffice/program/soffice.exe"),
+    ]:
+        if candidate.exists():
+            soffice = candidate
+            break
+    if soffice:
+        xlsx = root / "报价.xlsx"
+        sheet = [["客户", "项目", "金额"], ["XX水泥厂", "石灰产线", "1200000"]]
+        from openpyxl import Workbook
+
+        wb = Workbook()
+        ws = wb.active
+        for row in sheet:
+            ws.append(row)
+        wb.save(xlsx)
+        subprocess.run(
+            [
+                str(soffice),
+                "--headless",
+                "--norestore",
+                "--convert-to",
+                "xls",
+                "--outdir",
+                str(root),
+                str(xlsx),
+            ],
+            capture_output=True,
+            timeout=180,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+            check=False,
+        )
+    if not xls_path.exists():
+        pytest.skip("cannot fabricate a real .xls without LibreOffice")
+    result = Parsed()
+    _xls_fallback(xls_path, result)
+    assert result.chunks, "fallback must recover rows"
+    assert any("XX水泥厂" in c.text for c in result.chunks)
+    assert result.warnings and "兜底" in result.warnings[0]
+    # The ingestion entry point must not treat the parsed text as a different format.
+    direct = parse_file(xls_path, "报价.xls")
+    assert direct.status in {"ready", "partial"}
+    assert CONVERTIBLE[".xls"] == ".xlsx"
 
 
 def test_incomplete_hash_limit_and_idempotency(kb):

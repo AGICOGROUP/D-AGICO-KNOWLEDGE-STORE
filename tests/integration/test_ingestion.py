@@ -127,8 +127,10 @@ def test_scan_pdf_ocr_preserves_source_and_reports_uncertainty(tmp_path):
     assert any("OCR" in w for w in result.warnings)
 
 
-@pytest.mark.parametrize("suffix", [".step", ".dwg", ".zip", ".doc"])
+@pytest.mark.parametrize("suffix", [".step", ".dwg", ".zip"])
 def test_unsupported_attachment_is_stored_not_silently_parsed(tmp_path, suffix):
+    # .doc/.ppt/.xls now go through the pure-Python fallback instead of stored_only,
+    # so they are no longer part of the opaque-attachment set.
     path = tmp_path / (uuid4().hex + suffix)
     path.write_bytes(b"new synthetic opaque attachment")
     result = parse_file(path, path.name)

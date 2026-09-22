@@ -120,11 +120,14 @@ class Worker:
             return Parsed([Chunk(**c) for c in data["chunks"]], data["status"], data["warnings"])
 
     def _parse_with_conversion(self, claim):
-        """Legacy Office formats are converted to OOXML in a temp dir, then parsed there.
+        """Legacy Office formats: LibreOffice conversion first, pure-Python fallback second.
 
-        The stored original is untouched; the converted copy lives only for this parse run.
+        The stored original is untouched; converted copies live only for this parse run. When
+        LibreOffice is missing or fails, the fallback parsers still recover text so the document
+        stays searchable instead of degrading to stored-only.
         """
-        from .convert import convert_to_modern, needs_conversion
+        from .convert import CONVERTIBLE, convert_to_modern, needs_conversion
+        from .fallback_parse import FALLBACKS
 
         if not needs_conversion(claim["filename"]):
             return self._parse(claim)
@@ -132,9 +135,25 @@ class Worker:
         with tempfile.TemporaryDirectory(
             prefix="convert-", dir=self.settings.storage_root
         ) as folder:
-            converted, converted_name = convert_to_modern(
-                self.settings.storage_root / claim["blob_key"], claim["filename"], Path(folder)
-            )
+            try:
+                converted, converted_name = convert_to_modern(
+                    self.settings.storage_root / claim["blob_key"], claim["filename"], Path(folder)
+                )
+            except ValueError:
+                suffix = Path(claim["filename"]).suffix.lower()
+                fallback = FALLBACKS.get(suffix)
+                if fallback is None:
+                    raise
+                parsed = Parsed()
+                fallback(self.settings.storage_root / claim["blob_key"], parsed)
+                if not parsed.chunks:
+                    raise ValueError(
+                        "兜底解析未取得文字，原文件保留；请另存为 "
+                        + CONVERTIBLE[suffix]
+                        + " 后重新提交。"
+                    )
+                parsed.status = "partial"
+                return parsed
             # _parse reads from storage_root, so copy the converted file there under a temp key.
             import shutil
 

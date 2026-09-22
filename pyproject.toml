@@ -16,6 +16,7 @@ dependencies = [
   "fastembed>=0.8,<1",
   "rapidocr>=3,<4",
   "httpx>=0.28,<1",
+  "xlrd>=2.0.2",
 ]
 
 [dependency-groups]
