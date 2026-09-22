@@ -334,14 +334,42 @@ class Worker:
         claim = self.claim()
         return self.run_claim(claim) if claim else False
 
+    def purge_expired_quarantine(self, retention_days: int = 30):
+        """Permanently remove quarantined blobs older than the retention window.
+
+        Called from the daemon loop once a day; deletion errors never kill the worker.
+        """
+        from datetime import UTC, datetime, timedelta
+
+        quarantine = self.settings.storage_root / "quarantine"
+        if not quarantine.exists():
+            return
+        cutoff = datetime.now(UTC) - timedelta(days=retention_days)
+        removed = 0
+        for item in quarantine.iterdir():
+            try:
+                if item.is_file() and datetime.fromtimestamp(item.stat().st_mtime, UTC) < cutoff:
+                    item.unlink()
+                    removed += 1
+            except OSError:
+                logger.warning("Quarantine cleanup could not remove %s; will retry tomorrow.", item)
+        if removed:
+            logger.info(
+                "Quarantine purge removed %d blob(s) older than %d days.", removed, retention_days
+            )
+
 
 def main():
     settings = Settings.from_env()
     db = Database(settings)
     worker = Worker(db, settings)
+    last_purge = None
     try:
         while True:
             try:
+                if last_purge != time.strftime("%Y-%m-%d"):
+                    worker.purge_expired_quarantine()
+                    last_purge = time.strftime("%Y-%m-%d")
                 if not worker.run_once():
                     time.sleep(2)
             except Exception:  # noqa: BLE001 - daemon retries database/process availability failures

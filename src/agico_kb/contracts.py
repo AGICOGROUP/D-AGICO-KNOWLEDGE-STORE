@@ -93,3 +93,7 @@ class ChunkEdit(Contract):
 
     chunk_id: UUID
     text: str = Field(min_length=1, max_length=20000)
+
+
+class DeleteDocument(Revision):
+    """Delete is irreversible; expected_revision guards against concurrent-change accidents."""

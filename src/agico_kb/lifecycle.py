@@ -1,3 +1,5 @@
+from psycopg.types.json import Jsonb
+
 from .errors import KBError, not_found
 from .files import audit, submission_result
 
@@ -208,6 +210,89 @@ def set_grants(db, principal, document_id, body):
             revision=doc["revision"] + 1,
         )
         return {"document_id": document_id, "revision": doc["revision"] + 1, "principal_ids": ids}
+
+
+def delete_document(db, settings, principal, document_id, body):
+    """Irreversible removal: rows purged, the original blob quarantined for later disposal.
+
+    Permission mirrors the approval boundary (unit approver) plus system admins (is_admin).
+    A published version is withdrawn first inside the same transaction, so the search pool
+    clears atomically. Audit rows survive the delete - they reference a gone document but are
+    kept intentionally as the only trace of who removed what.
+    """
+    with db.connection(write=True) as conn:
+        doc = conn.execute(
+            """SELECT id,title,organization_id,revision,active_version_id,created_by
+            FROM documents WHERE id=%s FOR UPDATE""",
+            (document_id,),
+        ).fetchone()
+        if not doc or not (principal.publisher(doc["organization_id"]) or principal.is_admin):
+            not_found()
+        check_revision(doc, body.expected_revision)
+        blob_rows = conn.execute(
+            """SELECT u.blob_key,u.filename FROM versions v JOIN uploads u ON u.id=v.upload_id
+            WHERE v.document_id=%s""",
+            (document_id,),
+        ).fetchall()
+        titles = [row["filename"] for row in blob_rows]
+        for table, column in (("chunks", "version_id"), ("jobs", "version_id")):
+            conn.execute(
+                f"DELETE FROM {table} WHERE {column} IN (SELECT id FROM versions WHERE document_id=%s)",
+                (document_id,),
+            )
+        conn.execute(
+            """DELETE FROM file_links WHERE parent_version_id IN
+            (SELECT id FROM versions WHERE document_id=%s)
+            OR child_version_id IN (SELECT id FROM versions WHERE document_id=%s)""",
+            (document_id, document_id),
+        )
+        conn.execute("DELETE FROM document_grants WHERE document_id=%s", (document_id,))
+        conn.execute("UPDATE documents SET active_version_id=NULL WHERE id=%s", (document_id,))
+        # Audit rows are the deletion trace; detach them from the doomed versions/documents
+        # instead of deleting, so "who removed what" survives the purge.
+        conn.execute(
+            """UPDATE audit_events SET version_id=NULL, document_id=NULL
+            WHERE document_id=%s""",
+            (document_id,),
+        )
+        conn.execute("DELETE FROM versions WHERE document_id=%s", (document_id,))
+        conn.execute("DELETE FROM documents WHERE id=%s", (document_id,))
+        # The delete audit row is written after the purge with detached IDs: it is the trace of
+        # "who removed what", and must not reference rows that no longer exist.
+        quarantine = settings.storage_root / "quarantine"
+        quarantine.mkdir(parents=True, exist_ok=True)
+        moved = []
+        for row in blob_rows:
+            if not row["blob_key"]:
+                continue
+            source = settings.storage_root / row["blob_key"]
+            if source.exists():
+                target = quarantine / f"{document_id}-{row['blob_key']}"
+                source.rename(target)
+                moved.append(target.name)
+                # Written after the purge with detached IDs: the delete trace must not reference rows
+                # that no longer exist.
+                conn.execute(
+                    """INSERT INTO audit_events(actor_id,document_id,version_id,action,details)
+                    VALUES (%s,NULL,NULL,'delete_document',%s)""",
+                    (
+                        principal.id,
+                        Jsonb(
+                            {
+                                "title": doc["title"],
+                                "organization_id": doc["organization_id"],
+                                "filenames": titles,
+                                "quarantined": moved,
+                            }
+                        ),
+                    ),
+                )
+        return {
+            "document_id": document_id,
+            "title": doc["title"],
+            "deleted_versions": len(blob_rows),
+            "quarantined": moved,
+        }
 
 
 def version_history(db, principal, document_id, limit, offset):

@@ -186,6 +186,82 @@ def test_unit_approver_rejects_another_authors_draft(kb):
         assert action["action"] == "withdraw_submission"
 
 
+def test_delete_document_permission_quarantine_and_audit(kb):
+    """Approver deletes a published doc; other units and members cannot; blob quarantined."""
+
+    client, db, root = kb
+    created, _, _ = submit(client)
+    version = created.json()["version_id"]
+    document = created.json()["document_id"]
+    assert (
+        client.post(
+            f"/v1/versions/{version}/publish",
+            headers=headers("chief"),
+            json={"expected_revision": 0, "accept_incomplete": True},
+        ).status_code
+        == 200
+    )
+    storage_files = list(root.rglob("*.blob")) + list(root.rglob("*.md"))
+
+    # Cross-unit approver and plain member must be rejected (404 hides existence).
+    other = client.request(
+        "DELETE",
+        f"/v1/documents/{document}",
+        headers=headers("otherchief"),
+        json={"expected_revision": 1},
+    )
+    assert other.status_code == 404
+    member = client.request(
+        "DELETE",
+        f"/v1/documents/{document}",
+        headers=headers("alice"),
+        json={"expected_revision": 1},
+    )
+    assert member.status_code == 404
+    # Stale revision is a conflict, not a delete.
+    stale = client.request(
+        "DELETE",
+        f"/v1/documents/{document}",
+        headers=headers("chief"),
+        json={"expected_revision": 99},
+    )
+    assert stale.status_code == 409
+
+    deleted = client.request(
+        "DELETE",
+        f"/v1/documents/{document}",
+        headers=headers("chief"),
+        json={"expected_revision": 1},
+    )
+    assert deleted.status_code == 200, deleted.text
+    assert deleted.json()["deleted_versions"] == 1
+    assert deleted.json()["quarantined"], "original blob must be quarantined"
+
+    # Gone from search, versions, jobs, chunks; audit survives as the only trace.
+    assert (
+        client.post(
+            "/v1/search", headers=headers("chief"), json={"query": "合成文件", "mode": "files"}
+        ).json()["items"]
+        == []
+    )
+    with db.connection() as conn:
+        assert conn.execute("SELECT count(*) AS n FROM documents").fetchone()["n"] == 0
+        assert conn.execute("SELECT count(*) AS n FROM versions").fetchone()["n"] == 0
+        assert conn.execute("SELECT count(*) AS n FROM chunks").fetchone()["n"] == 0
+        assert conn.execute("SELECT count(*) AS n FROM jobs").fetchone()["n"] == 0
+        event = conn.execute(
+            "SELECT actor_id,action,details FROM audit_events WHERE action='delete_document' ORDER BY created_at DESC LIMIT 1"
+        ).fetchone()
+        assert event["actor_id"] == "chief" and event["action"] == "delete_document"
+        assert event["details"]["filenames"] == ["公司资料.md"]
+    # The original file still exists but moved into the quarantine folder.
+    quarantine = root / "quarantine"
+    quarantined = list(quarantine.iterdir())
+    assert quarantined and all(p.is_file() for p in quarantined)
+    for path in storage_files:
+        assert not path.exists(), f"{path} should have been moved to quarantine"
+
+
 def test_publisher_discovers_withdrawn_file_without_retained_identifiers(kb):
     client, _, _ = kb
     created, _, _ = submit(client)

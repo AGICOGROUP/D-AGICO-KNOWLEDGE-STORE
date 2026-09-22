@@ -19,7 +19,12 @@ def test_portal_session_metadata_scopes_organizations(kb):
     client, _, _ = kb
     assert client.get("/v1/portal-session").status_code == 401
     session = client.get("/v1/portal-session", headers=headers()).json()
-    assert session == {"identity": "alice", "max_upload_bytes": 1024, "publisher_organizations": []}
+    assert session == {
+        "identity": "alice",
+        "max_upload_bytes": 1024,
+        "publisher_organizations": [],
+        "is_admin": False,
+    }
     # The approval actions are gated on the units this account approves for.
     approver = client.get("/v1/portal-session", headers=headers("chief")).json()
     assert approver["publisher_organizations"] == ["baiste"]

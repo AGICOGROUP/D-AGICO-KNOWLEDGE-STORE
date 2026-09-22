@@ -14,6 +14,7 @@ from .config import Settings
 from .contracts import (
     ChunkEdit,
     ContextRequest,
+    DeleteDocument,
     Grants,
     LinkRequest,
     PrepareUpload,
@@ -109,6 +110,7 @@ def create_app(settings: Settings) -> FastAPI:
             "publisher_organizations": sorted(
                 key for key in principal.memberships if principal.publisher(key)
             ),
+            "is_admin": principal.is_admin,
         }
 
     portal_root = Path(__file__).parent / "portal"
@@ -192,6 +194,10 @@ def create_app(settings: Settings) -> FastAPI:
     @app.patch("/v1/versions/{version_id}/chunks")
     def edit_chunk(version_id: UUID, body: ChunkEdit, request: Request):
         return search_service.edit_chunk(request.state.principal, version_id, body)
+
+    @app.delete("/v1/documents/{document_id}")
+    def delete_document(document_id: UUID, body: DeleteDocument, request: Request):
+        return lifecycle.delete_document(db, settings, request.state.principal, document_id, body)
 
     @app.post("/v1/documents/{document_id}/withdraw")
     def withdraw(document_id: UUID, body: Revision, request: Request):
