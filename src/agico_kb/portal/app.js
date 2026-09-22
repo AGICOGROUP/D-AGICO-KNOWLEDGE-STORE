@@ -29,6 +29,9 @@ function errorText(body, status) {
   if (status === 404) return "文件不存在，或你没有访问权限。";
   if (status === 413) return "文件超过允许的大小，请选择较小的文件。";
   if (status === 422) return body?.error?.message || "提交信息不符合要求，请检查文件名和表单内容。";
+  if (status === 524 || status === 504) return `上传超时（${status}）：文件传到一半连接被中断，通常是文件太大或网络太慢。请改用本机地址 http://127.0.0.1:8765 上传，或压缩后再传。`;
+  if (status === 502 || status === 503) return `服务暂时不可用（${status}）：后台正在重启或隧道断开。稍等 30 秒重试，若仍失败请查看 .local/tunnel/stderr.log。`;
+  if (status >= 500) return `服务器内部错误（${status}）：${body?.error?.message || "原因已记入服务日志 .local/tunnel/stderr.log"}。`;
   return body?.error?.message || `请求未完成（${status}），请稍后重试。`;
 }
 async function api(path, options = {}, token = state.token) {
@@ -215,7 +218,9 @@ $("upload-form").addEventListener("submit", async (e) => {
       message("upload-message", `${completed} 份文件已提交至「${orgName(attempt.body.organization_id)}」${skippedNote}。后台正在处理，管理员审批通过后可供查找。`);
       $("submit-button").textContent = "提交到知识库 →";
     } else {
-      message("upload-message", `已提交 ${completed} 份${skippedNote}，${failed} 份未确认完成。重试只处理未完成项，已成功的文件不会重复提交。\n若要重新选择，请先检查待审核列表，避免重复提交。`, true);
+      const failures = attempt.items.filter((item) => !item.versionId && !item.skipped);
+      const reasons = failures.map((item) => `· ${item.file.name}（${size(item.file.size)}）：${item.error || "原因未记录"}`).join("\n");
+      message("upload-message", `已提交 ${completed} 份${skippedNote}，${failed} 份失败：\n${reasons}\n\n重试只处理未完成项，已成功的文件不会重复提交；重试前可先核对上面的原因。`, true);
       $("submit-button").textContent = `重试未完成的 ${failed} 份 →`; $("reset-attempt").hidden = false;
     }
     switchTab("pending");
@@ -272,6 +277,7 @@ function rows(items) {
     info.append(element("h3", "file-name", item.title), element("p", "file-meta", `${orgName(item.organization_id)}${item.category_id ? " / " + categoryName(item.category_id) : ""}${item.size ? " · " + size(item.size) : ""}`));
     const status = element("span", "status-tag", `${state.tab === "pending" ? "待审核 · " : ""}${statuses[item.processing_status] || "已发布"}`);
     status.classList.toggle("warning", ["partial", "failed", "stored_only"].includes(item.processing_status)); info.append(status);
+    if (item.failure_reason) info.append(element("p", "file-error", `失败原因：${item.failure_reason}`));
     const button = element("button", "text-button", "下载 ↓"); button.type = "button"; button.setAttribute("aria-label", `下载 ${item.title}`); button.addEventListener("click", () => download(item, button));
     row.append(element("span", "file-badge", ext || "FILE"), info, button);
     if (state.tab === "pending" && canApprove(item.organization_id)) {
