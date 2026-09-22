@@ -67,7 +67,7 @@ def keyword_query(text):
 
 
 FIELDS = """d.id AS document_id,v.id AS version_id,d.title,d.organization_id,d.category_id,
-    d.model,d.business_date,v.source_version,v.capabilities,v.warnings,v.processing_status"""
+    d.model,d.business_date,d.revision,v.source_version,v.capabilities,v.warnings,v.processing_status"""
 FROM = "FROM documents d JOIN versions v ON v.document_id=d.id JOIN uploads u ON u.id=v.upload_id"
 
 

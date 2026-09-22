@@ -299,6 +299,7 @@ function rows(items) {
 }
 function canDelete(organizationId) { return canApprove(organizationId) || state.session?.is_admin; }
 async function deleteDocument(item, button) {
+  if (!window.confirm(`删除「${item.title}」？`)) return;
   button.disabled = true;
   try {
     const result = await api(`/v1/documents/${encodeURIComponent(item.document_id)}`, {method: "DELETE", body: {expected_revision: item.revision ?? 0}});
