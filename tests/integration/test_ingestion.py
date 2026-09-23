@@ -267,6 +267,69 @@ def test_docx_content_control_paragraphs_are_indexed(tmp_path):
     assert any("内容控件内容已收录" in w for w in result.warnings)
 
 
+def logo_png_bytes():
+    """A valid 8x8 PNG. A hand-written base64 blob passed python-docx but pymupdf rejected it."""
+    import pymupdf
+
+    pixmap = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 8, 8))
+    pixmap.clear_with(200)
+    return pixmap.tobytes("png")
+
+
+def test_docx_logo_is_not_reported_while_a_content_figure_is(tmp_path):
+    """A logo is decoration, a figure is content — measured sizes do not overlap (≤1.8 cm vs
+    ≥9.4 cm), so the report follows the picture's size rather than its mere existence."""
+    from docx import Document
+    from docx.shared import Cm
+
+    mark = tmp_path / "mark.png"
+    mark.write_bytes(logo_png_bytes())
+
+    logo = Document()
+    logo.add_paragraph("AX-210 80 C.")
+    logo.add_picture(str(mark), width=Cm(1.5), height=Cm(1.5))
+    logo_path = tmp_path / (uuid4().hex + ".docx")
+    logo.save(logo_path)
+    result = parse_file(logo_path, logo_path.name)
+    assert result.status == "ready"
+    assert not any("图片" in warning for warning in result.warnings)
+
+    figure = Document()
+    figure.add_paragraph("AX-210 80 C.")
+    figure.add_picture(str(mark), width=Cm(15), height=Cm(10))
+    figure_path = tmp_path / (uuid4().hex + ".docx")
+    figure.save(figure_path)
+    result = parse_file(figure_path, figure_path.name)
+    assert result.status == "partial"
+    assert any("未解释" in warning for warning in result.warnings)
+
+
+def test_pdf_margin_logo_is_not_reported_but_a_figure_is(tmp_path):
+    import pymupdf
+
+    png = logo_png_bytes()
+
+    logo_path = tmp_path / (uuid4().hex + ".pdf")
+    document = pymupdf.open()
+    page = document.new_page()
+    page.insert_text((72, 420), "Chapter body text")
+    page.insert_image(pymupdf.Rect(72, 40, 112, 80), stream=png)
+    document.save(logo_path)
+    document.close()
+    result = parse_file(logo_path, logo_path.name)
+    assert not any("含图片" in warning for warning in result.warnings)
+
+    figure_path = tmp_path / (uuid4().hex + ".pdf")
+    document = pymupdf.open()
+    page = document.new_page()
+    page.insert_text((72, 420), "Chapter body text")
+    page.insert_image(pymupdf.Rect(72, 200, 272, 400), stream=png)
+    document.save(figure_path)
+    document.close()
+    result = parse_file(figure_path, figure_path.name)
+    assert any("含图片" in warning for warning in result.warnings)
+
+
 def test_word_footnote_warning_requires_an_actual_note():
     """Word always writes the footnotes part — an empty one must not mark the document partial."""
     import io

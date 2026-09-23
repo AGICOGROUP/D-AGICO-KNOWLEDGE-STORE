@@ -136,8 +136,9 @@ def _docx(path, result):
         counted[kind] += 1
         for block_kind, text in blocks:
             result.add(text, kind=block_kind, **{kind: index}, section=section)
-    if doc.inline_shapes:
-        result.warnings.append("Word 内嵌图片／图形未解释，请查看原文件。")
+    figures = content_figures(doc)
+    if figures:
+        result.warnings.append(f"Word 内含 {len(figures)} 张图片／图形未解释，请查看原文件。")
     if counted["textbox"]:
         result.warnings.append(
             f"Word 文本框内容已收录（{counted['textbox']} 个文本框），版面位置与原文件不同。"
@@ -165,6 +166,23 @@ def _docx(path, result):
             if n in names
         ):
             result.warnings.append("Word 脚注／尾注未解析，内容可能缺少适用条件，请查看原文件。")
+
+
+EMU_PER_CM = 360000
+# A picture this small is a logo, an icon or a bullet glyph — decorative, not content. Measured
+# over the corpus the two groups do not overlap at all: logos and icons run 0.3–1.8 cm, content
+# figures 9.4–22.7 cm. Reporting a logo as "content not indexed" made 11 versions look incomplete
+# for a picture that carries no information.
+FIGURE_CM = 4.0
+
+
+def content_figures(document):
+    """Inline pictures large enough to be content rather than decoration."""
+    return [
+        shape
+        for shape in document.inline_shapes
+        if max(shape.width, shape.height) / EMU_PER_CM > FIGURE_CM
+    ]
 
 
 def _notes_have_text(archive, name):
@@ -509,6 +527,31 @@ def _image_coverage(page):
     return min(1.0, covered / area)
 
 
+def _content_images(page):
+    """Placed images big enough to be content rather than decoration.
+
+    A logo or stamp in the margin, or anything under 1% of the page area, carries no information:
+    flagging it made a page look like it hid content when it did not.
+    """
+    import pymupdf
+
+    rect = page.rect
+    area = abs(rect.width * rect.height) or 1.0
+    found = []
+    for item in page.get_image_info():
+        box = pymupdf.Rect(item["bbox"])
+        if box.is_empty:
+            continue
+        share = abs(box.width * box.height) / area
+        if share < 0.01:
+            continue
+        centre = (box.y0 + box.y1) / 2 / (rect.height or 1.0)
+        if share < 0.05 and _in_margin(centre):
+            continue
+        found.append(box)
+    return found
+
+
 def _pdf(path, result, first_page=None, last_page=None):
     """Parse a PDF. first_page/last_page (1-based, inclusive) bound the work so the worker can
     split huge scans into segments that each fit the parse timeout."""
@@ -557,7 +600,7 @@ def _pdf(path, result, first_page=None, last_page=None):
                         blocks.append(body)
             if blocks:
                 result.add("\n".join(blocks), kind="page", page=index)
-            if page.get_images():
+            if _content_images(page):
                 result.warnings.append(f"PDF 第 {index} 页含图片，原生文字已提取，图片内容未解释。")
         if len(doc) > 1:
             result.warnings.append("PDF 表格按原页保留；跨页表头和脚注需结合相邻页读取。")
