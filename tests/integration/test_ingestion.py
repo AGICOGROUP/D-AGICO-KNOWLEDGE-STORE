@@ -267,6 +267,36 @@ def test_docx_content_control_paragraphs_are_indexed(tmp_path):
     assert any("内容控件内容已收录" in w for w in result.warnings)
 
 
+def test_word_footnote_warning_requires_an_actual_note():
+    """Word always writes the footnotes part — an empty one must not mark the document partial."""
+    import io
+    import zipfile
+
+    from agico_kb.ingestion import _notes_have_text
+
+    def archive_with(inner):
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as archive:
+            archive.writestr(
+                "word/footnotes.xml",
+                '<w:footnotes xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+                f"{inner}</w:footnotes>",
+            )
+        buffer.seek(0)
+        return zipfile.ZipFile(buffer)
+
+    separators = (
+        '<w:footnote w:type="separator" w:id="-1"><w:p><w:r><w:separator/></w:r></w:p></w:footnote>'
+        '<w:footnote w:type="continuationSeparator" w:id="0"><w:p><w:r>'
+        "<w:continuationSeparator/></w:r></w:p></w:footnote>"
+    )
+    assert not _notes_have_text(archive_with(separators), "word/footnotes.xml")
+    with_note = separators + (
+        '<w:footnote w:id="1"><w:p><w:r><w:t>注：仅标准配置有效</w:t></w:r></w:p></w:footnote>'
+    )
+    assert _notes_have_text(archive_with(with_note), "word/footnotes.xml")
+
+
 def test_pdf_page_numbers_in_the_margin_are_not_indexed(tmp_path):
     """A folio differs on every page, so repetition alone can never see it — yet left alone it
     becomes a chunk whose entire text is "3". The rule must not touch a list number like "2."."""

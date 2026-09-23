@@ -158,8 +158,29 @@ def _docx(path, result):
     # them as a gap was worse than the gap: it marked 38 of 44 Word versions "partially parsed",
     # which is the signal that is supposed to mean content actually went missing.
     with zipfile.ZipFile(path) as z:
-        if any(n in z.namelist() for n in ["word/footnotes.xml", "word/endnotes.xml"]):
+        names = z.namelist()
+        if any(
+            _notes_have_text(z, n)
+            for n in ("word/footnotes.xml", "word/endnotes.xml")
+            if n in names
+        ):
             result.warnings.append("Word 脚注／尾注未解析，内容可能缺少适用条件，请查看原文件。")
+
+
+def _notes_have_text(archive, name):
+    """True only when a footnotes/endnotes part carries an actual note.
+
+    Word and LibreOffice always write the part — a document with no footnotes still has
+    `word/footnotes.xml` holding just the separator and continuationSeparator entries. Warning on
+    the part's presence marked 30 of 54 versions "partially parsed" for nothing, the same way the
+    header/footer warning did.
+    """
+    xml = archive.read(name).decode("utf-8", errors="replace")
+    structural = re.compile(
+        r"<w:(?:foot|end)note\b[^>]*w:type=\"(?:separator|continuationSeparator|continuationNotice)\"[^>]*>.*?</w:(?:foot|end)note>",
+        re.DOTALL,
+    )
+    return bool(re.search(r"<w:t(?:\s[^>]*)?>\s*\S", structural.sub("", xml)))
 
 
 def _sheet_rows(sheet):
