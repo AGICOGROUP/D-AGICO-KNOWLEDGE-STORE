@@ -46,9 +46,9 @@ def _xml_paragraph_text(paragraph):
     return "".join(node.text or "" for node in paragraph.iter(f"{WORD_NS}t"))
 
 
-def _textbox_blocks(box):
-    """Paragraphs and tables inside a Word text box, in document order."""
-    for child in box.iterchildren():
+def _xml_blocks(region):
+    """Paragraphs and tables directly inside an XML region (text box, content control)."""
+    for child in region.iterchildren():
         if child.tag == f"{WORD_NS}tbl":
             rows = []
             for row in child.findall(f"{WORD_NS}tr"):
@@ -108,34 +108,46 @@ def _docx(path, result):
                 section=section,
             )
     flush_pending()
-    # Text boxes (callouts, boxed tables, notes) sit outside the body traversal, so python-docx
-    # never reaches them; read them from the XML instead of losing the content to a warning.
-    boxes = doc._element.xpath(".//w:txbxContent")
-    boxes_with_text = 0
-    seen_boxes = set()
-    for index, box in enumerate(boxes, start=1):
-        blocks = list(_textbox_blocks(box))
+    # Text boxes (callouts, boxed tables) and content controls (w:sdt — a generated table of
+    # contents, template fields) sit outside the body traversal, so python-docx never reaches them;
+    # read both from the XML instead of losing the content to a warning. A field-generated TOC is
+    # how a whole table of contents went missing from a .doc while its body parsed fine.
+    regions = [
+        ("textbox", box, index)
+        for index, box in enumerate(doc._element.xpath(".//w:txbxContent"), start=1)
+    ]
+    regions += [
+        ("control", content, index)
+        for index, content in enumerate(doc._element.xpath(".//w:sdtContent"), start=1)
+    ]
+    seen_regions = set()
+    counted = {"textbox": 0, "control": 0}
+    for kind, region, index in regions:
+        blocks = list(_xml_blocks(region))
         if not blocks:
             continue
-        # mc:AlternateContent stores the same box twice (Choice and Fallback); index it once.
+        # mc:AlternateContent stores the same region twice (Choice and Fallback); index it once.
         signature = "\n".join(text for _, text in blocks)
-        if signature in seen_boxes:
+        if signature in seen_regions:
             continue
-        seen_boxes.add(signature)
-        boxes_with_text += 1
-        for kind, text in blocks:
-            result.add(text, kind=kind, textbox=index, section=section)
+        seen_regions.add(signature)
+        counted[kind] += 1
+        for block_kind, text in blocks:
+            result.add(text, kind=block_kind, **{kind: index}, section=section)
     if doc.inline_shapes:
         result.warnings.append("Word 内嵌图片／图形未解释，请查看原文件。")
-    if boxes:
-        if boxes_with_text:
-            result.warnings.append(
-                f"Word 文本框内容已收录（{boxes_with_text} 个文本框），版面位置与原文件不同。"
-            )
-        else:
-            result.warnings.append("Word 文本框内只有图形，未解释，请查看原文件。")
-    if doc._element.xpath(".//w:sdt | .//w:ins | .//w:del"):
-        result.warnings.append("Word 内容控件或修订未完整解析，请核对原文件。")
+    if counted["textbox"]:
+        result.warnings.append(
+            f"Word 文本框内容已收录（{counted['textbox']} 个文本框），版面位置与原文件不同。"
+        )
+    elif doc._element.xpath(".//w:txbxContent"):
+        result.warnings.append("Word 文本框内只有图形，未解释，请查看原文件。")
+    if counted["control"]:
+        result.warnings.append(
+            f"Word 内容控件内容已收录（{counted['control']} 处），版面位置可能与原文件不同。"
+        )
+    if doc._element.xpath(".//w:ins | .//w:del"):
+        result.warnings.append("Word 修订标记未完整解析，请核对原文件。")
     if any(cell.tables for table in doc.tables for row in table.rows for cell in row.cells):
         result.warnings.append("Word 嵌套表格未完整解析，请查看原文件。")
     # Headers, footers, notes and textboxes aren't part of the body traversal.

@@ -241,6 +241,32 @@ def test_docx_textbox_table_is_kept_as_a_table_once(tmp_path):
     assert boxed[0].locator["kind"] == "table"
 
 
+def test_docx_content_control_paragraphs_are_indexed(tmp_path):
+    """A field-generated table of contents lives in w:sdt; skipping it loses the whole TOC."""
+    from docx import Document
+    from docx.oxml import parse_xml
+
+    path = tmp_path / (uuid4().hex + ".docx")
+    doc = Document()
+    doc.add_paragraph("第一章 工程设计")
+    body = doc.element.body
+    body.append(
+        parse_xml(
+            '<w:sdt xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+            "<w:sdtContent>"
+            "<w:p><w:r><w:t>1.4 设计规模Escala de diseño</w:t></w:r><w:r><w:tab/></w:r>"
+            "<w:r><w:t>- 2 -</w:t></w:r></w:p>"
+            "</w:sdtContent></w:sdt>"
+        )
+    )
+    doc.save(path)
+    result = parse_file(path, path.name)
+    text = "\n".join(c.text for c in result.chunks)
+    assert "1.4 设计规模" in text
+    assert any(c.locator.get("control") for c in result.chunks)
+    assert any("内容控件内容已收录" in w for w in result.warnings)
+
+
 def test_docx_header_table_missing_from_body_is_disclosed(tmp_path):
     from docx import Document
     from docx.shared import Inches
