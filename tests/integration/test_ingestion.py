@@ -185,7 +185,7 @@ def test_pdf_text_block_crossing_table_boundary_keeps_outside_condition(tmp_path
     assert "220 V" in text and "NOT EXPLOSION PROOF" in text
 
 
-def test_docx_textbox_is_not_silently_reported_as_complete(tmp_path):
+def test_docx_textbox_content_is_captured_and_not_silently_dropped(tmp_path):
     from docx import Document
     from docx.oxml import parse_xml
 
@@ -199,7 +199,46 @@ def test_docx_textbox_is_not_silently_reported_as_complete(tmp_path):
     )
     doc.save(path)
     result = parse_file(path, path.name)
-    assert result.status == "partial" and any("文本框" in w for w in result.warnings)
+    text = "\n".join(c.text for c in result.chunks)
+    assert "ONLY STANDARD CONFIGURATION" in text
+    assert any(c.locator.get("textbox") for c in result.chunks)
+    # Everything in the file is readable now, so it is ready rather than partial, but the reader
+    # is still told the box's position differs from the original layout.
+    assert result.status == "ready"
+    assert any("文本框" in w for w in result.warnings)
+
+
+def test_docx_textbox_table_is_kept_as_a_table_once(tmp_path):
+    """A boxed table must be indexed with its rows, and mc:AlternateContent must not double it."""
+    from docx import Document
+    from docx.oxml import parse_xml
+
+    path = tmp_path / (uuid4().hex + ".docx")
+    doc = Document()
+    doc.add_paragraph("除臭措施见下表。")
+    box = (
+        "<w:txbxContent>"
+        "<w:tbl>"
+        "<w:tr><w:tc><w:p><w:r><w:t>场所</w:t></w:r></w:p></w:tc>"
+        "<w:tc><w:p><w:r><w:t>除臭措施</w:t></w:r></w:p></w:tc></w:tr>"
+        "<w:tr><w:tc><w:p><w:r><w:t>垃圾卸料大厅</w:t></w:r></w:p></w:tc>"
+        "<w:tc><w:p><w:r><w:t>植物除臭剂喷洒</w:t></w:r></w:p></w:tc></w:tr>"
+        "</w:tbl></w:txbxContent>"
+    )
+    paragraph = doc.add_paragraph("")
+    paragraph._p.append(
+        parse_xml(
+            '<w:pict xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:v="urn:schemas-microsoft-com:vml"><v:shape><v:textbox>'
+            + box
+            + "</v:textbox></v:shape></w:pict>"
+        )
+    )
+    doc.save(path)
+    result = parse_file(path, path.name)
+    boxed = [c for c in result.chunks if c.locator.get("textbox")]
+    assert len(boxed) == 1
+    assert "垃圾卸料大厅 | 植物除臭剂喷洒" in boxed[0].text
+    assert boxed[0].locator["kind"] == "table"
 
 
 def test_docx_header_table_missing_from_body_is_disclosed(tmp_path):

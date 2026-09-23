@@ -39,6 +39,33 @@ def _table_text(rows):
     return "\n".join(" | ".join(str(c or "").replace("\n", " / ") for c in row) for row in rows)
 
 
+WORD_NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+
+
+def _xml_paragraph_text(paragraph):
+    return "".join(node.text or "" for node in paragraph.iter(f"{WORD_NS}t"))
+
+
+def _textbox_blocks(box):
+    """Paragraphs and tables inside a Word text box, in document order."""
+    for child in box.iterchildren():
+        if child.tag == f"{WORD_NS}tbl":
+            rows = []
+            for row in child.findall(f"{WORD_NS}tr"):
+                cells = [
+                    " ".join(_xml_paragraph_text(p) for p in cell.findall(f"{WORD_NS}p")).strip()
+                    for cell in row.findall(f"{WORD_NS}tc")
+                ]
+                if any(cells):
+                    rows.append(cells)
+            if rows:
+                yield ("table", _table_text(rows))
+        elif child.tag == f"{WORD_NS}p":
+            text = _xml_paragraph_text(child).strip()
+            if text:
+                yield ("paragraph", text)
+
+
 def _docx(path, result):
     from docx import Document
     from docx.table import Table
@@ -81,10 +108,32 @@ def _docx(path, result):
                 section=section,
             )
     flush_pending()
+    # Text boxes (callouts, boxed tables, notes) sit outside the body traversal, so python-docx
+    # never reaches them; read them from the XML instead of losing the content to a warning.
+    boxes = doc._element.xpath(".//w:txbxContent")
+    boxes_with_text = 0
+    seen_boxes = set()
+    for index, box in enumerate(boxes, start=1):
+        blocks = list(_textbox_blocks(box))
+        if not blocks:
+            continue
+        # mc:AlternateContent stores the same box twice (Choice and Fallback); index it once.
+        signature = "\n".join(text for _, text in blocks)
+        if signature in seen_boxes:
+            continue
+        seen_boxes.add(signature)
+        boxes_with_text += 1
+        for kind, text in blocks:
+            result.add(text, kind=kind, textbox=index, section=section)
     if doc.inline_shapes:
         result.warnings.append("Word 内嵌图片／图形未解释，请查看原文件。")
-    if doc._element.xpath(".//w:txbxContent"):
-        result.warnings.append("Word 文本框未纳入正文，可能包含适用条件，请查看原文件。")
+    if boxes:
+        if boxes_with_text:
+            result.warnings.append(
+                f"Word 文本框内容已收录（{boxes_with_text} 个文本框），版面位置与原文件不同。"
+            )
+        else:
+            result.warnings.append("Word 文本框内只有图形，未解释，请查看原文件。")
     if doc._element.xpath(".//w:sdt | .//w:ins | .//w:del"):
         result.warnings.append("Word 内容控件或修订未完整解析，请核对原文件。")
     if any(cell.tables for table in doc.tables for row in table.rows for cell in row.cells):
