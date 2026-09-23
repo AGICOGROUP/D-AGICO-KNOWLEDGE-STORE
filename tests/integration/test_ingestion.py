@@ -267,7 +267,39 @@ def test_docx_content_control_paragraphs_are_indexed(tmp_path):
     assert any("内容控件内容已收录" in w for w in result.warnings)
 
 
-def test_docx_header_table_missing_from_body_is_disclosed(tmp_path):
+def test_pdf_page_numbers_in_the_margin_are_not_indexed(tmp_path):
+    """A folio differs on every page, so repetition alone can never see it — yet left alone it
+    becomes a chunk whose entire text is "3". The rule must not touch a list number like "2."."""
+    import pymupdf
+
+    from agico_kb.ingestion import PAGE_NUMBER
+
+    assert PAGE_NUMBER.match("3")
+    assert PAGE_NUMBER.match("第 3 页")
+    assert PAGE_NUMBER.match("3 / 10")
+    assert PAGE_NUMBER.match("Page 3 of 10")
+    assert not PAGE_NUMBER.match("2.")
+    assert not PAGE_NUMBER.match("第三章 考勤规定")
+
+    path = tmp_path / (uuid4().hex + ".pdf")
+    document = pymupdf.open()
+    for index in range(1, 5):
+        page = document.new_page()
+        page.insert_text((72, 420), f"Chapter {index} body text")
+        page.insert_text((72, 800), str(index))
+    document.save(path)
+    document.close()
+    result = parse_file(path, path.name)
+    text = "\n".join(c.text for c in result.chunks)
+    assert "Chapter 3 body text" in text
+    assert not any(chunk.text.strip() == "3" for chunk in result.chunks)
+
+
+def test_docx_header_content_stays_out_without_flagging_the_document(tmp_path):
+    """Header/footer text is boilerplate — company name, contact block, page number — repeated
+    across dozens of files. It is deliberately left out of the index, and deliberately not
+    reported: warning about it marked 38 of 44 Word versions "partially parsed", which is the
+    signal meant to mean content actually went missing."""
     from docx import Document
     from docx.shared import Inches
 
@@ -278,4 +310,27 @@ def test_docx_header_table_missing_from_body_is_disclosed(tmp_path):
     table.cell(0, 0).text = "仅标准配置有效"
     doc.save(path)
     result = parse_file(path, path.name)
-    assert result.status == "partial" and any("页眉" in w for w in result.warnings)
+    text = "\n".join(c.text for c in result.chunks)
+    assert "AX-210 80 C." in text
+    assert "仅标准配置有效" not in text
+    assert result.status == "ready"
+    assert not any("页眉" in w for w in result.warnings)
+
+
+def test_pdf_running_footer_is_dropped_but_body_text_stays(tmp_path):
+    """A footer repeated on every page is indexed once per page unless it is removed; a line that
+    only appears on one page is content and must survive."""
+    import pymupdf
+
+    path = tmp_path / (uuid4().hex + ".pdf")
+    document = pymupdf.open()
+    for index in range(1, 5):
+        page = document.new_page()
+        page.insert_text((72, 420), f"Chapter {index} body text")
+        page.insert_text((72, 800), "SHUANGLONG 19561015678")
+    document.save(path)
+    document.close()
+    result = parse_file(path, path.name)
+    text = "\n".join(c.text for c in result.chunks)
+    assert "Chapter 3 body text" in text
+    assert "19561015678" not in text

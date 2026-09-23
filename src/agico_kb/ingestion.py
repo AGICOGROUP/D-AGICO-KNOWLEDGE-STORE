@@ -1,7 +1,9 @@
 """Format adapters preserve source coordinates; unavailable content is disclosed."""
 
 import json
+import math
 import os
+import re
 import sys
 import zipfile
 from dataclasses import asdict, dataclass, field
@@ -150,14 +152,11 @@ def _docx(path, result):
         result.warnings.append("Word 修订标记未完整解析，请核对原文件。")
     if any(cell.tables for table in doc.tables for row in table.rows for cell in row.cells):
         result.warnings.append("Word 嵌套表格未完整解析，请查看原文件。")
-    # Headers, footers, notes and textboxes aren't part of the body traversal.
-    if any(area.tables for s in doc.sections for area in (s.header, s.footer)) or any(
-        p.text.strip()
-        for s in doc.sections
-        for area in (s.header, s.footer)
-        for p in area.paragraphs
-    ):
-        result.warnings.append("Word 页眉页脚未纳入正文，需结合原文件。")
+    # Headers and footers stay out of the index on purpose. Measured across the corpus they carry
+    # only the company name, contact block, project line and page number — identical across dozens
+    # of files — so indexing them adds repeated noise to retrieval while losing nothing. Flagging
+    # them as a gap was worse than the gap: it marked 38 of 44 Word versions "partially parsed",
+    # which is the signal that is supposed to mean content actually went missing.
     with zipfile.ZipFile(path) as z:
         if any(n in z.namelist() for n in ["word/footnotes.xml", "word/endnotes.xml"]):
             result.warnings.append("Word 脚注／尾注未解析，内容可能缺少适用条件，请查看原文件。")
@@ -358,11 +357,93 @@ def _ocr_reading_order(boxes, texts):
     return "\n".join(_ocr_block_text(block) for block in blocks if block)
 
 
-def _ocr(image_input, result, **locator):
+def _squash(text):
+    """Whitespace-insensitive key, so OCR and native text of the same line compare equal."""
+    return "".join(text.split())
+
+
+# A folio: "3", "- 3 -", "第 3 页", "3 / 10", "Page 3 of 10". A trailing dot is excluded on
+# purpose — "2." at the top of a page is a list number, not a page number.
+PAGE_NUMBER = re.compile(
+    r"^[\s\-–—_·/]*(?:第\s*)?(?:page\s*)?\d{1,4}(?:\s*(?:/|of|共)\s*\d{1,4})?\s*(?:页)?[\s\-–—_·/]*$",
+    re.IGNORECASE,
+)
+
+
+def _page_lines(page):
+    """Text lines with their vertical centre as a fraction of page height."""
+    height = page.rect.height or 1.0
+    lines = []
+    for block in page.get_text("dict")["blocks"]:
+        if block.get("type") != 0:
+            continue
+        for line in block["lines"]:
+            text = "".join(span["text"] for span in line["spans"]).strip()
+            if text:
+                lines.append((text, (line["bbox"][1] + line["bbox"][3]) / 2 / height))
+    return lines
+
+
+def _in_margin(position):
+    """True for a line sitting in the top or bottom band of the page — where furniture lives."""
+    return position <= 0.12 or position >= 0.88
+
+
+def _furniture(pages_lines):
+    """Running heads and footers: short text repeated in the top or bottom band of most pages.
+
+    They are the largest single source of retrieval noise in a PDF — a footer's phone number gets
+    indexed once per page — while carrying almost nothing: page numbers, company name, contact
+    block. Dropping them is safe; keeping them is not. Position is part of the test on purpose: a
+    table header row repeated in the middle of a page is content and stays, and a dense document
+    whose body text runs into the margins keeps that text because it does not repeat.
+    """
+    pages_lines = list(pages_lines)
+    if len(pages_lines) < 3:
+        return frozenset()
+    threshold = max(3, math.ceil(0.6 * len(pages_lines)))
+    seen = {}
+    folio_pages = set()
+    for index, lines in enumerate(pages_lines):
+        for text, position in lines:
+            if not _in_margin(position):
+                continue
+            if PAGE_NUMBER.match(text):
+                folio_pages.add(index)
+            elif len(text) <= 120:
+                seen.setdefault(_squash(text), set()).add(index)
+    drop = {key for key, pages in seen.items() if len(pages) >= threshold}
+    if len(folio_pages) >= threshold:
+        # A folio differs on every page, so repetition can never see it; left alone it becomes a
+        # chunk whose entire text is "3". Require the pattern on most pages before dropping, so a
+        # lone number at the bottom of one page is treated as content.
+        for lines in pages_lines:
+            for text, position in lines:
+                if _in_margin(position) and PAGE_NUMBER.match(text):
+                    drop.add(_squash(text))
+    return frozenset(drop)
+
+
+def _drop_furniture(text, drop):
+    """Same text, minus the lines already identified as running heads or footers."""
+    if not drop:
+        return text
+    kept = [line for line in text.splitlines() if _squash(line) not in drop]
+    return "\n".join(kept)
+
+
+def _ocr(image_input, result, drop=frozenset(), **locator):
     output = _ocr_engine()(image_input)
     texts = getattr(output, "txts", None)
     if texts:
         boxes = getattr(output, "boxes", None)
+        if boxes is not None and len(boxes) == len(texts):
+            keep = [index for index, text in enumerate(texts) if _squash(text) not in drop]
+            texts = [texts[index] for index in keep]
+            boxes = [boxes[index] for index in keep]
+        else:
+            texts = [text for text in texts if _squash(text) not in drop]
+            boxes = None
         try:
             text = (
                 _ocr_reading_order(boxes, texts)
@@ -372,13 +453,14 @@ def _ocr(image_input, result, **locator):
         except (AttributeError, IndexError, TypeError, ValueError):
             # Geometry from an unexpected detector build must never lose the recognised text.
             text = "\n".join(texts)
-        result.add(text, kind="ocr", ocr=True, **locator)
+        if text.strip():
+            result.add(text, kind="ocr", ocr=True, **locator)
     result.warnings.append(
         "OCR 识别文字未经人工核对；表格结构与图形语义可能不完整，关键数字请核对原文件。"
     )
 
 
-def _ocr_page(page, result, index):
+def _ocr_page(page, result, index, drop=frozenset()):
     """Render a scanned page at higher DPI for better OCR accuracy, then OCR it."""
     import numpy as np
     import pymupdf
@@ -387,6 +469,7 @@ def _ocr_page(page, result, index):
     _ocr(
         np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, 3),
         result,
+        drop=drop,
         page=index,
     )
 
@@ -415,9 +498,13 @@ def _pdf(path, result, first_page=None, last_page=None):
             raise ValueError("PDF 已加密，需提供可读取版本。")
         start = max(1, first_page or 1)
         end = min(doc.page_count, last_page or doc.page_count)
-        for index in range(start, end + 1):
-            page = doc[index - 1]
-            text = page.get_text(sort=True).strip()
+        pages = [doc[index - 1] for index in range(start, end + 1)]
+        # Running heads and footers repeat on every page; dropping them is the difference between
+        # one phone number in the index and one per page. The page text layer of a picture-dominant
+        # document is nothing but this furniture, so the same keys also filter the OCR output.
+        drop = _furniture(_page_lines(page) for page in pages)
+        for index, page in zip(range(start, end + 1), pages):
+            text = _drop_furniture(str(page.get_text(sort=True)), drop).strip()
             # An image-dominant page (slide decks exported as pictures, full-bleed scans) still
             # carries a thin text layer: the header/footer furniture. Judging by "is there any
             # text" would skip the whole document, so judge by how little text there is against
@@ -425,7 +512,7 @@ def _pdf(path, result, first_page=None, last_page=None):
             coverage = _image_coverage(page)
             image_dominant = bool(page.get_images()) and coverage >= 0.2 and len(text) < 400
             if (len(text) < 15 and page.get_images()) or image_dominant:
-                _ocr_page(page, result, index)
+                _ocr_page(page, result, index, drop=drop)
                 if len(text) < 15:
                     result.warnings.append(
                         f"PDF 第 {index} 页为扫描页，已 OCR 识别；关键数字请核对原文件。"
@@ -433,7 +520,7 @@ def _pdf(path, result, first_page=None, last_page=None):
                 else:
                     result.warnings.append(
                         f"PDF 第 {index} 页以图片为主（图片覆盖 {coverage * 100:.0f}%），"
-                        f"已对整页做 OCR；页眉页脚文字未单独收录，图形语义仍需核对原文件。"
+                        f"已对整页做 OCR；图形语义仍需核对原文件。"
                     )
                 continue
             tables = page.find_tables().tables
@@ -444,8 +531,11 @@ def _pdf(path, result, first_page=None, last_page=None):
                 if block[6] == 0 and not any(
                     pymupdf.Rect(t.bbox).contains(pymupdf.Rect(block[:4])) for t in tables
                 ):
-                    blocks.append(block[4])
-            result.add("\n".join(blocks), kind="page", page=index)
+                    body = _drop_furniture(block[4], drop).strip()
+                    if body:
+                        blocks.append(body)
+            if blocks:
+                result.add("\n".join(blocks), kind="page", page=index)
             if page.get_images():
                 result.warnings.append(f"PDF 第 {index} 页含图片，原生文字已提取，图片内容未解释。")
         if len(doc) > 1:

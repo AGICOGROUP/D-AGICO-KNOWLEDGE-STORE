@@ -16,3 +16,6 @@ build/
 dist/
 .coverage
 *.log
+
+# 分析脚手架：含内部文档正文与本地 DSN，不入仓库
+.gt-work/
