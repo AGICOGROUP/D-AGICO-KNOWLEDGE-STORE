@@ -1,62 +1,61 @@
-# 第二批：步骤 3、4、5 验证与 review
+# Batch 2: Verification and Review of Steps 3, 4, 5
 
-日期：2026-09-15。用户“继续 4–6”按顺序第 4 至第 6 个开发步骤执行，对应从 0 开始的计划编号 3、4、5。分支 `dev/steps-3-5`，未开始步骤 6。
+Date: 2026-09-15. The user's "continue 4–6" instruction covered the 4th through 6th development steps in order, corresponding to zero-based plan numbers 3, 4, and 5. Branch `dev/steps-3-5`; step 6 not yet started.
 
-## 已交付
+## Delivered
 
-1. **解析与索引**：格式适配、本地 OCR、模型指纹、作业租约、处理代次、子进程超时、有限重试、原子索引切换、限制说明、附件关联。
-2. **检索与读取**：中文关键词＋本地向量、精确型号和元数据筛选、权限与正式版本过滤、排名融合、分页、来源定位、按需原文读取、背景查询与降级。
-3. **MCP 与传输**：官方 SDK 2.2 的真实 Streamable HTTP，独立身份、动态管理工具展示、逐次授权、普通与管理工具、原文件传输脚本及哈希／来源校验。
+1. **Parsing and indexing**: format adaptation, local OCR, model fingerprint, job leases, processing generations, subprocess timeouts, bounded retries, atomic index switching, documented limitations, attachment association.
+2. **Retrieval and reading**: Chinese keywords + local vectors, exact model-number and metadata filtering, permission and official-version filtering, rank fusion, pagination, source locating, on-demand original-text reading, background queries and fallback.
+3. **MCP and transport**: real Streamable HTTP on official SDK 2.2, independent identity, dynamic management of tool listing, per-call authorization, regular and admin tools, original-file transfer script with hash/provenance verification.
 
-## 简化后的技术选择
+## Simplified Technical Choices
 
-使用 python-docx 1.2.0、openpyxl 3.1.5、python-pptx 1.0.2、PyMuPDF 1.28.2、RapidOCR 3.9.2，复用成熟格式库和 OCR。对于本批样本，这条路线不需要引入 Docling 的完整模型依赖；实际解析局限明确记录，复杂样本以后针对性优化。
+Uses python-docx 1.2.0, openpyxl 3.1.5, python-pptx 1.0.2, PyMuPDF 1.28.2, and RapidOCR 3.9.2, reusing mature format libraries and OCR. For this batch of samples, this route does not require pulling in Docling's full model dependencies; actual parsing limitations are explicitly documented, and complex samples will be optimized later in a targeted way.
 
-向量采用 FastEmbed 0.8.0／ONNX 的 `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`，384 维，作为轻量起点，未采用尚未实测的 BGE-M3。本机首次下载、加载与两段嵌入共约 95 秒，**含下载，不是查询耗时**。实际文件指纹 `5c77a9d2efad18b678486b45e7858af72b58986d1d1f018523e729f69608d29f`；索引身份还包含名称、维度、FastEmbed 版本与 `native-v1`。
+Vectors use FastEmbed 0.8.0/ONNX with `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`, 384 dimensions, as a lightweight starting point; BGE-M3, which has not yet been tested, was not adopted. First-time download, loading, and the two embedding passes on this machine took about 95 seconds in total, **including download, not query latency**. Actual file fingerprint `5c77a9d2efad18b678486b45e7858af72b58986d1d1f018523e729f69608d29f`; the index identity also includes the name, dimension, FastEmbed version, and `native-v1`.
 
-旧 `.doc/.xls/.ppt` 未安装转换服务，本阶段仅保存并明确提示转为新版格式；CAD／模型包保存原件并可关联说明附件，不冒充已理解图纸／几何。多语言模型名称不代表所有语言或真实行业资料已验收，业务样本验证仍属下一步。
+For legacy `.doc/.xls/.ppt`, no conversion service is installed; at this stage they are only saved with an explicit prompt to convert to newer formats. CAD/model packages are stored as originals and can be linked to explanatory attachments, without pretending that drawings/geometry have been understood. The multilingual model name does not mean all languages or real industry materials have been accepted; business-sample validation remains a next step.
 
-依据：[PyMuPDF 页面与表格接口](https://pymupdf.readthedocs.io/en/latest/page.html)、[RapidOCR 官方实现](https://github.com/RapidAI/RapidOCR)、[MCP 官方 Python SDK](https://github.com/modelcontextprotocol/python-sdk)。实现使用本机锁定版本 API，未混用 SDK 1.x 示例。
+References: [PyMuPDF page and table APIs](https://pymupdf.readthedocs.io/en/latest/page.html), [RapidOCR official implementation](https://github.com/RapidAI/RapidOCR), [official MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk). The implementation uses the pinned-version APIs on this machine and does not mix in SDK 1.x examples.
 
-## 测试证据
+## Test Evidence
 
-最终完整回归：**59 passed**，约 20 秒。使用真实 PostgreSQL／pgvector、每轮新合成文件、隔离 schema 和实际 HTTP MCP 会话。故障注入仅用于明确的超时、模型失败及事务失败场景。
+Final full regression: **59 passed**, about 20 seconds. Uses real PostgreSQL/pgvector, freshly synthesized files each round, isolated schemas, and actual HTTP MCP sessions. Fault injection is used only for the explicit timeout, model-failure, and transaction-failure scenarios.
 
-覆盖：
+Coverage:
 
-- DOCX 正文／表格、Excel 公式及缺缓存说明、PPT 来源定位、原生 PDF、扫描 PDF OCR、长段条件保留、附件型降级。
-- 向量故障保留文字，过期租约拒绝旧进程，撤回稿不被旧作业恢复，超时终止、次数上限、索引事务失败保留旧代次。
-- 型号不串号，来源一致，私有／跨部门权限，旧修订／撤下过滤，不同业务时期的历史记录保持可检索。
-- 关键词降级、模型空间不混用、旧定位拒绝、完整单元分页、空背景如实返回、固定候选池翻页不重复漏项。
-- 实际 HTTP MCP 初始化、列工具、搜索／读取、上传／提交、并发重复准备、管理权限与发布重试、伪造字段拒绝。
-- 真实 DOCX 往返一致，不向其他来源发送令牌，不跟随重定向，损坏下载不生成最终文件。
+- DOCX body/tables, Excel formulas and missing-cache explanations, PPT source locating, native PDFs, scanned-PDF OCR, preservation of long conditional paragraphs, attachment-type fallback.
+- Vector failures retain text, expired leases reject stale processes, withdrawn drafts are not restored by old jobs, timeout termination, attempt caps, and index transaction failures preserve the old generation.
+- Model numbers are not cross-matched, sources are consistent, private/cross-department permissions, old-revision/withdrawn filtering, and historical records from different business periods remain searchable.
+- Keyword fallback, no mixing of model spaces, stale locator rejection, pagination over complete units, empty backgrounds returned honestly, and paging through a fixed candidate pool with no duplicates or omissions.
+- Actual HTTP MCP initialization, tool listing, search/read, upload/submit, concurrent duplicate preparation, admin permissions and publish retries, rejection of forged fields.
+- Real DOCX round-trip consistency, no tokens sent to other origins, no redirect following, and corrupted downloads do not produce final files.
 
-Ruff 检查／格式检查与 wheel 构建通过。上游 Starlette／AnyIO 弃用提示、FastEmbed 均值池化历史提示仍可见，未放宽断言或屏蔽它们。当前锁定 FastEmbed 版本并标记索引身份，未混入旧池化索引。
+Ruff lint/format checks and the wheel build pass. Upstream Starlette/AnyIO deprecation notices and FastEmbed's historical mean-pooling notice remain visible; assertions were not loosened and the notices were not suppressed. The FastEmbed version is currently pinned and the index identity is tagged, with no old mean-pooling index mixed in.
 
-## 真实 Codex 验证
+## Real Codex Verification
 
-`scripts/probe_business_mcp.py` 创建全新隔离测试 schema，提交、处理并发布合成资料，给 Codex 只读成员身份。只做临时单次 MCP 配置，未修改全局客户端配置或使用公司真实资料。
+`scripts/probe_business_mcp.py` creates a brand-new isolated test schema, submits, processes, and publishes synthetic materials, and gives Codex a read-only member role. Only a temporary one-off MCP configuration was made; the global client configuration was not modified and no real company data was used.
 
-Codex 实际调用 `kb_search` → `kb_read`，回答 **AX-210 最高 80℃，仅适用于标准配置，不适用于防爆环境**，引用《合成产品参数》第 2 段。两次调用均成功。
+Codex actually called `kb_search` → `kb_read` and answered **AX-210 has a maximum of 80°C, applies only to the standard configuration, and is not suitable for explosion-proof environments**, citing paragraph 2 of "Synthetic Product Parameters". Both calls succeeded.
 
-两次工具结果文本合计 **1,291 字符**，不是 token 数。Codex CLI 报告累计输入 74,380 tokens，其中缓存输入 67,328；它包含客户端已有指令、工具定义与重复上下文，不能全部算作知识库正文消耗，也不能用这次运行宣称节省比例。本批实现避免加载整库，真实业务 token／质量基准留待后续验证。
+The two tool result texts total **1,291 characters**, not a token count. The Codex CLI reported cumulative input of 74,380 tokens, of which 67,328 were cached input; this includes pre-existing client instructions, tool definitions, and repeated context, so it cannot all be counted as knowledge-base content consumption, nor can this run be used to claim a savings ratio. This batch's implementation avoids loading the whole library; real business token/quality benchmarks are deferred to later verification.
 
-该结果证明业务 MCP 查阅链路可用，不替代“正常业务任务中主动识别知识需求并应用”的步骤 6 验收。Accio 与网页／钉钉真实配置未提供，保持未联调。
+This result proves the business MCP lookup chain is usable; it does not replace the step 6 acceptance criterion of "proactively identifying knowledge needs and applying them in normal business tasks". Real configurations for Accio and web/DingTalk were not provided and remain unintegrated.
+## Review and Fixes
 
-## Review 与修复
+Scope of the independent read-only review: `e96bd3c..fdc799c`, followed by re-review of the fixes.
 
-独立只读审查范围：`e96bd3c..fdc799c`，随后复查修复。
-
-| 重要问题 | 修复 |
+| Major Issue | Fix |
 |---|---|
-| DOCX 文本框可能遗漏却标为完整 | 检测文本框等未覆盖结构，返回明确限制与 partial；补充文本框、页眉表格回归 |
-| PDF 文字块横跨表格边界，被整块过滤导致条件丢失 | 仅过滤完全包含于表格的文字块，保留跨边界条件；回归验证 NOT EXPLOSION PROOF 保留 |
-| 候选池随 offset 增长，改变融合排名 | 内容候选池固定；实际数据库复现后修复重复／漏项，并在 SQL 层只提取短片段 |
+| DOCX text boxes could be missed yet still marked as complete | Detect uncovered structures such as text boxes and return explicit limitations with a partial status; added regression tests for text boxes and header tables |
+| PDF text blocks spanning table boundaries were filtered out entirely, causing conditions to be lost | Filter only text blocks fully contained within a table, preserving cross-boundary conditions; regression verified that NOT EXPLOSION PROOF is retained |
+| The candidate pool grew with offset, changing fusion ranking | The content candidate pool is now fixed; after reproducing on the actual database, duplicates/missing items were fixed, and only short snippets are extracted at the SQL layer |
 
-审查者复查确认三项均已解决，未发现修复回归。主执行者完成最终全套测试。**本批次 review 完成，没有未解决的重要审查问题。**
+The reviewer's re-review confirmed that all three issues were resolved, with no regressions introduced by the fixes. The primary executor completed the final full test suite. **This batch's review is complete; there are no unresolved major review issues.**
 
-## 后续边界
+## Follow-up Boundaries
 
-正式部署、独立备份恢复、员工委托链和容量验收未实施，不宣称 50／200 Agent 达标。模型和依赖的正式分发、服务账号、网络信任与运行恢复在部署阶段落实。
+Formal deployment, independent backup restoration, the employee delegation chain, and capacity acceptance have not been implemented, so no claim is made that the 50/200 Agent targets have been met. Formal distribution of models and dependencies, service accounts, network trust, and operational recovery will be implemented during the deployment phase.
 
-按用户约定停在本批结束处，得到确认后再进入步骤 6、7、8（真实任务与入口联调、部署备份恢复、首版验收）。
+As agreed with the user, work stopped at the end of this batch; steps 6, 7, and 8 (integration testing of real tasks and entry points, deployment with backup and restoration, and first-version acceptance) will begin only after confirmation.

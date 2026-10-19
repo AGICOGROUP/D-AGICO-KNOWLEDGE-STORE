@@ -1,38 +1,37 @@
-# Codex 普通任务验证
+# Codex Regular Task Validation
 
-2026-09-15，Codex CLI `0.154.0-alpha.6.2`：**合成资料的普通任务验证通过；真实企业试点未验收**。
+On 2026-09-15, Codex CLI `0.154.0-alpha.6.2`: **Regular task validation with synthetic data passed; the real enterprise pilot has not been accepted**.
 
-## 可复现方法
+## Reproducible Method
 
-运行 `.venv/Scripts/python scripts/probe_agent_usage.py`。脚本要求已登录 Codex CLI、本机 `127.0.0.1:15432/agico_test`、开发密码文件和本地模型缓存。每轮建立随机 schema、四份新上传／新解析／新发布资料、独立成员及发布者身份；脚本仅显式增加本轮知识库成员凭证，子进程仍继承原有 CLI 环境，本轮发布者凭证不导出。结束时停止临时 HTTP 服务、删除本轮 schema（查询确认不存在）、删除临时文件和 Agent 工作目录。报告保留在 `.local/agent-probes/<run_id>/`。异常也执行 finally；强杀进程或停电无法保证 finally，应按报告中的精确 schema 检查遗留，不得批量清理其它数据。
+Run `.venv/Scripts/python scripts/probe_agent_usage.py`. The script requires a logged-in Codex CLI, the local `127.0.0.1:15432/agico_test` database, the development password file, and a local model cache. Each run creates a random schema, four newly uploaded / newly parsed / newly published documents, and independent member and publisher identities; the script only explicitly adds the current run's knowledge base member credentials, the subprocess still inherits the original CLI environment, and the current run's publisher credentials are not exported. At the end it stops the temporary HTTP service, deletes the current run's schema (confirmed absent via query), and deletes temporary files and the Agent working directory. Reports are kept in `.local/agent-probes/<run_id>/`. `finally` also executes on exceptions; force-killing the process or a power outage cannot guarantee `finally`, so leftovers should be checked against the exact schema in the report, and other data must not be bulk-cleaned.
 
-每个案例使用新 Codex 会话，`--ignore-user-config --ephemeral --skip-git-repo-check -s read-only`，临时工作目录的 `AGENTS.md` 内容来自 [共用约定](../../client/agent-usage.md)。单次 `-c` 设置实际临时 loopback 地址和 `bearer_token_env_var="AGICO_KB_TOKEN"`，不写全局配置。官方说明支持 URL MCP 和环境变量 Bearer 令牌；本机参数另经 `codex exec --help` 核对。[官方 MCP 文档](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)
+Each case uses a fresh Codex session with `--ignore-user-config --ephemeral --skip-git-repo-check -s read-only`; the `AGENTS.md` in the temporary working directory has content taken from [Shared Conventions](../../client/agent-usage.md). A single `-c` sets the actual temporary loopback address and `bearer_token_env_var="AGICO_KB_TOKEN"`; no global configuration is written. Official documentation states support for URL-based MCP and environment-variable Bearer tokens; the local parameters were additionally cross-checked against `codex exec --help`. [Official MCP Documentation](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)
 
-独立测试成员有本部门读取与草稿提交能力，无发布权限；并非管理员，也不是产品级只读角色。临时实验只执行读取。
+The independent test member has department-scoped read and draft-submission capability, without publish permission; it is not an administrator, nor a product-level read-only role. The temporary experiment only performs reads.
 
-## 2026-09-15 实测
+## 2026-09-15 Measured Results
 
-run_id：`agent_probe_bcc92848d64a499fa89c0c10584ea82b`。四份资料覆盖合成部门背景、产品参数、现行 R2 规范及 2024 历史案例；不代表真实公司事实。原始普通任务、最终答案、工具参数和用量摘录见 [结构化证据](codex-synthetic-evidence.json)。已提交的摘录不包含原始工具结果正文；完整 JSONL 仅保留在上述本地运行目录。脚本保存合成种子文本，可重新执行实验，但仓库中的摘录并非本次运行完整返回内容的自包含存档。
+run_id: `agent_probe_bcc92848d64a499fa89c0c10584ea82b`. The four documents cover a synthetic department background, product parameters, the current R2 specification, and 2024 historical cases; they do not represent real company facts. The original regular tasks, final answers, tool parameters, and usage excerpts are in [Structured Evidence](codex-synthetic-evidence.json). The committed excerpts do not include raw tool result bodies; the complete JSONL is kept only in the local run directory mentioned above. The script saves the synthetic seed text so the experiment can be re-run, but the excerpts in the repository are not a self-contained archive of the complete responses from this run.
 
-| 场景 | MCP 调用 | 工具文本字符 | 秒 | 累计输入 token | 其中缓存输入 | 输出 token |
+| Scenario | MCP calls | Tool text chars | Seconds | Cumulative input tokens | Of which cached input | Output tokens |
 |---|---:|---:|---:|---:|---:|---:|
-| 88℃ AX-210 客户选型回复 | 11（7 搜索、4 读取） | 8,283 | 85.58 | 257,614 | 235,136 | 1,124 |
-| AX-999 未知认证编号 | 2 搜索 | 1,712 | 36.94 | 96,164 | 80,128 | 169 |
+| 88℃ AX-210 customer selection reply | 11 (7 searches, 4 reads) | 8,283 | 85.58 | 257,614 | 235,136 | 1,124 |
+| AX-999 unknown certification number | 2 searches | 1,712 | 36.94 | 96,164 | 80,128 | 169 |
 | 17 × 23 | 0 | 0 | 28.31 | 16,567 | 11,648 | 5 |
 
-所有 CLI 退出码为 0，schema 删除确认 `cleanup=true`。字符数只累计 MCP `result.content[].text`，不把重复的 `structured_content` 再计一次；字符数不是 token。CLI 累计输入包括客户端指令、工具定义、历史上下文和每轮工具返回，缓存输入是其中的部分，不与输入相加。没有独立的工具正文 token 计量，因此不能把累计输入归因于知识库，也未宣称节省比例。耗时是 CLI 端到端时间，不是后台检索延迟。
+All CLI exit codes were 0, and schema deletion confirmed `cleanup=true`. The character count only accumulates MCP `result.content[].text`, without counting the duplicated `structured_content` a second time; character count is not tokens. The CLI cumulative input includes client instructions, tool definitions, historical context, and each round's tool returns; cached input is a part of that and is not added on top of the input. There is no separate token accounting for tool body text, so cumulative input cannot be attributed to the knowledge base, and no savings ratio is claimed. Elapsed time is the CLI end-to-end time, not background retrieval latency.
 
-业务产出逐项核对：
+Business outputs verified item by item:
 
-- 背景：使用“工业循环水应用支持”，没有虚构饮用水认证服务。
-- 事实：保留 80℃、12 m³/h、非防爆条件；算出超限 8℃，拒绝推荐标准 AX-210。
-- 规范：使用“工况确认／适用性判断／风险与待确认项”三个标题；要求技术负责人书面确认后才承诺改型。
-- 经验：引用 2024 年高温案例，只用于升级技术评估，不承诺存在替代型号、价格或交期，也不覆盖现行规范。
-- 依据：读取四份原文，引用 `synthetic-1` 版本第 2 段。客户问题没有要求搜索，Agent 自主调用 MCP。
-- 缺知识：AX-999 没有可核实认证编号，明确说明未查到；通用乘法直接回答 391，零 MCP 调用。
+- Background: used "industrial circulating water application support", without fabricating a drinking-water certification service.
+- Facts: kept 80℃, 12 m³/h, and the non-explosion-proof condition; computed an 8℃ over-limit and refused to recommend the standard AX-210.
+- Specification: used the three headings "working-condition confirmation / applicability judgment / risks and items pending confirmation"; required written confirmation from the technical lead before committing to a model change.
+- Experience: cited the 2024 high-temperature case, using it only for upgrade technical evaluation; made no commitment that alternative models, prices, or lead times exist, and did not override the current specification.
+- Grounding: read all four source documents and cited paragraph 2 of the `synthetic-1` version. The customer question did not request a search; the Agent invoked MCP autonomously.
+- Missing knowledge: AX-999 had no verifiable certification number, and it explicitly stated that none was found; generic multiplication was answered directly as 391 with zero MCP calls.
 
-## 文件与权限旁证及边界
+## File and Permission Corroborating Evidence and Boundaries
 
-本轮重新运行 `pytest tests/integration/test_mcp.py tests/integration/test_file_transfer.py -q`：**11 passed，4.92 秒**。覆盖真实 HTTP MCP、搜索回读、成员管理权限拒绝、伪造字段、上传／提交／状态、文件哈希及越权下载等；这是协议客户端证据，未冒充 Codex 自主文件交接验收。三条上游弃用／模型提示保留。
-
-当前没有真实公司试点资料、业务负责人评价、实际 Accio 或网页／钉钉入口。此次小样本仅证明上述合成普通任务行为；冲突资料、实际客户端文件交接、真实人员身份委托和长期质量仍需验收。没有把 Task 6 整体宣布完成。
+This round re-ran `pytest tests/integration/test_mcp.py tests/integration/test_file_transfer.py -q`: **11 passed, 4.92 seconds**. It covers real HTTP MCP, search read-back, member-management permission denial, forged fields, upload / submission / status, file hashing, and unauthorized download attempts; this is protocol-client evidence, and is not presented as acceptance of Codex autonomous file handoff. The three upstream deprecation / model notices are retained.
+Currently, there are no real company pilot materials, business owner evaluations, or an actual Accio or web/DingTalk entry point. This small sample only demonstrates the synthetic ordinary task behavior described above; conflicting materials, actual client-side file handoffs, delegation under real personnel identities, and long-term quality still require acceptance verification. Task 6 has not been declared complete as a whole.

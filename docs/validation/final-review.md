@@ -1,50 +1,50 @@
-# 九步开发收尾与整体 review
+# Nine-Step Development Wrap-Up and Overall Review
 
-2026-09-16；计划 0–8 共 9 步。用户已授权完成剩余开发后统一 review，不再等待每三步确认。沿用单套本地企业知识／文件后台、现有员工入口与 Agent MCP 的设计。
+2026-09-16; the plan covers 9 steps, 0–8. The user authorized a single consolidated review after completing the remaining development, without waiting for confirmation every three steps. The design continues with one local enterprise knowledge/file backend, the existing employee entry point, and Agent MCP.
 
-本报告记录九步开发收尾时的整体 review。之后的目录迁移、真实样本验证和 XLSX 修复见[本机测试版](local-preview.md)，后续[小文件入库测试](small-files.md)后当前测试数为 136。
+This report records the overall review at the wrap-up of the nine-step development. The later directory migration, real-sample validation, and XLSX fixes are covered in [Local Preview](local-preview.md); after the subsequent [Small-File Ingestion Test](small-files.md), the current test count is 136.
 
-## 本地开发结果
+## Local Development Results
 
-| 步骤 | 已实现／验证 |
+| Step | Implemented / Verified |
 |---|---|
-| 0 基础路线 | Windows 原生 PostgreSQL/pgvector、格式处理、实际客户端探针 |
-| 1 文件管理 | 事业部／用途分类、身份、流式上传、哈希、幂等、受控原件下载 |
-| 2 发布与版本 | 发布、旧稿冲突、撤下恢复、共享、审计；发布时负责人可审核修正 category_id |
-| 3 解析索引 | 后台解析／OCR、有限重试与租约、索引原子切换；无法解析仍保存原件 |
-| 4 检索读取 | 权限过滤、关键词＋向量、型号匹配、来源读取、有界上下文；向量忙时有界等待 |
-| 5 MCP | 官方协议、普通与管理工具、身份复核、原文件适配；实际 50 个 SDK 客户端验证 |
-| 6 Agent 应用 | Codex 普通任务使用企业背景／事实／规范／经验，未知问题和通用任务控制组 |
-| 7 运维 | Windows 配置、离线模型、备份与隔离恢复、只读原件对账；API/worker/数据库真实重启 |
-| 8 验收工具 | 业务矩阵、冻结配置、REST/MCP负载、独立权限检查、实际人数与SLO判定、200扩展说明 |
+| 0 Foundation roadmap | Native Windows PostgreSQL/pgvector, format handling, real client probes |
+| 1 File Management | Division/purpose classification, identity, streaming upload, hashing, idempotency, controlled original-file download |
+| 2 Publishing and Versioning | Publishing, stale-draft conflicts, unpublish/restore, sharing, auditing; at publish time the owner can review and correct category_id |
+| 3 Parsing and Indexing | Background parsing/OCR, bounded retries and leases, atomic index switchover; originals are still saved for files that cannot be parsed |
+| 4 Retrieval and Reading | Permission filtering, keyword + vector, model-number matching, source reading, bounded context; bounded waiting when the vector service is busy |
+| 5 MCP | Official protocol, regular and admin tools, identity re-verification, original-file adaptation; verified with 50 real SDK clients |
+| 6 Agent Application | Codex regular tasks use enterprise background/facts/standards/experience; unknown questions and generic tasks serve as the control group |
+| 7 Operations | Windows configuration, offline models, backup and isolated restore, read-only original-file reconciliation; real API/worker/database restarts |
+| 8 Acceptance Tools | Business matrix, frozen configuration, REST/MCP load, independent permission checks, actual headcount and SLO judgment, notes on 200-scale extension |
 
-本轮补齐了整体核对发现的分类审核、原件对账、阈值判定、MCP负载、进程重启和大文件验证。未增加新员工入口、聊天系统、模型服务或检索集群。
+This round filled in the gaps found during overall checking: category review, original-file reconciliation, threshold judgment, MCP load, process restarts, and large-file validation. No new employee entry point, chat system, model service, or retrieval cluster was added.
 
-## 核心证据
+## Core Evidence
 
-- 全套 `pytest -q --tb=short`：**128 passed、2 skipped、9 条既有依赖警告，38.37 秒**。
-- 单独显式启用这两项故障演练：**2 passed，11.78 秒**。包括真实数据库停启，以及真实 API/worker 退出重启、全新 32 MiB 文件的流式传输／哈希／权限与不重复发布。[进程证据](process-restarts.md)
-- Ruff 检查、71 个 Python 文件格式检查、源码包及 wheel 构建通过；数据迁移和分类资产随包交付。
-- 最新 REST 50 身份：11,714 完整周期全部正确、0 向量降级、p95 240 ms。
-- 最新 MCP 50 独立客户端：7,347 完整周期全部正确、0 向量降级和传输失败、p95 360 ms。[冻结配置与原始指标](load-50.md)
-- 这两轮均仅约 75 秒，合成语料重新上传／解析／发布，不能外推真实资料规模、30 分钟稳定性或 200 容量；MCP SDK负载不包含 Agent 推理／生成。
+- Full suite `pytest -q --tb=short`: **128 passed, 2 skipped, 9 pre-existing dependency warnings, 38.37 seconds**.
+- These two fault drills enabled explicitly and in isolation: **2 passed, 11.78 seconds**. Includes real database stop/start, as well as real API/worker exit and restart, and streaming upload/hashing/permission checks with no duplicate publishing for a brand-new 32 MiB file. [Process evidence](process-restarts.md)
+- Ruff checks, format checks on 71 Python files, and sdist and wheel builds pass; data migrations and classification assets ship with the package.
+- Latest REST run with 50 identities: 11,714 complete cycles all correct, 0 vector degradations, p95 240 ms.
+- Latest MCP run with 50 independent clients: 7,347 complete cycles all correct, 0 vector degradations or transport failures, p95 360 ms. [Frozen configuration and raw metrics](load-50.md)
+- Both rounds lasted only about 75 seconds with synthetic corpora re-uploaded/parsed/published, so they cannot be extrapolated to real document scale, 30-minute stability, or 200-user capacity; the MCP SDK load does not include Agent inference/generation.
 
-## 整体 review
+## Overall Review
 
-独立审查覆盖 17 个生产 Python 模块、两份迁移、Windows 安装／启动／ACL、文件适配、备份恢复、真实 Agent 与负载工具和对应测试。未发现新的核心业务 Critical／Important 问题。
+The independent review covered 17 production Python modules, two migrations, Windows install/startup/ACL, file adaptation, backup and restore, real Agent and load tooling, and the corresponding tests. No new Critical/Important issues in core business logic were found.
 
-验收工具发现两项 Important，已在 `95db339` 修复并经独立限定复查关闭；当前无未解决 Critical／Important，本地源码与集成审查通过：
+The acceptance tools found two Important issues, fixed in `95db339` and closed after an independent scoped re-review; there are currently no unresolved Critical/Important issues, and the local source and integration reviews passed:
 
-1. 实际人数不足可能被当成 50 人通过：逐凭据校验用例引用，记录实际启动及测量期间最小存活人数；正常停止后冻结计数。
-2. 少量权限失败可能被总体成功率稀释：权限拒绝／禁止来源用例独立要求全通过，即使总体正确率仍高于阈值也失败。
+1. An insufficient actual headcount could be treated as passing with 50 users: test-case references are now verified per credential, recording the actual number started and the minimum live count during the measurement period; the count is frozen after a normal stop.
+2. A small number of permission failures could be diluted by the overall success rate: permission-denied/forbidden-source cases now independently require a full pass and fail even if the overall correctness rate is still above the threshold.
 
-新增失败用例先复现两项边界，再修正通过；真实 Locust 2 身份功能探针记录 started=2/minimum_live=2，633 请求零失败，开发配置仍保持 blocked。该小探针只验证计数与判定路径，不充当容量测试。
+New failing test cases first reproduced the two edge conditions and then passed after the fixes; a real Locust functional probe with 2 identities recorded started=2/minimum_live=2, 633 requests with zero failures, and the development configuration remains blocked. This small probe only validates the counting and judgment paths and does not serve as a capacity test.
 
-## 仍需真实环境才能完成的验收
+## Acceptance Still Requiring a Real Environment
 
-- 获准试点的公司资料、代表任务及业务负责人确认；现有 Codex 证据为合成资料。
-- Accio 的实际版本／运行环境，现有网页和钉钉入口代码、员工身份与文件交付链路。
-- 正式 Windows 服务器、服务账号、TLS／网络范围、独立备份位置，目标机无人登录启动等演练。
-- 真实资料规模与业务响应／正确率要求；冻结后进行正式 30 分钟验收及完整 Agent 工作流验证。
+- Company materials approved for the pilot, representative tasks, and confirmation from business owners; the existing Codex evidence is synthetic material.
+- Accio's actual version/runtime environment, the existing web and DingTalk entry-point code, employee identity, and the file delivery chain.
+- Production Windows servers, service accounts, TLS/network scope, an independent backup location, and drills such as starting on the target machine with no one logged in.
+- Real document scale and business response/correctness requirements; after freezing, run the formal 30-minute acceptance and full Agent workflow verification.
 
-上述输入本轮已询问但尚未获得，不能用默认假设、开发机安装或合成测试冒充完成。当前交付为可部署联调的源码、锁定依赖、脚本、说明和本地验证证据，尚未作为公司生产服务上线。
+These inputs were requested this round but have not yet been obtained, and they cannot be passed off as complete using default assumptions, a development-machine installation, or synthetic tests. The current deliverable is source code ready to deploy for integration testing, locked dependencies, scripts, documentation, and local verification evidence; it has not yet gone live as the company's production service.

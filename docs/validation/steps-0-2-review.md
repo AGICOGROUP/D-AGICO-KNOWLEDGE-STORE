@@ -1,40 +1,40 @@
-# 步骤 0–2：交付与 review
+# Steps 0–2: Delivery and Review
 
-日期：2026-09-15。分支：`dev/steps-0-2`。本批次完成后停止，未开始步骤 3。
+Date: 2026-09-15. Branch: `dev/steps-0-2`. Stopped upon completion of this batch; Step 3 has not been started.
 
-## 完成内容
+## Completed Work
 
-- 步骤 0：原生 Windows 本地组件验证；PostgreSQL 16.15／pgvector 0.8.6、Python 3.12.14、合成 DOCX 提取、本地中文向量匹配、真实 Codex MCP 只读调用与无认证拒绝。
-- 步骤 1：基础配置和迁移、8 个组织分区与 6 个用途分类、独立令牌及可信组织角色、流式保存与校验、幂等上传和提交、草稿与原文件获取。
-- 步骤 2：所属部门负责人发布、显式仅文件发布、并发及旧稿冲突、撤下、管理历史列表和恢复、跨部门只读共享、审计、身份初始化与令牌签发／撤销 CLI。
+- Step 0: Verification of native Windows local components; PostgreSQL 16.15 / pgvector 0.8.6, Python 3.12.14, synthetic DOCX extraction, local Chinese vector matching, real Codex MCP read-only invocation, and rejection of unauthenticated calls.
+- Step 1: Base configuration and migrations, 8 organization partitions and 6 purpose categories, independent tokens and trusted-organization roles, streamed save with validation, idempotent upload and submission, draft and original-file retrieval.
+- Step 2: Publication by the owning department's head, explicit file-only publication, concurrency and stale-draft conflicts, take-down, managed history listing and restore, cross-department read-only sharing, auditing, identity initialization, and token issuance/revocation CLI.
 
-## 验证
+## Verification
 
-`pytest -q`：**19 passed**。每个数据库测试使用随机 schema、临时目录和新合成文件；显式幂等重试仅复用该用例自己的输入。
+`pytest -q`: **19 passed**. Every database test uses a random schema, a temporary directory, and fresh synthetic files; explicit idempotent retries reuse only that test case's own inputs.
 
-覆盖：中文原文件下载哈希一致，断传清理，大小／哈希／过期拒绝，原文件不可覆盖，并发重复提交去重，匿名／跨部门／私有草稿越权拒绝，撤销与过期令牌拒绝，发布权限，未处理文件如实标记，仅一份并发稿可发布，伪造期望修订号不能绕过旧稿，冲突稿及重试保留，撤下后新读取停止，负责人在新会话发现历史并恢复，共享即时收回，审计存在，替换稿元数据完整返回。
+Coverage: consistent hash for Chinese original-file downloads, cleanup after interrupted transfers, rejection by size/hash/expiry, originals cannot be overwritten, deduplication of concurrent duplicate submissions, rejection of unauthorized access by anonymous/cross-department/private-draft attempts, rejection of revoked and expired tokens, publication permissions, unprocessed files faithfully flagged, only one of concurrent drafts publishable, forged expected revision numbers cannot bypass stale-draft detection, conflicting drafts and retries preserved, new reads stop after take-down, the department head discovers history and restores in a new session, sharing revoked immediately, audit records exist, replacement-draft metadata returned in full.
 
-`ruff check src tests scripts` 与 `ruff format --check src tests scripts` 通过。`uv build --wheel` 通过，并检查 wheel 包含迁移 SQL 和分类 JSON；身份 CLI 帮助入口正常。
+`ruff check src tests scripts` and `ruff format --check src tests scripts` pass. `uv build --wheel` passes, and the wheel was checked to contain the migration SQL and the category JSON; the identity CLI help entry works.
 
-测试环境存在一条上游 Starlette 使用 AnyIO 已弃用别名的 DeprecationWarning，未影响测试；未通过屏蔽告警或放宽断言制造通过结果。
+The test environment has one upstream Starlette DeprecationWarning about a deprecated AnyIO alias; it did not affect the tests. No passing results were manufactured by suppressing warnings or loosening assertions.
 
-## 独立审查与修复
+## Independent Review and Fixes
 
-审查范围：基线 `deb4b97` 至步骤 2 提交 `b35cd04`，以及对应修复。审查者只读检查代码、计划和测试，测试由主执行者实际运行。
+Review scope: baseline `deb4b97` through the Step 2 commit `b35cd04`, plus the corresponding fixes. The reviewer examined code, plans, and tests in read-only fashion; tests were actually run by the primary executor.
 
-| 问题 | 修复与验证 |
+| Issue | Fix and Verification |
 |---|---|
-| 重要：撤下后无法在新会话发现资料以恢复 | 增加负责人限定的 `managed=true` 文件列表和版本历史接口；新会话发现、恢复及普通员工拒绝测试通过；审查者复查确认 |
-| 次要：配置中的分类显示名更新不生效 | 迁移时按稳定标识更新显示名称；审查者复查确认 |
-| 自查：替换稿必须沿用的元数据未完整返回 | 状态／提交结果补齐组织、用途、标题、产品、型号、项目、业务日期等；其他员工读取后提交替换稿测试通过 |
-| 自查：旧稿冲突重试返回成功，提示不一致 | 同一草稿重试仍返回冲突和原版本标识，不生成重复版本；测试通过 |
+| Major: after take-down, materials could not be discovered in a new session for restore | Added a department-head-restricted `managed=true` file list and version history endpoints; tests for new-session discovery, restore, and rejection of ordinary employees pass; reviewer re-checked and confirmed |
+| Minor: updates to category display names in configuration did not take effect | Display names are updated by stable identifier during migration; reviewer re-checked and confirmed |
+| Self-check: metadata that a replacement draft must carry was not returned in full | Status/submission results now include organization, purpose, title, product, model, project, business date, etc.; test passes where another employee reads and then submits a replacement draft |
+| Self-check: retrying after a stale-draft conflict returned success, giving inconsistent messaging | Retrying the same draft still returns the conflict and the original version identifier, without generating a duplicate version; test passes |
 
-结论：**本批次 review 完成，重要问题已修复，未发现阻碍下一批开发的未解决问题。** 这不是生产上线验收。
+Conclusion: **Review of this batch is complete, the major issue has been fixed, and no unresolved problems blocking development of the next batch were found.** This is not production go-live acceptance.
 
-## 明确留待后续
+## Explicitly Deferred to Later
 
-当前原文件和版本管理可测试；没有生产解析 worker、内容检索、正式业务 MCP、多人入口委托联调、部署备份恢复或容量结论。原生 DOCX／轻量向量只是路线验证，Docling、OCR、复杂表格、多语言模型与 Accio 按对应步骤实测。
+Original-file and version management are currently testable; there is no production parsing worker, content retrieval, production business MCP, multi-user entry-point delegation integration testing, deployment backup/restore, or capacity conclusions. The native DOCX / lightweight vector approach is only a route validation; Docling, OCR, complex tables, multilingual models, and Accio will be tested in practice at their corresponding steps.
 
-当前未提供目标服务器与可信员工入口具体配置。`.local` 仅开发环境，不作为正式数据库部署包；测试探针不写入全局客户端配置。原文件改名与数据库提交之间的崩溃孤立文件对账属于后续运行恢复工作，当前不会自动删除。
+No concrete configuration for the target server or the trusted-employee entry point is currently provided. `.local` is for the development environment only and is not the production database deployment package; test probes do not write to global client configuration. Reconciling crash-orphaned files between original-file renaming and database commit is later operational-recovery work; nothing is automatically deleted at present.
 
-下一批：步骤 3、4、5。按用户要求，得到继续确认后才实施。
+Next batch: Steps 3, 4, and 5. Per the user's request, implementation will proceed only after confirmation to continue.

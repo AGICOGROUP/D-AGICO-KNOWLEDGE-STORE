@@ -1,61 +1,58 @@
-# 轻量员工网页入口
+# Lightweight Employee Web Portal
 
-## 使用
+## Usage
 
-打开知识库服务根地址，例如本机 `http://127.0.0.1:8765/`，点击“连接知识库”并输入成员访问码。验证成功后在当前浏览器的 localStorage 保存访问码，同一浏览器、同一网站地址下刷新或重新打开会自动验证并连接。点击“断开连接”会清除已保存的访问码；令牌过期或撤销后，自动连接会清除失效令牌并提示重新输入。临时断网不会清除凭证。无痕模式、清理网站数据或换浏览器后需要重新输入；此功能不延长服务端令牌的有效期。
+Open the knowledge base service root address, for example `http://127.0.0.1:8765/` on the local machine, and click "Connect Knowledge Base" to enter the member access code. After successful verification, the access code is saved in the current browser's localStorage; under the same browser and the same site address, refreshing or reopening the page will automatically verify and connect. Clicking "Disconnect" clears the saved access code; once a token expires or is revoked, automatic connection clears the invalid token and prompts for re-entry. Temporary network outages do not clear credentials. Re-entry is required after using incognito mode, clearing site data, or switching browsers; this feature does not extend the validity period of the server-side token.
 
-上传只需两步：
+Uploading takes just two steps:
 
-1. **先选择文件**：支持多选或一次拖入多个文件，可继续添加，也可移除尚未提交的文件。各文件沿用自己的文件名作为资料名称。
-2. **再选择事业部并提交**：事业部是必选项，不自动代选；同一批文件归属同一个事业部，不同事业部请分批提交。
+1. **Select files first**: Multiple selection or dragging in several files at once is supported; you can keep adding more, and you can also remove files that have not yet been submitted. Each file uses its own filename as the material name.
+2. **Then choose a business unit and submit**: The business unit is a required field and is not auto-selected; all files in the same batch belong to the same business unit, so please submit in separate batches for different business units.
 
-“补充信息”默认收起。资料类型与产品型号均可留空；留空时不发送这两个可选字段，后台沿用“其他资料”和空型号。填写后应用于本批所有文件。
+"Additional Information" is collapsed by default. Both material type and product model may be left blank; when left blank, these two optional fields are not sent, and the backend uses "Other Materials" and an empty model. Once filled in, they apply to all files in the batch.
 
-批次依次上传，页面列出每份文件的结果，个别文件失败不阻塞后面的文件。重试仅处理未确认完成的项目，各文件复用原上传幂等键及提交信息，不重复提交已成功项目。重新选择不会删除服务器已有资料；提交结果不明确时，先查看待审核列表。
+Batches are uploaded sequentially, and the page lists the result for each file; the failure of an individual file does not block subsequent files. Retrying processes only items not yet confirmed as complete, with each file reusing its original upload idempotency key and submission information, so already successful items are not submitted again. Re-selecting files does not delete materials already on the server; when a submission result is unclear, check the pending review list first.
 
-提交后进入草稿审核流程，后台解析、OCR 和向量化沿用现有逻辑。员工入口不提供发布或权限管理；页面底部另设独立管理员认证的访问码管理入口。右侧可查找已发布资料、按事业部和类型筛选、下载原件；待审核页显示当前身份有权查看的提交，点击刷新查看最新处理状态。
+After submission, the draft enters the review workflow; backend parsing, OCR, and vectorization follow the existing logic. The employee portal does not provide publishing or permission management; a separate admin-authenticated access code management entry is located at the bottom of the page. On the right side, you can search published materials, filter by business unit and type, and download the original files; the pending review page shows submissions that the current identity is authorized to view, and clicking refresh shows the latest processing status.
 
-## 连接 AI 助手
+## Connecting the AI Assistant
 
-连接知识库后，点击页头“连接 AI 助手”，选择 Accio 或 Codex，复制接入指令并粘贴发送给该助手。指令使用当前网页同一访问码及网站根地址下的 `/mcp`，要求助手保留既有配置并验证 initialize、工具发现及 kb_catalog 调用。也可下载 Accio JSON 或 Codex TOML 配置片段。文件需要由助手或用户合并到客户端配置，不是安装程序。
+After connecting the knowledge base, click "Connect AI Assistant" in the page header, choose Accio or Codex, copy the integration instruction, and paste it to send to that assistant. The instruction uses the same access code as the current web page and the `/mcp` path under the site root address, and asks the assistant to keep its existing configuration while verifying the initialize call, tool discovery, and the kb_catalog call. You can also download the Accio JSON or Codex TOML configuration snippets. The files need to be merged into the client configuration by the assistant or the user; they are not installers.
 
-当前实现是辅助配置，不声称网页已直接安装或连接客户端。未找到两者可共用且有文档支持的网页一键导入机制；Accio Browser Relay 的官方用途是让 Agent 操作浏览器，并非网页安装 MCP。没有额外安装浏览器插件。指令及下载文件含访问码，仅在用户点击后在浏览器生成；关闭对话框会清空手动复制区域。当前访问地址若为 localhost/127.0.0.1，会提示仅供本机 Agent 使用。
+The current implementation provides assisted configuration only; it does not claim that the web page has directly installed or connected a client. No documented web one-click import mechanism shared by both was found; the official purpose of Accio Browser Relay is to let an Agent operate the browser, not to install MCP from a web page. No additional browser extension is installed. The instruction and downloaded files contain the access code and are generated in the browser only after the user clicks; closing the dialog clears the manual copy area. If the current access address is localhost/127.0.0.1, a notice will indicate that it is for local-machine Agents only.
+This round was verified using a fresh browser context and randomized simulated credentials: buttons disabled when not logged in, both download configurations parse correctly and reuse the current credentials, copy success and manual copying after permission denial, clearing on close, disabling on disconnect, no horizontal page overflow at 320/390/768/1440 widths, and no JavaScript errors. The live service returned ready and provided the updated page. This verification covers web-based configuration generation; it does not mean end-to-end automatic onboarding has been completed in any version of Accio/Codex.
 
-本轮以全新浏览器上下文和随机模拟凭证验证：未登录禁用按钮、两种下载配置可正确解析且复用当前凭证、复制成功与权限拒绝后的手动复制、关闭清空、断开禁用、320/390/768/1440 宽度无页面横向溢出、无 JavaScript 错误。实时服务返回 ready 并提供更新后的页面。此验证覆盖网页配置生成，不代表已在任意版本的 Accio/Codex 中完成端到端自动接入。
+References: [Codex MCP Configuration](https://learn.chatgpt.com/docs/extend/mcp?surface=cli), [Accio Browser Relay](https://www.accio.com/wow/doc-browser-use-guide.html). The Accio registration format was additionally checked against the locally installed accio-mcp-cli implementation.
 
-参考：[Codex MCP 配置](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)、[Accio Browser Relay](https://www.accio.com/wow/doc-browser-use-guide.html)。Accio 注册格式另核对本机安装的 accio-mcp-cli 实现。
+## Admin Access Code Management
 
-## 管理员访问码管理
+At the bottom of the page, click “Admin · Access Code Management”. If the access code of the currently connected knowledge base has administrator privileges, that code is reused directly and, after backend verification, grants entry without needing to be filled in again; no second admin login is stored additionally. Regular access codes still cannot enter; you can instead authenticate with a separately saved or manually entered admin access code. When the current admin login is reused, exiting management also disconnects the knowledge base and clears that login; logging out of an independent admin login does not affect regular staff members' knowledge base connections. Fill in the purpose/team name, check one or more business units (select all/deselect all is supported), choose 7/30/90/365 days, then enter the number of codes to generate (default 1, 1–100 at a time). Codes in the same batch share the same business units and validity period, each access code is independent, and batch-generated names are automatically suffixed with numbers such as #01, #02. After generation, you can select a single code to copy its individual instructions, or copy the entire batch and download a TXT list for distribution. The sharing URL can be adjusted, but entering a public domain does not automatically complete network access. A local-machine address will show a notice that it cannot be used for cross-city access.
 
-页面底部点击“管理员 · 访问码管理”。若当前连接知识库的访问码具有管理员权限，直接复用该码，经后台验证后进入，无需再次填写；不额外保存第二份管理员登录。普通访问码仍不能进入，可使用另行保存或输入的管理员访问码验证。复用当前管理员登录时，退出管理也会断开知识库并清除该登录；独立管理员登录退出不影响普通员工的知识库连接。填写用途／团队名称、勾选一个或多个事业部（支持全选／取消全选）、选择 7／30／90／365 天，再填写生成数量（默认 1，一次 1–100 个）。同批次事业部与有效期相同，每个访问码独立，批量时名称自动加 #01、#02 等编号。生成后可选择一个码复制单份说明，或复制本批全部、下载 TXT 清单用于分发。可以调整分享网址，但填写公网域名并不自动完成网络接入。本机地址会提示不能用于跨城市访问。
+New codes are fixed as regular members, without review-and-publish or administrator privileges. The paginated panel on the right shows the names, business units, creation and expiry times, and statuses of access codes issued on this page, and allows deactivation with confirmation. CLI historical identities and admin credentials are never mixed into this list. The plaintext code is returned only once upon successful generation and is not saved to the list or localStorage; closing the window clears the plaintext — if it is lost, deactivate the old code and create a new one. Retrying the same generation request does not issue duplicates; if a response is lost, check the list to confirm. Batches are generated within a single database transaction, and a mid-way failure rolls back everything. Deactivating one code does not affect other codes in the same batch; the current share list removes deactivated items while retaining the currently selected ones that remain valid. The full-batch list is for the administrator to keep; the entire batch of codes should not be forwarded as a single set of instructions.
+Admin authorization is controlled solely by the database field `principals.is_admin`; ordinary `member` and `publisher` roles cannot use the `/v1/admin` API. Every entry into admin mode requests admin session verification anew, without relying on front-end cached roles; logging out invalidates any incomplete admin verification. The admin API has no caching; the plaintext of a newly generated code is included only in that response, while the database stores the hash and the operator who created/deactivated it. Admin identity is established only by local operations, with no web-based self-service upgrade. The `bootstrap-admin` of a first fresh deployment holds this privilege; older deployments must migrate per the server instructions and explicitly designate an admin. A separate `kb-owner` admin for local testing has been configured, with credentials stored at `config/owner-access.txt` in the data directory, and staff access-code privileges were not elevated.
 
-新码固定为普通成员，无审核发布和管理员权限。右侧分页展示本页面签发的访问码名称、事业部、创建与到期时间、状态，并可确认停用。CLI 历史身份和管理员凭证不会混入这个列表。明文码仅生成成功时返回一次，不保存到列表或 localStorage；关闭窗口清空明文，遗失时停用旧码再新建。同一个生成请求重试不重复签发，响应丢失时查看列表确认。批次在同一数据库事务中生成，中途失败全部回滚。停用一个码不会影响同批其他码；当前分享清单会移除已停用项，并保留仍有效的当前选择。整批清单供管理员保存，不应把全批代码当作单份说明转发。
+On 2026-09-18, live testing in a fresh browser verified ordinary-member rejection, admin login persistence, mandatory business-unit selection, code generation and same-code access, copy sharing, names displayed as plain text, clearing on close, 401 after deactivation, admin login cleared on logout, and 320/390/768/1440 pixel layouts. Verified that the newly generated access codes were deactivated, cleaned up this round's synthetic test identities, and did not modify knowledge base files. The full regression passed 153 items, with 2 items skipped—process/cluster drills that require explicit enablement; restoring an old backup grants no admin privileges by default, while restoring a new backup preserves admins and access codes with deactivation working normally. The code review has no unresolved major issues. The admin-login reuse adjustment was verified through actual local admin login, refresh, and logout, and with a fresh browser simulating ordinary-member rejection, separate-admin fallback, privilege revocation, disconnection during verification, and list authentication expiry; the related API regression passed 7 items. Subsequent batch changes were tested live with fresh test identities / 10 new codes; select-all toggling, uniqueness, permissions across all selected business units, single-item and whole-batch copy/download, copy-failure degradation, individual deactivation, export excluding deactivated items, clearing on close, and responsive layout all passed; the test codes were deactivated and cleaned up. Newly added API tests verify that batch retries prevent duplicates and that mid-way failures roll back atomically.
 
-管理员授权由数据库 principals.is_admin 单独控制，普通 member 和 publisher 均不能使用 /v1/admin 接口。每次进入管理均重新请求管理员会话验证，不凭前端缓存角色判断；断开登录使未完成的管理员验证失效。管理员 API 无缓存；新码原文仅本次响应包含，数据库保存哈希及创建／停用操作者。管理员身份只由本地运维建立，不提供网页自助升级。首次全新部署的 bootstrap-admin 拥有此权限；旧部署需按服务器说明迁移并显式指定管理员。本机测试的独立 kb-owner 管理员已配置，凭证存于数据目录 config/owner-access.txt，未提升员工访问码权限。
+## Implementation Boundaries
 
-2026-09-18 已在全新浏览器中实测普通成员被拒、管理员登录记忆、事业部必选、生成及同码访问、复制分享、名称按纯文本显示、关闭清除、停用后 401、退出清除管理员登录和 320/390/768/1440 像素布局。实测新生成的访问码已停用，并清理本轮合成测试身份，不修改知识库文件。完整回归 153 项通过、2 项需要显式启用的进程／集群演练跳过；旧备份恢复默认无管理员权限，新备份恢复保留管理员和访问码并可正常停用。代码 review 无未解决的重要问题。管理员登录复用调整经实际本机管理员登录、刷新与退出验证，并以全新浏览器模拟普通成员拒绝、独立管理员回退、权限撤销、验证期间断开、列表认证过期，相关 API 回归 7 项通过。后续批量改动使用全新测试身份／10 个新码实测，全选切换、唯一性、所有选定事业部权限、单份与整批复制／下载、复制失败降级、单独停用、导出剔除停用项、关闭清除和响应式布局通过；测试码已停用并清理。新增 API 测试验证批量重试防重复和中途失败原子回滚。
+Native HTML/CSS/JavaScript, served by the existing FastAPI service, with no additional front-end service, build chain, or third-party CDN. `/v1/portal-session` returns the identity and per-file size limit; upload/query/download all reuse the existing authentication endpoints. Static assets expose only the designated CSS and JS; the HTML root entry carries a CSP and a policy forbidding embedding by external frames.
+The page only shows the business units the current account is authorized to submit to; it neither guesses based on file content nor defaults to selecting company public knowledge. A batch is not a single database-wide transaction; partially successful results are retained.
 
-## 实现边界
+## Batch Feature Validation (2026-09-17)
 
-原生 HTML/CSS/JavaScript，由现有 FastAPI 服务提供，无额外前端服务、构建链或第三方 CDN。`/v1/portal-session` 返回身份与单文件大小上限，上传／查询／下载全部复用原有认证接口。静态资源只开放指定 CSS 和 JS，HTML 根入口带 CSP 及禁止外部框架嵌入策略。
+Access-code memory was additionally verified with a brand-new Chrome user data directory: an incorrect access code is not saved; with a correct access code, it reconnects automatically after refresh and after fully closing/restarting the browser; a temporary network outage preserves the record; actively disconnecting clears the record; and a cached token is automatically cleared once the server rejects it. There were no browser JavaScript exceptions, and the related entry-point regression passed 2 items. Testing did not extend the validity period of the original token.
 
-页面只展示当前账号有权限提交的事业部，既不会按文件内容猜测，也不会默认选择公司公共知识。批次不是数据库整体事务，部分成功的结果会保留。
+Using a new random test identity and five brand-new synthetic files, the local preview service was exercised hands-on in a separate Chrome browser:
 
-## 批量功能验证（2026-09-17）
+- In the first batch, three files were selected at once; when no business unit was selected, no records were created in the database.
+- With record type and model left blank, the actual request does not include these two fields; the backend recorded it as other / empty model.
+- Simulated the case where the second file was submitted successfully but the response was lost: the first and third files completed normally; the retry re-requested only the second file, and the database ultimately still contained exactly three records.
+- In the second batch, three new files were selected and one removed; after filling in the optional type and model, the remaining two files both saved the correct shared metadata.
+- After every batch fully succeeds, the business unit selection is cleared, and the next batch still requires re-selection; the current batch's submission results are retained for verification.
+- Dragging in multiple files preserves all valid selections; identical name, size, and modification time can still mean different content, and files are not automatically discarded. This edge case was verified with two brand-new files of different content.
+- At 320, 390, 768, and 1440 pixel widths there is no horizontal overflow and no browser JavaScript exceptions; desktop screenshots were inspected.
+- The related API/MCP regression passed 6 items, and the JavaScript syntax check passed.
 
-访问码记忆另用全新 Chrome 用户目录验证：错误访问码不保存；正确访问码在刷新和完整关闭／重启浏览器后自动连接；临时断网保留记录；主动断开清除记录；缓存令牌被服务端拒绝后自动清除。浏览器无 JavaScript 异常，相关入口回归 2 项通过。测试未延长原有令牌有效期。
+This round's results and screenshots are saved in the local data directory `validation/portal-probe-8fae3a1fa94b40649ec143f92201c813` and are not committed to Git. The five test drafts have been withdrawn, and the random test identity has been deactivated.
 
-使用新的随机测试身份和五份全新合成文件，在独立 Chrome 浏览器实际操作本机预览服务：
-
-- 第一批一次选择三份文件，未选事业部时数据库没有生成资料。
-- 资料类型、型号留空，实际请求不包含这两个字段；后台记录为 other / 空型号。
-- 模拟第二份文件已提交成功但响应丢失：第一、三份正常完成；重试只再次请求第二份，数据库最终仍只有三份资料。
-- 第二批选择三份新文件并移除一份，填写可选类型及型号后，剩余两份均保存正确的共同元数据。
-- 每批全部成功后清空事业部选择，下一批仍需重新选择；保留本批提交结果供核对。
-- 多文件拖入保留全部有效选择；同名、同大小、同修改时间也可能是不同内容，不自动丢弃。该边界已用两份全新不同内容文件验证。
-- 320、390、768、1440 像素宽度无横向溢出，无浏览器 JavaScript 异常，已检查桌面截图。
-- 相关 API／MCP 回归 6 项通过，JavaScript 语法检查通过。
-
-本轮结果及截图保存在本机数据目录 `validation/portal-probe-8fae3a1fa94b40649ec143f92201c813`，不进入 Git。五份测试稿已撤回，随机测试身份已停用。
-
-此前单文件入口完成了错误认证、搜索、原件下载哈希、HTML 纯文本显示及安全响应头验证；本次复用这些接口与显示逻辑。以上是本机功能验证，不代表跨机器接入、所有文档解析质量或生产容量已经验收。
+Previously, the single-file entry completed verification of invalid authentication, search, original-download hashing, HTML plain-text display, and security response headers; this round reused those interfaces and display logic. The above is local functional validation only; it does not mean that cross-machine integration, parsing quality for all documents, or production capacity have been accepted.

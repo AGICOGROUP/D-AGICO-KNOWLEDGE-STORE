@@ -1,29 +1,28 @@
-# 本机测试知识库：目录与真实文件验证
+# Local Test Knowledge Base: Directory and Real-File Verification
 
-2026-09-16。代码、测试素材、运行数据已分离。当前为本机测试服务，未安装 Windows 自启动服务，未开放局域网访问。
+2026-09-16. Code, test materials, and runtime data have been separated. This is currently a local-machine test service: no Windows auto-start service has been installed, and LAN access is not open.
 
-## 目录
+## Directories
 
-| 路径 | 用途 |
+| Path | Purpose |
 |---|---|
-| `D:\AGICO-KNOWLEDGE-STORE` | 源码、虚拟环境、PostgreSQL 可执行程序、测试工具 |
-| `D:\测试文件` | 授权素材；源文件未修改 |
-| `D:\企业知识库\originals` | 系统管理的原文件，不要手工改名或覆盖 |
-| `D:\企业知识库\postgres` | 当前数据库数据目录，包含开发测试库及独立的 `agico_preview` 预览库 |
-| `D:\企业知识库\models` | 离线向量模型 |
-| `D:\企业知识库\logs` | 数据库、API、worker 日志 |
-| `D:\企业知识库\config` | 受 NTFS 权限保护的运行配置与测试令牌，不提交 Git、不打印 |
-| `D:\企业知识库\validation` | 迁移校验、真实文件测试记录和下载校验副本 |
+| `D:\AGICO-KNOWLEDGE-STORE` | Source code, virtual environment, PostgreSQL executables, test tools |
+| `D:\TestFiles` | Licensed materials; source files unmodified |
+| `D:\EnterpriseKnowledgeBase\originals` | Original files managed by the system; do not manually rename or overwrite them |
+| `D:\EnterpriseKnowledgeBase\postgres` | Current database data directory, containing the development test database and the separate `agico_preview` preview database |
+| `D:\EnterpriseKnowledgeBase\models` | Offline vector models |
+| `D:\EnterpriseKnowledgeBase\logs` | Database, API, and worker logs |
+| `D:\EnterpriseKnowledgeBase\config` | Runtime configuration and test tokens protected by NTFS permissions; not committed to Git, not printed |
+| `D:\EnterpriseKnowledgeBase\validation` | Migration verification, real-file test records, and download-verification copies |
 
-停机复制时，2,027 个数据库文件与 14 个模型文件逐一通过 SHA-256 对比。旧 `.local/pgdata` 保留为切换前副本，已停止使用，不是持续更新的备份；旧 `.local/models` 暂留给现有自动化测试。
+During the copy performed with services stopped, all 2,027 database files and 14 model files were compared one by one via SHA-256. The old `.local/pgdata` was kept as a pre-cutover copy and is no longer in use; it is not a continuously updated backup. The old `.local/models` is temporarily retained for the existing automated tests.
 
-本机 PostgreSQL 通过中文路径启动时，返回的路径编码与 UTF-8 客户端不一致。`.local/runtime-postgres` 因此设为指向 `D:\企业知识库\postgres` 的 NTFS Junction（路径映射），物理数据仍在用户指定目录。迁移到其他机器时需重新创建映射和配置，不能只复制代码仓库。
+When the local PostgreSQL is started from a Chinese path, the path encoding it returns is inconsistent with the UTF-8 client. For this reason, `.local/runtime-postgres` is set up as an NTFS Junction (path mapping) pointing to `D:\EnterpriseKnowledgeBase\postgres`; the physical data remains in the user-specified directory. When migrating to another machine, the mapping and configuration must be recreated — copying only the code repository is not enough.
 
-非机密路径配置位于 `.local/test-layout.json`。素材和运行数据未放入 Git。数据目录及凭证仅允许当前 Windows 用户、SYSTEM 和 Administrators 访问。服务在当前登录账号下运行；预览库使用独立的非超级用户 `agico_preview`。
+Non-sensitive path configuration is located in `.local/test-layout.json`. Materials and runtime data are not placed in Git. The data directory and credentials are accessible only to the current Windows user, SYSTEM, and Administrators. The service runs under the currently logged-in account; the preview database uses a separate non-superuser, `agico_preview`.
+## Start/Stop and Access
 
-## 启停与接入
-
-在开发目录运行（依赖已安装的 `load` 依赖组）：
+Run from the development directory (requires the already-installed `load` dependency group):
 
 ```powershell
 ./scripts/test-runtime.ps1 status
@@ -31,39 +30,38 @@
 ./scripts/test-runtime.ps1 start
 ```
 
-`start` 自动启动数据库，再隐藏启动 API 与 worker；拒绝重复启动或占用已有 8765 端口。`stop` 仅停止保存了 PID、启动时间和启动脚本校验的进程树，数据库继续服务开发测试。完全停机时先停 API/worker，再运行 `./scripts/dev-db.ps1 stop`。
+`start` automatically starts the database and then launches the API and worker in the background; it refuses duplicate starts or the use of an already-occupied port 8765. `stop` only stops process trees whose saved PID, start time, and launch script pass verification; the database continues serving development testing. For a full shutdown, stop the API/worker first, then run `./scripts/dev-db.ps1 stop`.
 
-- API：`http://127.0.0.1:8765`
-- MCP：`http://127.0.0.1:8765/mcp`
-- 健康检查：`http://127.0.0.1:8765/health/ready`
-- API 调试文档：`http://127.0.0.1:8765/docs`，不是员工网页入口。
+- API: `http://127.0.0.1:8765`
+- MCP: `http://127.0.0.1:8765/mcp`
+- Health check: `http://127.0.0.1:8765/health/ready`
+- API debug docs: `http://127.0.0.1:8765/docs`; this is not the employee web portal.
 
-业务请求仍需独立令牌。测试管理员和测试读者令牌位于受保护的 `config/test-tokens.json`，有效期 30 天；不是正式员工账号，尚未写入 Codex、Accio 或钉钉配置。重启电脑后需手动启动。每次启动覆盖当前 API/worker 日志，长期日志轮转由正式部署配置处理。
+Business requests still require separate tokens. The test admin and test reader tokens are located in the protected `config/test-tokens.json` and are valid for 30 days; they are not official employee accounts and have not yet been written into the Codex, Accio, or DingTalk configuration. After the computer restarts, manual startup is required. Each startup overwrites the current API/worker logs; long-term log rotation is handled by the production deployment configuration.
 
-## 真实样本结果
+## Real Sample Results
 
-素材目录共 349 个文件，包括临时锁文件、脚本与压缩包。本轮选择 Word、Excel、PPT、PDF、CAD 各一份，未全量导入。归属事业部未确认，使用“公司公共知识”分类下的**私有测试资料**，并不对全体员工开放。
+The source material directory contains 349 files in total, including temporary lock files, scripts, and archives. This round selected one file each of Word, Excel, PPT, PDF, and CAD; no full import was performed. The owning business unit has not been confirmed, so the **private test materials** under the "Company Public Knowledge" category are used, which are not open to all employees.
 
-| 类型 | 结果 |
+| Type | Result |
 |---|---|
-| DOCX | 正文可检索读取，保留页眉页脚、脚注等未解析警告 |
-| XLSX | 正常解析，保留工作表和单元格范围 |
-| PPTX | 文字可检索读取，保留图片／图形未解释警告 |
-| PDF | 文字可检索读取，保留图片及长内容向量表示限制警告 |
-| DWG | 仅原文件，不声称能够理解图纸内容 |
+| DOCX | Body text is searchable and readable; unresolved warnings are retained for headers/footers, footnotes, etc. |
+| XLSX | Parsed normally, retaining worksheets and cell ranges |
+| PPTX | Text is searchable and readable; unexplained warnings for images/graphics are retained |
+| PDF | Text is searchable and readable; warnings regarding images and long-content vector representation limits are retained |
+| DWG | Original file only; no claim of being able to understand drawing contents |
+All 5 samples passed the upload/download SHA-256 consistency checks against the source files, library-wide filename lookup, MCP file lookup, and private-material unauthorized-access rejection checks. The 4 samples with body content passed library-wide content retrieval (target within the top 5 results), reads with source attribution, and MCP/HTTP body content consistency checks. These results validate the workflow and basic retrieval; they do not constitute full acceptance of semantic, translation, or engineering content quality.
 
-5 份样本均通过上传、下载与源文件 SHA-256 一致性检查、全库文件名查找、MCP 文件查找和私有资料越权拒绝检查。4 份有正文的样本通过全库内容检索（目标在前 5 项）、带来源读取和 MCP/HTTP 正文一致性检查。此结果验证流程与基本检索，不等于完整语义、翻译或工程内容质量验收。
+Final fresh upload batch: `23730fa1ca6b45c4bf90b008c60c4679`, with details at `D:\EnterpriseKnowledgeBase\validation\23730fa1ca6b45c4bf90b008c60c4679\results.json`. The 10 versions from the first two rounds have been taken down via the admin interface, with audit records and original files retained; this batch keeps 5 items. Later, 3 files each of Office/PDF/CAD were added, 9 in total, bringing the current valid versions to 14 — see [Small File Ingestion Test](small-files.md).
 
-最终全新上传批次：`23730fa1ca6b45c4bf90b008c60c4679`，详情位于 `D:\企业知识库\validation\23730fa1ca6b45c4bf90b008c60c4679\results.json`。前两轮 10 个版本已通过管理接口撤下，保留审计与原文件，该批保留 5 份。后续新增 Office／PDF／CAD 各 3 份，共 9 份，当前有效版本为 14 份，见[小文件入库测试](small-files.md)。
+Real XLSX files exposed two issues, which have been fixed: missing optional worksheet range metadata, and internal `.blob` filenames being rejected by openpyxl's extension check. Files are now read as file streams, and the 1,000,000-cell protection over the actual traversal range is retained. Six regression tests were added covering normal, empty, and oversized ranges under both `.xlsx` and `.blob` storage names; the old implementation was first confirmed to fail before the fix.
 
-真实 XLSX 暴露并修复两个问题：可选工作表范围元数据缺失；内部 `.blob` 文件名被 openpyxl 扩展名检查拒绝。现以文件流读取，并对实际遍历范围保留 100 万格保护。新增正常、空表、超大范围在 `.xlsx` 与 `.blob` 两种存储名下的 6 项回归测试，先确认旧实现失败再修复。
+The startup scripts, path switching, and XLSX fixes in this round have passed an independent read-only targeted review, with no unresolved Important/Critical issues.
 
-本次启动脚本、路径切换与 XLSX 修复已通过独立的只读针对性 review，无未解决 Important／Critical。
+The full test suite for this batch at the time was **134 passed / 2 skipped** (136 passed after the later small-file test fix); the two explicit failure-and-restart tests were not repeated this round, having passed separately in the previous batch. PowerShell syntax checks, service start/stop/restart, offline models, new-directory read/write, and Ruff checks all passed. The original-file reconciliation checked 15 references; missing, corrupted, unreferenced, and stale temporary files were all 0.
 
-本批当时全套测试 **134 passed / 2 skipped**（后续小文件测试修复后为 136 passed）；两项显式故障重启测试本轮未重复，上一批次已单独通过。PowerShell 语法、服务启停重启、离线模型、新目录读写和 Ruff 检查通过。原件对账检查 15 个引用，缺失、损坏、无引用文件、陈旧临时文件均为 0。
+## Follow-up Boundaries
 
-## 后续边界
+Do not directly copy the running PostgreSQL folder to serve as a consistency backup. Continue using the existing database plus original-file backup tools; place formal backups on a different disk or another device. This round did not designate an independent backup location, and no scheduled backups have been established.
 
-不要直接复制运行中的 PostgreSQL 文件夹充当一致性备份。继续使用已有数据库＋原件备份工具；正式备份放到另一块磁盘或其他设备。本轮未指定独立备份位置，未建立定时备份。
-
-仍需真实业务质量评估、资料归属确认、Accio／现有网页与钉钉接入，以及正式 Windows 服务、网络、TLS 和容量验收。
+Still needed: real business quality evaluation, confirmation of material ownership, Accio / existing web and DingTalk integration, and formal acceptance of the Windows service, network, TLS, and capacity.

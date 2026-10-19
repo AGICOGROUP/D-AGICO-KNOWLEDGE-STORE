@@ -1,15 +1,15 @@
-# 开发进度
+# Development Progress
 
-计划编号 0–8，共 9 步。2026-09-16 用户授权完成剩余本地开发后统一 review；本地开发与收尾已完成，整体 review 发现的验收判定问题已修复，限定复查通过。当前无未解决 Critical／Important，剩余为真实环境联调及正式验收。
+Plans are numbered 0–8, 9 steps in total. On 2026-09-16 the user authorized completing the remaining local development followed by a unified review; local development and wrap-up are complete, the acceptance-judgment issues found in the overall review have been fixed, and the scoped re-review passed. There are currently no unresolved Critical/Important items; what remains is real-environment integration testing and formal acceptance.
 
-| 范围 | 状态 |
+| Scope | Status |
 |---|---|
-| 0–5 基础、文件、发布、解析、检索、MCP | 已实现并验证 |
-| 6 Agent 企业知识应用 | Codex 合成任务与5类真实文件MCP基本流程通过；业务质量、Accio、员工入口仍待联调 |
-| 7 部署与恢复 | 本地代码／脚本及真实进程、数据库重启／恢复验证通过；正式目标部署待验收 |
-| 8 业务与容量工具 | 50 REST/MCP短测正确且无降级；正式业务与30分钟容量验收未完成 |
-| 收尾补齐 | 发布分类审核、只读原件对账、有界向量等待、阈值／人数／权限判定、32MiB验证 |
-| 本机测试目录 | 已迁移至指定目录；初始5份及新增9份真实样本验证，修复XLSX兼容和全角文件名检索问题 |
-| 全套测试 | 最新136项通过；2项故障演练上一批次已单独显式通过 |
+| 0–5 Foundations, files, publishing, parsing, retrieval, MCP | Implemented and verified |
+| 6 Agent enterprise knowledge application | Codex synthetic tasks and the basic MCP flow for 5 types of real files passed; business quality, Accio, and the employee portal still await integration testing |
+| 7 Deployment and recovery | Local code/scripts and real process/database restart/recovery verification passed; formal target deployment awaits acceptance |
+| 8 Business and capacity tools | 50 REST/MCP short tests correct with no degradation; formal business and 30-minute capacity acceptance not yet completed |
+| Wrap-up gap-filling | Publishing category review, read-only original reconciliation, bounded vector wait, threshold/headcount/permission judgments, 32MiB verification |
+| Local test directory | Migrated to the designated directory; verified with the initial 5 and 9 newly added real samples, fixing XLSX compatibility and full-width filename retrieval issues |
+| Full test suite | Latest 136 items passed; the 2 fault-drill items were separately and explicitly passed in the previous batch |
 
-以[小文件入库测试](small-files.md)、[本机测试版](local-preview.md)、[整体报告](final-review.md)和[当前负载结果](load-50.md)为当前状态。历史阶段记录：[第一批](steps-0-2-review.md)、[第二批](steps-3-5-review.md)、[第三批](steps-6-8-review.md)。真实环境验收缺项继续如实保留。
+The current status is documented in [small-file ingestion test](small-files.md), [local preview](local-preview.md), [overall report](final-review.md), and [current load results](load-50.md). Historical phase records: [Batch 1](steps-0-2-review.md), [Batch 2](steps-3-5-review.md), [Batch 3](steps-6-8-review.md). Missing real-environment acceptance items continue to be kept as-is, faithfully recorded.

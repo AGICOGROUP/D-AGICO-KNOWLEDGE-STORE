@@ -1,21 +1,21 @@
-# 首批接入契约
+# First-Batch Integration Contract
 
-知识库是现有 Agent 的企业知识扩展库和原文件库。Agent 按需检索、理解并应用企业资料；后台承担存储、授权、发布和后续解析索引，不接管业务任务。
+The knowledge base is the enterprise knowledge extension library and original-file repository for existing Agents. Agents retrieve, understand, and apply enterprise materials on demand; the backend handles storage, authorization, publishing, and subsequent parsing and indexing, and does not take over business tasks.
 
-## 身份
+## Identity
 
-- 每个独立员工／服务身份使用独立可撤销 Bearer token，数据库只存摘要。
-- 组织与角色由服务端 `memberships` 确认；模型输入不能选择用户、角色或允许访问的部门。
-- 浏览器／钉钉由已有可信入口或任务调度层把实际员工映射到对应凭证，结果回原会话。该真实委托链尚未提供，当前只完成独立身份后台验证，不能视为多人入口已联调。
-- 部门成员提交草稿，部门负责人发布。公共知识分区也需要明确授权。跨部门共享仅授予读取，不复制原文件，不授予发布权。
+- Each distinct employee/service identity uses an independent, revocable Bearer token; the database stores only a digest.
+- Organization and roles are confirmed by the server-side `memberships`; model input cannot select users, roles, or departments allowed for access.
+- For browser/DingTalk, an existing trusted entry point or the task-scheduling layer maps the actual employee to the corresponding credentials, and results are returned to the original session. This real delegation chain is not yet in place; at present only backend verification with independent identities has been completed, so this must not be regarded as a multi-user entry point that has passed joint testing.
+- Department members submit drafts; department heads publish. Public knowledge partitions also require explicit authorization. Cross-department sharing grants read access only, does not copy original files, and does not grant publishing rights.
 
-## 文件与网络
+## Files and Network
 
-准备上传 → 持有文件的客户端流式 PUT → 完整校验 → 用 upload_id 提交。
-获取文件引用 → 可信交付程序带当前身份 GET → 通过原入口交付；不要求模型把二进制传入上下文。
+Prepare upload → the client holding the file performs a streaming PUT → full validation → submit with upload_id.
+Obtain a file reference → a trusted delivery program performs a GET with the current identity → deliver via the original entry point; the model is not required to bring binaries into its context.
 
-上传、下载与 MCP 后续共用后端身份规则。原文件不会通过任意本地路径或任意 URL 导入。下载引用不是永久公开链接。每次新下载检查当前权限；已经交付的副本不能追回。
+Uploads, downloads, and MCP share the same backend identity rules going forward. Original files will never be imported through arbitrary local paths or arbitrary URLs. Download references are not permanently public links. Current permissions are checked on every new download; copies already delivered cannot be recalled.
 
-Codex 的基础探针及业务 MCP 搜索／读取通过，步骤 5 工具与文件适配已实现。步骤 6 使用 [共用 Agent 约定](../../client/agent-usage.md) 和每轮新建的四类合成资料验证普通任务；结果与限制见 [Codex](codex.md)。这不代替真实企业资料的业务确认。[Accio](accio.md) 与 [网页／钉钉](employee-entry.md) 缺少真实环境，保持未联调。
+Codex's basic probes and business MCP search/read have passed, and the Step 5 tool and file adaptations are implemented. Step 6 uses the [shared Agent conventions](../../client/agent-usage.md) and four types of synthetic materials newly created each round to validate ordinary tasks; results and limitations are described in [Codex](codex.md). This does not replace business confirmation with real enterprise materials. [Accio](accio.md) and [Web/DingTalk](employee-entry.md) lack a real environment and remain pending joint testing.
 
-本机使用 loopback HTTP 验证，不代表公司网络、移动端可达性或正式 HTTPS 已通过。正式上线按步骤 7 配置专用服务账号、TLS 和数据目录权限。
+Verification on this machine uses loopback HTTP, which does not mean company-network reachability, mobile reachability, or production HTTPS has passed. For the production launch, configure a dedicated service account, TLS, and data directory permissions according to Step 7.

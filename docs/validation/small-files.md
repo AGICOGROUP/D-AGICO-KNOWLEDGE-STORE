@@ -1,40 +1,39 @@
-# Office／PDF／CAD 小文件入库测试
+# Office/PDF/CAD Small-File Ingestion Test
 
-2026-09-16。按用户要求选取 Office、PDF、CAD 各 3 份，共 9 份，原文件总计 799,134 字节（780.4 KiB）。Office 覆盖 Word、Excel、PPT 各一份，分别选择该格式最小的非临时文件；PDF、CAD 选择各自最小的 3 份，排除锁文件、备份和自动保存副本。
+2026-09-16. Per the user's request, 3 files each of Office, PDF, and CAD were selected, 9 files in total, with the original files totaling 799,134 bytes (780.4 KiB). Office covers one file each of Word, Excel, and PPT, selecting the smallest non-temporary file for each format; for PDF and CAD, the smallest 3 files of each were selected, excluding lock files, backups, and auto-save copies.
 
-## 文件与结果
+## Files and Results
 
-| 类型 | 匿名样本（原文件清单留在本地测试记录） | KiB | 处理结果 |
+| Type | Anonymized sample (original file list kept in local test records) | KiB | Processing result |
 |---|---|---:|---|
-| Office | 样本 01.docx | 13.6 | 正文可检索读取 |
-| Office | 样本 02.xlsx | 10.3 | 正文可检索读取 |
-| Office | 样本 03.pptx | 278.8 | 正文可检索读取，保留不完整警告 |
-| PDF | 样本 04.pdf | 57.3 | 正文可检索读取，保留不完整警告 |
-| PDF | 样本 05.pdf | 91.6 | 正文可检索读取，保留不完整警告 |
-| PDF | 样本 06.pdf | 112.2 | 正文可检索读取，保留不完整警告 |
-| CAD | 样本 07.dwg | 39.9 | 仅原文件 |
-| CAD | 样本 08.dwg | 86.3 | 仅原文件 |
-| CAD | 样本 09.dwg | 90.3 | 仅原文件 |
+| Office | Sample 01.docx | 13.6 | Body text retrievable and readable |
+| Office | Sample 02.xlsx | 10.3 | Body text retrievable and readable |
+| Office | Sample 03.pptx | 278.8 | Body text retrievable and readable, incompleteness warning retained |
+| PDF | Sample 04.pdf | 57.3 | Body text retrievable and readable, incompleteness warning retained |
+| PDF | Sample 05.pdf | 91.6 | Body text retrievable and readable, incompleteness warning retained |
+| PDF | Sample 06.pdf | 112.2 | Body text retrievable and readable, incompleteness warning retained |
+| CAD | Sample 07.dwg | 39.9 | Original file only |
+| CAD | Sample 08.dwg | 86.3 | Original file only |
+| CAD | Sample 09.dwg | 90.3 | Original file only |
 
-## 验证结论
+## Verification Conclusions
 
-- 9/9 全新上传与提交、私有测试发布、文件名检索、MCP 文件查找通过。
-- 9/9 下载 SHA-256 与源文件一致；源文件未改动；非授权测试读者看不到资料且不能下载。
-- 6/6 Office/PDF 样本通过正文片段检索、带来源读取、MCP/HTTP 正文一致性检查。片段查询来自提取结果，用于验证索引和回读链路，不是独立业务问答准确率测试。
-- 3/3 PDF 为扫描型图纸，走 OCR，明确提示识别文字、表格和图形语义可能不完整；本轮未人工验收尺寸或 OCR 准确率。PPT 提示图片／图形未解释，Excel 保留公式与已有缓存，未重新计算。
-- 3/3 CAD 明确返回仅原文件能力，MCP 读取没有虚构正文。
-- 原件对账共 33 个引用（包含历次撤下样本），缺失、损坏、孤立文件、陈旧临时文件均为 0。
+- 9/9 passed brand-new upload and submission, private test release, filename search, and MCP file lookup.
+- 9/9 downloaded SHA-256 values matched the source files; source files were unchanged; unauthorized test readers cannot see the material or download it.
+- 6/6 Office/PDF samples passed body-text fragment retrieval, reading with source attribution, and MCP/HTTP body-text consistency checks. Fragment queries were derived from extraction results and served to verify the indexing and read-back pipeline; they were not an independent business Q&A accuracy test.
+- 3/3 PDFs were scanned drawings processed via OCR, with an explicit notice that recognized text, table, and graphic semantics may be incomplete; no manual acceptance of dimensions or OCR accuracy was performed this round. PPT gave a notice that images/graphics are not interpreted; Excel retained formulas and existing cached values, without recalculation.
+- 3/3 CAD explicitly returned the original-file-only capability, and MCP reads produced no fabricated body text.
+- Original-file reconciliation covered 33 references in total (including samples withdrawn in previous rounds); missing, corrupted, and orphaned files and stale temporary files were all 0.
+## Issues Fixed During Testing
 
-## 测试中修复的问题
+The first round uncovered a retrieval miss for complete CAD filenames containing full-width parentheses: the query was Unicode-normalized first, while database titles/filenames were only lowercased. The same SQL NFKC normalization and case handling is now applied to filenames, titles, and queries; the permission, model-filtering, and body-retrieval paths are unchanged. Two new real-database regression tests, for title and filename respectively, cover full-width/half-width variants, German characters, and cross-department rejection; they failed first and then passed.
 
-首轮发现含全角括号的 CAD 完整文件名检索漏检：查询先做 Unicode 规范化，而数据库标题／文件名只转小写。现对文件名、标题和查询使用同一 SQL NFKC 规范化及大小写处理；权限、模型筛选、正文检索路径不变。新增标题与文件名两项真实数据库回归测试，覆盖全角／半角、德文字符和跨部门拒绝，先失败后通过。
+After the fix, the test API/worker were restarted, all 9 documents were re-uploaded and fully retested, with no reuse of first-round processing results. The final batch `4cad93b9804e44559ec2fe12df53a95b` took 18.609 seconds (from that batch's upload to completion of MCP validation, excluding troubleshooting and fix time). The 9 versions from the first-round batch have been taken down via the admin API; the audit records and originals are retained. The 5 previously valid test samples remain in place, for a total of 14 valid versions.
 
-修复后重启测试 API/worker，9 份全部重新上传并完整复测，未复用首轮处理结果。最终批次 `4cad93b9804e44559ec2fe12df53a95b` 耗时 18.609 秒（该批上传到 MCP 校验完成，不含排查修复时间）。首轮批次的 9 个版本已通过管理接口撤下，审计和原件保留。此前有效的 5 份测试样本仍保留，当前有效版本共 14 份。
+The full test suite this time came out at **136 passed / 2 skipped**; the two skipped items are fault-restart drills that require explicit enabling and were not repeated this round. Ruff checks passed, and a targeted read-only review passed, with no unresolved Important/Critical findings.
 
-本次全套测试 **136 passed / 2 skipped**，两项跳过的是需显式启用的故障重启演练，未在本轮重复。Ruff 检查通过，针对性只读 review 通过，无未解决 Important／Critical。
+## Records and Scope of Use
 
-## 记录与使用范围
+The complete results (including version IDs, hashes, processing warnings, validation results, and partial extracted text) are kept in a protected directory: `D:\EnterpriseKnowledgeBase\validation\4cad93b9804e44559ec2fe12df53a95b\results.json`; the original files, body text, and tokens were not committed to Git.
 
-完整结果（含版本 ID、哈希、处理警告、校验结果和部分提取文字）留在受保护目录：`D:\企业知识库\validation\4cad93b9804e44559ec2fe12df53a95b\results.json`，未将原文件、正文或令牌提交 Git。
-
-样本作为“公司公共知识”分类下的私有测试资料保存，未指定真实事业部归属，也未向正式员工开放。当前服务继续在本机运行。
+The samples are saved as private test material under the "Company Public Knowledge" category; no real business division was assigned, and they have not been opened to regular employees. The current services continue to run locally.

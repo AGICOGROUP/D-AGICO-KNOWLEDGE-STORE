@@ -1,9 +1,9 @@
-# Accio 验证状态
+# Accio Verification Status
 
-2026-09-15：**未联调**。未提供实际 Accio 客户端、版本、MCP 配置界面、认证或文件交接能力；不编造配置字段，不把 Codex 结果算作 Accio 验收。
+2026-09-15: **Integration testing not performed**. No actual Accio client, version, MCP configuration interface, authentication, or file handoff capability has been provided; do not fabricate configuration fields, and do not count Codex results as Accio acceptance.
 
-实机接入时使用独立可撤销成员凭证，确认 URL／Streamable HTTP 与 Bearer 环境或安全存储支持；若只有 stdio，再据实选择可维护的传输适配。后端仍使用同一服务与授权。应用 [共用约定](../../client/agent-usage.md)，配置位置由实机确认。
+When integrating with the real client, use independent, revocable member credentials; confirm URL / Streamable HTTP and Bearer support via environment variables or secure storage; if only stdio is available, then choose a maintainable transport adaptation based on the actual situation. The backend still uses the same service and authorization. Apply the [shared conventions](../../client/agent-usage.md); the configuration location is to be confirmed on the real client.
 
-复测顺序：初始化及成员可见工具 → 普通企业任务自主调用并应用背景／事实／规范／经验 → 无关任务及无答案 → 原文引用、原文件获取、提交和状态 → 越权失败。逐项记录配置（无密钥）、模型与客户端版本、原始任务、工具链路、实际产出、累计输入／缓存输入／输出 token 与耗时。四类知识需要业务负责人核对适用性；现有合成样本可先复用实验定义，但每轮必须新上传并处理。
+Re-test order: initialization and member-visible tools → autonomous invocation for ordinary enterprise tasks with application of background / facts / norms / experience → unrelated tasks and no-answer cases → original-text citation, original-file retrieval, submission and status → unauthorized-access failure. For each item, record the configuration (no secrets), model and client versions, original task, tool call chain, actual output, cumulative input / cached input / output tokens, and elapsed time. The four categories of knowledge require the business owner to verify their applicability; existing synthetic samples may reuse the experiment definitions for now, but they must be uploaded and processed anew each round.
 
-当前不能交付可复现的真实 Accio 配置或宣布通过。
+At present, a reproducible real Accio configuration cannot be delivered, nor can the verification be declared passed.

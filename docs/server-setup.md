@@ -1,75 +1,74 @@
-# Windows 服务器安装
+# Windows Server Installation
 
-代码目录与知识库数据目录分开。首次安装只需指定 `DataRoot`，脚本自动安装固定版本的 Python、PostgreSQL/pgvector、应用依赖和本地模型，初始化数据库和访问凭证，并注册三个自动启动的 Windows 服务。
+The code directory and the knowledge base data directory are separate. For first-time installation, you only need to specify `DataRoot`; the script automatically installs pinned versions of Python, PostgreSQL/pgvector, application dependencies, and local models, initializes the database and access credentials, and registers three Windows services that start automatically.
 
-## 首次安装
+## First-Time Installation
 
-要求：Windows x64、管理员 PowerShell 5.1、Git、可访问 GitHub/PyPI/conda-forge 和模型下载站点的网络，以及足够磁盘空间。服务包装器使用 Windows 的 .NET Framework 运行环境。代码放在英文路径；数据目录支持中文和空格，使用本机 NTFS 磁盘上的空目录，不能位于代码目录内。已有测试库不能直接当作全新安装目录。
+Requirements: Windows x64, administrator PowerShell 5.1, Git, network access to GitHub/PyPI/conda-forge and model download sites, and sufficient disk space. The service wrapper uses the Windows .NET Framework runtime. Place the code in a path using English characters only; the data directory supports Chinese characters and spaces, must be an empty directory on a local NTFS disk, and cannot be located inside the code directory. An existing test library cannot be used directly as a fresh installation directory.
 
-在**管理员 PowerShell**执行：
+Run the following in an **administrator PowerShell**:
 
 ```powershell
 git clone https://github.com/AGICOGROUP/D-AGICO-KNOWLEDGE-STORE.git D:\AGICO-KNOWLEDGE-STORE
 cd D:\AGICO-KNOWLEDGE-STORE
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\setup.ps1 -DataRoot "D:\企业知识库"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\setup.ps1 -DataRoot "D:\EnterpriseKnowledgeBase"
 ```
 
-首次下载需要时间。失败后修复网络等原因，使用同一命令重试；脚本校验安装归属，复用已保存凭证和数据库。已完成安装再次执行会检查并启动服务，不会重建知识库，也不会自动升级依赖。不要移动已绑定的代码或数据目录。
+The first download takes time. After a failure, fix the network or other causes and retry with the same command; the script verifies installation ownership and reuses the saved credentials and database. Re-running on a completed installation checks and starts the services; it will not rebuild the knowledge base, nor automatically upgrade dependencies. Do not move code or data directories that have already been bound.
 
-默认 API 为 `http://127.0.0.1:8765`，MCP 为 `http://127.0.0.1:8765/mcp`，数据库仅监听本机 `15432`。端口被其他程序占用时，首次安装可显式指定 `-ApiPort`、`-DatabasePort`；同机多实例还需不同 `-ServicePrefix` 和独立代码、数据目录。
+By default, the API is at `http://127.0.0.1:8765`, MCP at `http://127.0.0.1:8765/mcp`, and the database listens only on local port `15432`. If a port is occupied by another program, you can explicitly specify `-ApiPort` and `-DatabasePort` during the first-time installation; multiple instances on the same machine also require a different `-ServicePrefix` and separate code and data directories.
 
-## 数据与访问
+## Data and Access
 
-| 位置 | 内容 |
+| Location | Contents |
 | --- | --- |
-| 代码目录 `.runtime` | 自动下载的程序、Python 环境、安装缓存；不提交 Git |
-| 数据目录 `originals` | 原始文件 |
-| 数据目录 `postgres` | 元数据、权限、版本、文本和向量索引 |
-| 数据目录 `models` | 本地向量与 OCR 模型 |
-| 数据目录 `config` | 安装归属、受保护凭证和服务配置 |
-| 数据目录 `logs`、`temp`、`services` | 运行日志、临时文件和服务包装器 |
+| Code directory `.runtime` | Automatically downloaded programs, Python environment, and installation cache; not committed to Git |
+| Data directory `originals` | Original files |
+| Data directory `postgres` | Metadata, permissions, versions, and text and vector indexes |
+| Data directory `models` | Local vector and OCR models |
+| Data directory `config` | Installation ownership, protected credentials, and service configuration |
+| Data directory `logs`, `temp`, `services` | Runtime logs, temporary files, and service wrappers |
 
-安装结束后，管理员从 `config/initial-access.json` 读取初始化管理员的 MCP 地址、令牌和到期时间。令牌有效期为 30 天，拥有初始化管理员权限。打开网页底部“管理员 · 访问码管理”，首次使用此令牌登录后，可为员工或团队签发普通访问码。管理员码不可作为全公司共用账号。不要将配置内容粘贴到日志、聊天或 Git。
+After installation completes, the administrator reads the initial administrator's MCP address, token, and expiration time from `config/initial-access.json`. The token is valid for 30 days and carries initial administrator privileges. Open "Admin · Access Code Management" at the bottom of the web page; after logging in with this token for the first time, you can issue regular access codes for employees or teams. The administrator code must not be used as a company-wide shared account. Do not paste configuration contents into logs, chats, or Git.
 
-浏览器访问 `/health/ready` 用于检查就绪状态；直接打开 `/mcp` 出现 `UNAUTHENTICATED` 表示没有携带凭证，并非安装失败。MCP 客户端需要配置 Bearer token，并使用 MCP 协议调用。
+Visiting `/health/ready` in a browser checks readiness status; if opening `/mcp` directly returns `UNAUTHENTICATED`, it means credentials were not provided, not that installation failed. MCP clients need a Bearer token configured and must make calls using the MCP protocol.
 
-API 默认只允许本机访问。让其他电脑、现有网页或钉钉适配服务连接时，需要另行配置可信域名、HTTPS 反向代理与防火墙，以及调用者身份。仅选择一个文件夹无法推断这些网络和身份信息；知识库本身不重复建设员工聊天入口。
+By default, the API only allows local access. To let other computers, existing web pages, or DingTalk adapter services connect, you must separately configure a trusted domain, an HTTPS reverse proxy and firewall, and caller identity. Merely selecting a folder cannot infer this network and identity information; the knowledge base itself does not build a duplicate employee chat entry point.
 
-## 已有安装升级访问码管理（运维一次性操作）
+## Upgrading Access Code Management for Existing Installations (One-Time Operations Task)
 
-先备份，停止 API 和 worker，更新程序及依赖。使用运行该安装的 Python 环境，加载受保护配置后执行 `python -m agico_kb.admin migrate`（本次新增迁移 003）。随后显式选定一个专用管理身份，例如 `python -m agico_kb.admin set-admin bootstrap-admin true`；该身份必须已存在且没有将令牌分享给员工。没有合适身份时，通过 `set-identity` 创建专用身份后再 `set-admin`、`issue-token`。
+Back up first, stop the API and worker, then update the program and dependencies. Using the Python environment that runs this installation, load the protected configuration and then run `python -m agico_kb.admin migrate` (this round adds migration 003). Then explicitly designate a dedicated administrative identity, for example `python -m agico_kb.admin set-admin bootstrap-admin true`; that identity must already exist and must not have shared its token with employees. If no suitable identity exists, create a dedicated one via `set-identity`, then run `set-admin` and `issue-token`.
 
-旧安装、旧备份的已有身份全部默认无新增管理员权限；升级不会自动提升 publisher，也不会重新启用曾被降权的管理员。首次新安装才自动授权 bootstrap-admin。管理身份的令牌过期后仍需由本地运维签发新管理员令牌（`issue-token`），恢复网页管理；网页只能签发普通成员访问码。撤销管理员权限使用 `set-admin <身份> false`。
+All existing identities from old installations and old backups default to having no new administrator privileges; the upgrade does not automatically promote publishers, nor does it re-enable administrators who were previously demoted. Only a brand-new first-time installation automatically authorizes bootstrap-admin. After an administrative identity's token expires, local operations staff must still issue a new administrator token (`issue-token`) to restore web administration; the web page can only issue regular member access codes. To revoke administrator privileges, use `set-admin <identity> false`.
 
-加载配置的示例（使用当前操作者可访问的受保护配置文件）：
+Example of loading the configuration (using a protected configuration file accessible to the current operator):
 
 ```powershell
 . .\deploy\windows\config-loader.ps1
-Import-ProtectedKbConfig -ConfigFile "D:\企业知识库\config\runtime.json" -Account ([Security.Principal.WindowsIdentity]::GetCurrent().Name)
-# 以下为 setup 安装路径；本机开发环境则使用 .venv\Scripts\python.exe。
+Import-ProtectedKbConfig -ConfigFile "D:\EnterpriseKnowledgeBase\config\runtime.json" -Account ([Security.Principal.WindowsIdentity]::GetCurrent().Name)
+# The following is the setup installation path; for a local development environment, use .venv\Scripts\python.exe.
 $PythonExe = Join-Path $PWD.Path ".runtime\venv\Scripts\python.exe"
-if (-not (Test-Path -LiteralPath $PythonExe)) { throw "请确认当前目录和 Python 运行环境路径。" }
+if (-not (Test-Path -LiteralPath $PythonExe)) { throw "Please verify the current directory and the Python runtime path." }
 & $PythonExe -m agico_kb.admin migrate
 & $PythonExe -m agico_kb.admin set-admin bootstrap-admin true
 ```
+Proceed to the next step only after each step succeeds, and start the services at the end. Both existing backups in the 001/002 format and new backups containing 003 can be restored; when restoring an older backup, the missing database structure is filled in automatically, while administrator authorization still needs to be specified explicitly.
 
-每步成功后再继续，最后启动服务。现有 001/002 格式备份和含 003 的新备份均可恢复；恢复旧备份时自动补齐数据库结构，管理员授权仍需显式指定。
+## Service Management
 
-## 服务管理
-
-默认服务名为 `AgicoKbDatabase`、`AgicoKbApi`、`AgicoKbWorker`，分别使用独立的 `NT SERVICE\服务名` 虚拟账号，设为自动启动。数据库、API 和后台解析进程各自运行，应用连接数据库使用非超级用户角色。
+The default service names are `AgicoKbDatabase`, `AgicoKbApi`, and `AgicoKbWorker`, each using its own dedicated `NT SERVICE\ServiceName` virtual account and set to start automatically. The database, API, and background parsing process each run independently; the application connects to the database using a non-superuser role.
 
 ```powershell
-# 在代码目录、管理员 PowerShell 中运行；将 Status 换成 Start 或 Stop
-.\scripts\configure-server-services.ps1 -AppRoot $PWD.Path -DataRoot "D:\企业知识库" -Action Status
+# Run in the code directory from an administrator PowerShell; replace Status with Start or Stop
+.\scripts\configure-server-services.ps1 -AppRoot $PWD.Path -DataRoot "D:\EnterpriseKnowledgeBase" -Action Status
 ```
 
-安装错误详见数据目录 `logs/setup.log`、`logs/setup-errors.log`，服务日志在 `logs/database`、`logs/api`、`logs/worker`。日志也应视为内部运维资料。`-Action Uninstall` 停止并删除本安装的服务注册，保留数据与凭证；重新注册用 `-Action Install`。
+For installation errors, see `logs/setup.log` and `logs/setup-errors.log` in the data directory; service logs are located in `logs/database`, `logs/api`, and `logs/worker`. Logs should also be treated as internal operations material. `-Action Uninstall` stops and removes the service registrations for this installation while keeping data and credentials; use `-Action Install` to re-register.
 
-## 更新与备份
+## Updates and Backups
 
-数据目录不会进入 Git，`git pull` 不会迁移或删除知识库。更新前先备份并阅读版本说明，停止 API 和 worker，更新代码，再按该版本要求同步依赖及迁移数据库，最后启动服务并检查就绪状态。当前安装脚本不是自动升级工具，不要在服务运行时重新同步 Python 环境。
+The data directory is not tracked by Git, and `git pull` will not migrate or delete the knowledge base. Before updating, back up first and read the release notes, stop the API and worker, update the code, then synchronize dependencies and migrate the database as required by that version, and finally start the services and check readiness. The current installation script is not an automatic upgrade tool; do not re-sync the Python environment while the services are running.
 
-备份必须同时覆盖数据库和原文件，并妥善保管配置及模型身份。不能把运行中的 `postgres` 目录随意复制当作可靠备份。使用现有[运维与恢复流程](validation/operations.md)；迁往新服务器应按恢复流程操作，而非改写安装归属文件。
+Backups must cover both the database and the original files, and the configuration and model identity must be properly safeguarded. Do not casually copy a running `postgres` directory and treat it as a reliable backup. Use the existing [operations and recovery process](validation/operations.md); migrating to a new server should follow the recovery process, rather than rewriting the installation ownership files.
 
-依赖安装方式依据 [uv 官方文档](https://docs.astral.sh/uv/getting-started/installation/)、[micromamba 官方文档](https://mamba.readthedocs.io/en/stable/installation/micromamba-installation.html)；服务包装器固定为 [WinSW 2.12](https://github.com/winsw/winsw/tree/v2.12.0)。实际版本和下载校验值保存在 `deploy/windows/bootstrap-lock.json` 与 `deploy/windows/postgres-explicit.txt`。
+Dependency installation follows the [official uv documentation](https://docs.astral.sh/uv/getting-started/installation/) and the [official micromamba documentation](https://mamba.readthedocs.io/en/stable/installation/micromamba-installation.html); the service wrapper is pinned to [WinSW 2.12](https://github.com/winsw/winsw/tree/v2.12.0). The actual versions and download checksums are stored in `deploy/windows/bootstrap-lock.json` and `deploy/windows/postgres-explicit.txt`.
