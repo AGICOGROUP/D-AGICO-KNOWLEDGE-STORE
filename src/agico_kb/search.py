@@ -8,6 +8,7 @@ from .catalog import get_version
 from .contracts import SearchRequest
 from .embeddings import LocalEmbedding, QueryEmbedding, vector_literal
 from .errors import KBError, not_found
+from .parse_notices import public_warnings
 from .tokenizer import normalize, segmented
 
 
@@ -23,6 +24,9 @@ def permission_filter(principal, request):
         list(principal.memberships),
         principal.id,
     ]
+    if principal.department_restricted:
+        clauses.append('d.organization_id=ANY(%s)')
+        args.append(list(principal.memberships))
     for field in ["organization_id", "category_id", "document_id"]:
         value = getattr(request, field)
         if value is not None:
@@ -81,6 +85,11 @@ class SearchService:
         self.query_model.close()
 
     def search(self, principal, request):
+        # A project identifier is a file lookup, even when an AI client uses the
+        # default content mode. The original opportunity ID remains searchable
+        # after an official project number becomes the displayed title.
+        if request.mode == "content" and re.fullmatch(r"OPP-\d{4}-\d{6}", request.query.strip(), re.IGNORECASE):
+            request = request.model_copy(update={"mode": "files"})
         where, args = permission_filter(principal, request)
         words = keyword_query(request.query)
         normalized = normalize(request.query)
@@ -95,6 +104,9 @@ class SearchService:
                     {FROM} WHERE {where} AND (%s=''
                     OR lower(normalize(d.title,NFKC)) LIKE lower(normalize(%s,NFKC))
                     OR lower(normalize(u.filename,NFKC)) LIKE lower(normalize(%s,NFKC))
+                    OR EXISTS(SELECT 1 FROM projects p WHERE p.id=d.project_id
+                       AND lower(normalize(concat_ws(' ',p.code,p.official_code,p.name,p.aliases::text),NFKC))
+                           LIKE lower(normalize(%s,NFKC)))
                     OR lower(d.model)=%s OR EXISTS(SELECT 1 FROM chunks c WHERE c.version_id=v.id
                     AND c.generation=v.active_generation AND c.keywords @@ websearch_to_tsquery('simple',%s)))
                     ORDER BY rank DESC,d.created_at DESC,d.id LIMIT %s""",
@@ -102,6 +114,7 @@ class SearchService:
                         normalized,
                         *args,
                         normalized,
+                        "%" + request.query.strip() + "%",
                         "%" + request.query.strip() + "%",
                         "%" + request.query.strip() + "%",
                         normalized,
@@ -169,6 +182,9 @@ class SearchService:
                 except KBError:
                     continue
                 row.pop("rank", None)
+                row['warnings'] = public_warnings(row.get('warnings', []))
+                if row.get('locator', {}).get('requires_original'):
+                    row['requires_file'] = True
                 items.append(row)
         has_more = (
             len(rows) > request.offset + request.limit and request.offset + request.limit <= 1000
@@ -185,7 +201,7 @@ class SearchService:
     def read(self, principal, request):
         with self.db.connection() as conn:
             version = get_version(conn, principal, request.version_id)
-            warnings = list(version["warnings"])
+            warnings = public_warnings(version["warnings"])
             start = request.offset
             if request.chunk_id:
                 anchor = conn.execute(
@@ -224,7 +240,7 @@ class SearchService:
                 "next_offset": request.offset + len(selected) if has_more else None,
                 "warnings": warnings,
                 "capabilities": version["capabilities"],
-                "requires_file": blocked,
+                "requires_file": blocked or any(item['locator'].get('requires_original') for item in selected),
             }
 
     def context(self, principal, request):
@@ -252,11 +268,13 @@ class SearchService:
                 WHERE version_id=%s AND generation=%s ORDER BY ordinal""",
                 (version_id, version["active_generation"]),
             ).fetchall()
+            job = conn.execute("SELECT state FROM jobs WHERE version_id=%s", (version_id,)).fetchone()
             return {
                 "version_id": version_id,
                 "title": version["title"],
                 "processing_status": version["processing_status"],
-                "warnings": list(version["warnings"]),
+                "job_state": job["state"] if job else None,
+                "warnings": public_warnings(version["warnings"]),
                 "capabilities": version["capabilities"],
                 "chunk_count": len(rows),
                 "items": rows,

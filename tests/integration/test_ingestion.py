@@ -26,6 +26,24 @@ def test_docx_paragraph_table_and_real_source(tmp_path):
     assert "page" not in table_chunk.locator
 
 
+def test_docx_merged_cell_is_not_repeated_in_the_same_row(tmp_path):
+    from docx import Document
+
+    doc = Document()
+    table = doc.add_table(rows=2, cols=3)
+    table.cell(0, 0).text = "评审项"
+    table.cell(0, 1).merge(table.cell(0, 2)).text = "得分标准"
+    for cell, value in zip(table.rows[1].cells, ["工期", "18个月", "16个月"], strict=True):
+        cell.text = value
+    path = tmp_path / "merged.docx"
+    doc.save(path)
+
+    parsed = parse_file(path, path.name)
+    table_text = next(chunk.text for chunk in parsed.chunks if chunk.locator.get("table"))
+    assert table_text.splitlines()[0] == "评审项 | 得分标准"
+    assert table_text.splitlines()[1] == "工期 | 18个月 | 16个月"
+
+
 def test_docx_stacked_title_characters_are_joined_into_one_chunk(tmp_path):
     """A stacked title arrives as one character per paragraph; it must not become four chunks."""
     from docx import Document
@@ -60,6 +78,30 @@ def test_xlsx_preserves_formula_cache_distinction_and_coordinates(tmp_path):
     assert result.chunks[0].locator["sheet"] == "参数"
     assert result.chunks[0].locator["range"] == "A1:D2"
     assert any("公式" in w for w in result.warnings)
+    assert result.status == "partial"
+    assert any("公式结果未解析" in warning for warning in result.warnings)
+
+
+def test_xlsx_formula_with_saved_result_is_informational(tmp_path):
+    import zipfile
+
+    from openpyxl import Workbook
+
+    source = tmp_path / "formula-source.xlsx"
+    path = tmp_path / "formula-cached.xlsx"
+    book = Workbook()
+    book.active["A1"] = "=2*3"
+    book.save(source)
+    with zipfile.ZipFile(source) as original, zipfile.ZipFile(path, "w") as target:
+        for entry in original.infolist():
+            data = original.read(entry.filename)
+            if entry.filename == "xl/worksheets/sheet1.xml":
+                data = data.replace(b"<f>2*3</f><v></v>", b"<f>2*3</f><v>6</v>")
+            target.writestr(entry, data)
+    result = parse_file(path, path.name)
+    assert result.status == "ready"
+    assert any("缓存结果: 6" in chunk.text for chunk in result.chunks)
+    assert any("保留公式与已有缓存结果" in warning for warning in result.warnings)
 
 
 def test_pptx_slide_source(tmp_path):
@@ -265,6 +307,81 @@ def test_docx_content_control_paragraphs_are_indexed(tmp_path):
     assert "1.4 设计规模" in text
     assert any(c.locator.get("control") for c in result.chunks)
     assert any("内容控件内容已收录" in w for w in result.warnings)
+
+
+def test_docx_smarttag_words_remain_in_paragraphs_and_table_cells(tmp_path):
+    from docx import Document
+    from docx.oxml import parse_xml
+
+    doc = Document()
+    paragraph = doc.add_paragraph("Automation control: 24/48 ")
+    paragraph._p.append(
+        parse_xml(
+            '<w:smartTag xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+            '<w:r><w:t>V DC</w:t></w:r></w:smartTag>'
+        )
+    )
+    table = doc.add_table(rows=1, cols=1)
+    cell_paragraph = table.cell(0, 0).paragraphs[0]
+    cell_paragraph.add_run("LV Switchboard: ")
+    cell_paragraph._p.append(
+        parse_xml(
+            '<w:smartTag xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+            '<w:r><w:t>IP 41</w:t></w:r></w:smartTag>'
+        )
+    )
+    path = tmp_path / "smarttag.docx"
+    doc.save(path)
+
+    parsed = parse_file(path, path.name)
+    text = "\n".join(chunk.text for chunk in parsed.chunks)
+    assert "Automation control: 24/48 V DC" in text
+    assert "LV Switchboard: IP 41" in text
+
+
+def test_docx_nested_table_content_is_indexed(tmp_path):
+    from docx import Document
+
+    doc = Document()
+    outer = doc.add_table(rows=1, cols=2)
+    outer.cell(0, 0).text = "设备"
+    nested = outer.cell(0, 1).add_table(rows=1, cols=1)
+    nested.cell(0, 0).text = "罗茨风机"
+    path = tmp_path / "nested.docx"
+    doc.save(path)
+
+    parsed = parse_file(path, path.name)
+    assert "罗茨风机" in "\n".join(chunk.text for chunk in parsed.chunks)
+    assert not any("嵌套表格未完整解析" in warning for warning in parsed.warnings)
+
+
+def test_docx_revision_marks_index_current_text_and_explain_history(tmp_path):
+    from docx import Document
+    from docx.oxml import parse_xml
+
+    doc = Document()
+    paragraph = doc.add_paragraph("现行")
+    paragraph._p.append(
+        parse_xml(
+            '<w:del xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+            '<w:r><w:delText>旧规则</w:delText></w:r></w:del>'
+        )
+    )
+    paragraph._p.append(
+        parse_xml(
+            '<w:ins xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+            '<w:r><w:t>新规则</w:t></w:r></w:ins>'
+        )
+    )
+    path = tmp_path / "revisions.docx"
+    doc.save(path)
+
+    parsed = parse_file(path, path.name)
+    text = "\n".join(chunk.text for chunk in parsed.chunks)
+    assert "现行新规则" in text
+    assert "旧规则" not in text
+    assert parsed.status == "ready"
+    assert any("历史修订" in warning for warning in parsed.warnings)
 
 
 def logo_png_bytes():

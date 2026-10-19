@@ -57,6 +57,8 @@ def test_initializer_refuses_concurrent_owner_and_releases_lock(tmp_path):
 
 
 def test_ocr_uses_configured_external_model_directory(tmp_path, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+
     import rapidocr
 
     from agico_kb.ingestion import _ocr_engine
@@ -64,9 +66,8 @@ def test_ocr_uses_configured_external_model_directory(tmp_path, monkeypatch):
     captured = {}
     monkeypatch.setenv("AGICO_KB_MODEL_CACHE", str(tmp_path / "models"))
     monkeypatch.setattr(rapidocr, "RapidOCR", lambda **kwargs: captured.update(kwargs))
-    _ocr_engine.cache_clear()
-    try:
-        _ocr_engine()
-        assert Path(captured["params"]["Global.model_root_dir"]) == tmp_path / "models/ocr"
-    finally:
-        _ocr_engine.cache_clear()
+    # Engines are thread-local for concurrent workers; use a fresh worker thread
+    # rather than depending on the obsolete global functools cache interface.
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        executor.submit(_ocr_engine).result()
+    assert Path(captured["params"]["Global.model_root_dir"]) == tmp_path / "models/ocr"

@@ -1,4 +1,5 @@
 import hashlib
+import os
 from pathlib import Path
 from uuid import uuid4
 
@@ -12,17 +13,18 @@ from agico_kb.config import Settings
 from agico_kb.main import create_app
 
 
-def make_kb(tmp_path, max_upload_bytes=1024):
+def make_kb(tmp_path, max_upload_bytes=1024, *, portal_root=None):
     # This fixture is deliberately confined to the named, local development test DB.
     password = Path(".local/pg-password.txt").read_text().strip()
     dsn = make_conninfo(
-        host="127.0.0.1", port=15432, dbname="agico_test", user="agico_dev", password=password
+        host="127.0.0.1", port=int(os.environ.get("AGICO_KB_TEST_PORT", "15432")),
+        dbname="agico_test", user="agico_dev", password=password
     )
     schema = "test_" + uuid4().hex
     with psycopg.connect(dsn, autocommit=True) as conn:
         assert conn.info.dbname == "agico_test"
         conn.execute(sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(schema)))
-    app = create_app(Settings(dsn, tmp_path, schema, max_upload_bytes=max_upload_bytes))
+    app = create_app(Settings(dsn, tmp_path, schema, max_upload_bytes=max_upload_bytes), portal_root=portal_root)
     app.state.db.migrate()
     with app.state.db.connection() as conn:
         for person, org, role in [

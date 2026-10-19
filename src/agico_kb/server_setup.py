@@ -8,8 +8,8 @@ import secrets
 import subprocess
 import sys
 import traceback
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
 
@@ -17,7 +17,6 @@ import psycopg
 from psycopg import sql
 from psycopg.conninfo import make_conninfo
 
-from .admin import issue_token, set_identity
 from .config import Settings
 from .db import Database
 
@@ -124,7 +123,7 @@ def _initialize_owned(app_root, data_root, api_port, database_port, service_pref
     marker = load_deployment(app_root, data_root, api_port, database_port, service_prefix)
     config_root = data_root / "config"
     runtime_path = config_root / "runtime.json"
-    access_path = config_root / "initial-access.json"
+    access_path = config_root / "accounts-setup.json"
     alias = app_root / ".runtime/data"
     if not alias.is_dir() or alias.resolve() != data_root:
         raise ValueError("Managed data junction is missing or points elsewhere")
@@ -132,7 +131,7 @@ def _initialize_owned(app_root, data_root, api_port, database_port, service_pref
     pg_bin = app_root / ".runtime/postgres/Library/bin"
     pg_ctl = pg_bin / "pg_ctl.exe"
     if marker["stage"] in {"initialized", "installed"}:
-        for required in (runtime_path, access_path, pg_data / "PG_VERSION"):
+        for required in (runtime_path, pg_data / "PG_VERSION"):
             if not required.is_file():
                 raise ValueError("Existing initialized deployment is incomplete; refusing reset")
         print("Existing initialized database and credentials preserved.", flush=True)
@@ -197,6 +196,9 @@ def _initialize_owned(app_root, data_root, api_port, database_port, service_pref
                 "AGICO_KB_ALLOWED_HOSTS": "127.0.0.1:*,localhost:*",
             },
         )
+    from .provider_config import import_providers
+    if import_providers(app_root,data_root):
+        print('Project private API configuration imported; target database credentials preserved.',flush=True)
     runtime = json.loads(runtime_path.read_text(encoding="utf-8"))
     if not (pg_data / "PG_VERSION").exists():
         if pg_data.exists() and any(pg_data.iterdir()):
@@ -279,27 +281,11 @@ def _initialize_owned(app_root, data_root, api_port, database_port, service_pref
         try:
             db.migrate()
             if not access_path.exists():
-                with db.connection() as conn:
-                    organizations = conn.execute("SELECT id FROM organizations").fetchall()
-                for organization in organizations:
-                    set_identity(
-                        db,
-                        "bootstrap-admin",
-                        "Initial local administrator",
-                        organization["id"],
-                        "publisher",
-                    )
-                with db.connection(write=True) as conn:
-                    conn.execute("UPDATE principals SET is_admin=true WHERE id='bootstrap-admin'")
-                expires = datetime.now(UTC) + timedelta(days=30)
                 write_json_once(
                     access_path,
                     {
-                        "identity": "bootstrap-admin",
-                        "token": issue_token(db, "bootstrap-admin", expires),
-                        "expires_at": expires.isoformat(),
                         "mcp_url": f"http://127.0.0.1:{api_port}/mcp",
-                        "usage": "Local initialization only; issue separate identities for employees and agents.",
+                        "usage": "Initialize the first superadministrator once with python -m agico_kb.accounts bootstrap --email EMAIL using the protected runtime environment. The command securely prompts for the initial password. Other users must be invited.",
                     },
                 )
         finally:
@@ -313,10 +299,11 @@ def _initialize_owned(app_root, data_root, api_port, database_port, service_pref
         previous_cache = os.environ.get("AGICO_KB_MODEL_CACHE")
         try:
             os.environ["AGICO_KB_MODEL_CACHE"] = str(data_root / "models")
-            _ocr_engine.cache_clear()
-            _ocr_engine()
+            # OCR engines are thread-local. A fresh thread provisions the configured
+            # model directory without using an engine created under another environment.
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                executor.submit(_ocr_engine).result()
         finally:
-            _ocr_engine.cache_clear()
             if previous_cache is None:
                 os.environ.pop("AGICO_KB_MODEL_CACHE", None)
             else:

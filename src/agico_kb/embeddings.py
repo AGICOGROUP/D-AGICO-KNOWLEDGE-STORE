@@ -19,6 +19,7 @@ class LocalEmbedding:
             local_files_only=settings.model_offline,
         )
         self.dimension = self.model.embedding_size
+        self.tokenizer = self.model.model.tokenizer
         # Hash the actual local model artifacts, not a floating upstream model name.
         root = Path(self.model.model._model_dir)
         digest = hashlib.sha256()

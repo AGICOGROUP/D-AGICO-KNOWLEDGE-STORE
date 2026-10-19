@@ -87,6 +87,9 @@ def test_real_http_mcp_lists_scoped_tools_and_uses_shared_upload_backend(live_se
             Client(streamable_http_client(base + "/mcp", http_client=http), mode="legacy") as agent,
         ):
             names = {t.name for t in (await agent.list_tools()).tools}
+            read_tool = next(t for t in (await agent.list_tools()).tools if t.name == "kb_read")
+            assert read_tool.input_schema["properties"]["max_chars"]["minimum"] == 1000
+            assert read_tool.input_schema["properties"]["max_chars"]["maximum"] == 50000
             assert {
                 "kb_search",
                 "kb_read",

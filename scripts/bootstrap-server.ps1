@@ -9,8 +9,15 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $ProgressPreference = 'SilentlyContinue'
 function Invoke-Checked([string]$Executable, [string[]]$Arguments) {
-    & $Executable @Arguments
-    if ($LASTEXITCODE -ne 0) { throw "Dependency command failed: $Executable (exit $LASTEXITCODE)" }
+    # Windows PowerShell converts redirected native stderr (including uv progress)
+    # into ErrorRecord objects. Judge native tools by their exit status instead.
+    $previousPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        & $Executable @Arguments 2>&1 | ForEach-Object { Write-Host $_.ToString() }
+        $nativeExit = $LASTEXITCODE
+    } finally { $ErrorActionPreference = $previousPreference }
+    if ($nativeExit -ne 0) { throw "Dependency command failed: $Executable (exit $nativeExit)" }
 }
 function Assert-NoReparse([string]$Path) {
     $cursor = $Path
@@ -105,6 +112,11 @@ if ((Test-Path -LiteralPath $DataRoot) -and -not (Test-Path -LiteralPath $marker
 }
 $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Run setup from an administrator PowerShell' }
+$PrivateProviders = Join-Path $AppRoot '.deployment-private'
+if (Test-Path -LiteralPath $PrivateProviders) {
+    Assert-NoReparse $PrivateProviders
+    Protect-Directory $PrivateProviders
+}
 if (Test-Path -LiteralPath $markerPath) {
     $marker = Get-Content -LiteralPath $markerPath -Raw -Encoding UTF8 | ConvertFrom-Json
     if ($marker.stage -notin @('preparing','initialized','installed')) { throw 'Unknown deployment stage' }
@@ -125,7 +137,7 @@ if (Test-Path -LiteralPath $markerPath) {
         $env:PYTHONNOUSERSITE = '1'
         Invoke-Checked (Join-Path $Runtime 'venv/Scripts/python.exe') @((Join-Path $PSScriptRoot 'initialize-server.py'),'--app-root',$AppRoot,'--data-root',$DataRoot,'--api-port',"$ApiPort",'--database-port',"$DatabasePort",'--service-prefix',$ServicePrefix)
         & (Join-Path $PSScriptRoot 'configure-server-services.ps1') -AppRoot $AppRoot -DataRoot $DataRoot -Action Install
-        Write-Host "Server setup finished. Initial access: $DataRoot\config\initial-access.json"
+        Write-Host "Server setup finished. Account setup: $DataRoot\config\accounts-setup.json"
         return
     }
 }
@@ -167,7 +179,7 @@ Invoke-Checked (Join-Path $Runtime 'micromamba.exe') @($mambaAction,'--yes','--n
 Invoke-Checked (Join-Path $Runtime 'postgres/Library/bin/postgres.exe') @('--version')
 Invoke-Checked (Join-Path $Runtime 'venv/Scripts/python.exe') @((Join-Path $PSScriptRoot 'initialize-server.py'),'--app-root',$AppRoot,'--data-root',$DataRoot,'--api-port',"$ApiPort",'--database-port',"$DatabasePort",'--service-prefix',$ServicePrefix)
 & (Join-Path $PSScriptRoot 'configure-server-services.ps1') -AppRoot $AppRoot -DataRoot $DataRoot -Action Install
-Write-Host "Server setup finished. Initial access: $DataRoot\config\initial-access.json"
+Write-Host "Server setup finished. Account setup: $DataRoot\config\accounts-setup.json"
 } finally {
     foreach ($mutex in $setupMutexes) { $mutex.ReleaseMutex(); $mutex.Dispose() }
 }

@@ -35,9 +35,12 @@ import os
 import time
 from pathlib import Path
 import agico_kb.worker as worker
+original_run_claim = worker.Worker.run_claim
 
 class PausedWorker(worker.Worker):
     def run_claim(self, claim):
+        if str(claim['version_id']) != os.environ['RESTART_TARGET_VERSION']:
+            return original_run_claim(self, claim)
         marker = Path(os.environ['RESTART_CLAIM_MARKER'])
         temporary = marker.with_suffix('.tmp')
         temporary.write_text(json.dumps({'generation': str(claim['generation']), 'pid': os.getpid()}))
@@ -45,7 +48,9 @@ class PausedWorker(worker.Worker):
         while True:
             time.sleep(0.1)
 
-worker.Worker = PausedWorker
+# WorkerPool captures Worker as its default factory. Patch the method on that
+# same class so every real pool slot pauses after its transactional claim.
+worker.Worker.run_claim = PausedWorker.run_claim
 worker.main()
 """
 
@@ -238,9 +243,24 @@ def test_real_process_restarts_preserve_32mib_file_and_reclaim_job(restart_syste
             == 409
         )
 
+        # Exercise parser crash recovery with a fresh text job. The independent
+        # binary file-library item remains accessible while both workers run.
+        parse_source = tmp_path / (uuid4().hex + ".txt")
+        parse_source.write_text("Fresh restart check AX-210: 220 V, 330 mm.", encoding="utf-8")
+        parse_submission = adapter.upload(parse_source, {
+            "organization_id": "baiste", "title": "fresh restart text",
+            "visibility": "department",
+        })
+        parse_vid = parse_submission["version_id"]
         marker = tmp_path / "claimed.txt"
-        first_worker = start(["-c", PAUSED_WORKER], {"RESTART_CLAIM_MARKER": str(marker)})
+        first_worker = start(["-c", PAUSED_WORKER], {
+            "RESTART_CLAIM_MARKER": str(marker), "RESTART_TARGET_VERSION": parse_vid,
+        })
         await_value(marker.exists)
+        def binary_complete():
+            with db.connection() as conn:
+                return conn.execute("SELECT state FROM jobs WHERE version_id=%s", (vid,)).fetchone()["state"] == "complete"
+        await_value(binary_complete)
         claimed = json.loads(marker.read_text())
         assert claimed["pid"] in [first_worker.pid] + [
             child.pid for child in psutil.Process(first_worker.pid).children(recursive=True)
@@ -252,7 +272,7 @@ def test_real_process_restarts_preserve_32mib_file_and_reclaim_job(restart_syste
             old = conn.execute(
                 "SELECT state,attempts,extract(epoch FROM lease_until-now()) AS lease_seconds "
                 "FROM jobs WHERE version_id=%s",
-                (vid,),
+                (parse_vid,),
             ).fetchone()
             assert old["state"] == "running" and old["attempts"] == 1
             # Fault injection confined to this fresh schema and exact claimed job.
@@ -260,14 +280,14 @@ def test_real_process_restarts_preserve_32mib_file_and_reclaim_job(restart_syste
             changed = conn.execute(
                 "UPDATE jobs SET lease_until=now()+interval '1 second' "
                 "WHERE version_id=%s AND generation=%s AND state='running' RETURNING id",
-                (vid, old_generation),
+                (parse_vid, old_generation),
             ).fetchone()
             assert changed
 
         def lease_expired():
             with db.connection() as conn:
                 return conn.execute(
-                    "SELECT lease_until<now() AS expired FROM jobs WHERE version_id=%s", (vid,)
+                    "SELECT lease_until<now() AS expired FROM jobs WHERE version_id=%s", (parse_vid,)
                 ).fetchone()["expired"]
 
         await_value(lease_expired, seconds=5)
@@ -276,26 +296,36 @@ def test_real_process_restarts_preserve_32mib_file_and_reclaim_job(restart_syste
         def complete():
             assert second_worker.poll() is None, "replacement worker exited before completion"
             with db.connection() as conn:
-                row = conn.execute("SELECT * FROM jobs WHERE version_id=%s", (vid,)).fetchone()
+                row = conn.execute("SELECT * FROM jobs WHERE version_id=%s", (parse_vid,)).fetchone()
             return row if row["state"] == "complete" else None
 
         completed = await_value(complete, seconds=30)
         assert completed["attempts"] == 2 and str(completed["generation"]) != old_generation
+        parsed_state = http.get(f"/v1/versions/{parse_vid}", headers=auth("owner")).json()
+        assert parsed_state["processing_status"] == "ready"
+        assert http.post(f"/v1/versions/{parse_vid}/publish", headers=auth("publisher"),
+                         json={"expected_revision": 0}).status_code == 200
+        parsed = http.post("/v1/read", headers=auth("owner"),
+                           json={"version_id": parse_vid}).json()
+        assert any("220 V, 330 mm" in chunk["text"] for chunk in parsed["items"])
         after = adapter.download(vid, tmp_path / "after.bin")
         assert after["sha256"] == expected_hash and after["size"] == before["size"]
         assert http.get(f"/v1/versions/{vid}/content", headers=auth("outsider")).status_code == 404
         state = http.get(f"/v1/versions/{vid}", headers=auth("owner")).json()
         assert state["state"] == "published" and state["processing_status"] == "stored_only"
-        assert state["capabilities"] == {"file": True, "text": False, "vector": False}
+        assert {name: state["capabilities"][name] for name in ("file", "text", "vector")} == {
+            "file": True, "text": False, "vector": False,
+        }
+        assert state["capabilities"]["parser"]
         with db.connection() as conn:
-            assert conn.execute("SELECT count(*) AS n FROM versions").fetchone()["n"] == 1
+            assert conn.execute("SELECT count(*) AS n FROM versions").fetchone()["n"] == 2
             doc = conn.execute("SELECT * FROM documents WHERE id=%s", (did,)).fetchone()
             assert str(doc["active_version_id"]) == vid and doc["revision"] == 1
             assert (
                 conn.execute(
                     "SELECT count(*) AS n FROM audit_events WHERE action='publish'"
                 ).fetchone()["n"]
-                == 1
+                == 2
             )
         second_worker_exit = stop(second_worker)
         second_api_exit = stop(second_api)

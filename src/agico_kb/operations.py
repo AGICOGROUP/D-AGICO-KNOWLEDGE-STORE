@@ -115,7 +115,19 @@ def pg_tool(binary_dir, name, dsn, arguments, timeout=300):
 def references(conn, schema):
     conn.execute(sql.SQL("SET search_path TO {}, public").format(sql.Identifier(schema)))
     return conn.execute(
-        "SELECT blob_key AS path,size,sha256 FROM uploads WHERE state IN ('complete','submitted') ORDER BY blob_key"
+        """SELECT u.blob_key AS path,u.size,u.sha256 FROM uploads u
+        WHERE u.state IN ('complete','submitted') AND NOT (
+            u.state='submitted'
+            AND NOT EXISTS (SELECT 1 FROM versions v WHERE v.upload_id=u.id)
+            AND EXISTS (
+                SELECT 1 FROM audit_events a
+                CROSS JOIN LATERAL jsonb_array_elements_text(
+                    COALESCE(a.details->'quarantined','[]'::jsonb)
+                ) AS removed(path)
+                WHERE a.action='delete_document'
+                AND right(removed.path,length(u.blob_key)+1)='-' || u.blob_key
+            )
+        ) ORDER BY u.blob_key"""
     ).fetchall()
 
 
@@ -280,7 +292,10 @@ def validate_backup(archive):
         r"[a-zA-Z][a-zA-Z0-9_]{0,62}", manifest.get("schema", "")
     ):
         raise ValueError("Unsupported backup format or schema")
-    if manifest["migrations"] not in ([1, 2], [1, 2, 3]):
+    if manifest["migrations"] not in (
+        [1, 2], [1, 2, 3], [1, 2, 4], [1, 2, 3, 4], [1, 2, 4, 5], [1, 2, 3, 4, 5],
+        [1, 2, 4, 5, 6], [1, 2, 3, 4, 5, 6],
+    ):
         raise ValueError("Unsupported database migrations")
     for name, key in [("database.dump", "dump_sha256"), ("uv.lock", "lock_sha256")]:
         if digest(safe_path(archive, name)) != manifest[key]:
@@ -294,12 +309,19 @@ def validate_backup(archive):
     return manifest
 
 
-def restore(archive, maintenance_dsn, database_name, storage, binary_dir, timeout=300):
+def restore(archive, maintenance_dsn, database_name, storage, binary_dir, timeout=300, *, runtime_role=None):
     archive, storage = Path(archive).resolve(), Path(storage).resolve()
     if not re.fullmatch(r"[a-zA-Z][a-zA-Z0-9_]{0,62}", database_name) or storage.exists():
         raise ValueError("Restore requires a new database and new storage directory")
     manifest = validate_backup(archive)
     with psycopg.connect(maintenance_dsn, autocommit=True, connect_timeout=3) as conn:
+        if runtime_role:
+            role = conn.execute(
+                "SELECT rolsuper,rolcreatedb,rolcreaterole,rolcanlogin FROM pg_roles WHERE rolname=%s",
+                (runtime_role,),
+            ).fetchone()
+            if not role or role != (False, False, False, True):
+                raise ValueError("Runtime role must be an existing non-administrative login role")
         if conn.execute("SELECT 1 FROM pg_database WHERE datname=%s", (database_name,)).fetchone():
             raise ValueError("Target database already exists")
         # No automatic deletion on failure. New isolated artifacts remain for inspection.
@@ -364,6 +386,18 @@ def restore(archive, maintenance_dsn, database_name, storage, binary_dir, timeou
         restored_db.migrate()
     finally:
         restored_db.close()
+    if runtime_role:
+        # pg_restore deliberately omits source ACLs. Grant only runtime DML;
+        # maintenance credentials remain necessary for future schema migrations.
+        with psycopg.connect(dsn) as conn:
+            conn.execute(sql.SQL("GRANT CONNECT ON DATABASE {} TO {}").format(
+                sql.Identifier(database_name), sql.Identifier(runtime_role)))
+            conn.execute(sql.SQL("GRANT USAGE ON SCHEMA {} TO {}").format(
+                sql.Identifier(manifest["schema"]), sql.Identifier(runtime_role)))
+            conn.execute(sql.SQL("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA {} TO {}").format(
+                sql.Identifier(manifest["schema"]), sql.Identifier(runtime_role)))
+            conn.execute(sql.SQL("GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA {} TO {}").format(
+                sql.Identifier(manifest["schema"]), sql.Identifier(runtime_role)))
     (storage / "RESTORE_INCOMPLETE").unlink()
     return settings
 
@@ -375,6 +409,7 @@ def main():
     parser.add_argument("--pg-bin", type=Path)
     parser.add_argument("--database")
     parser.add_argument("--storage", type=Path)
+    parser.add_argument("--runtime-role", help="Existing non-administrative service DB role to grant recovered runtime access")
     parser.add_argument("--stale-part-age-seconds", type=float, default=86400)
     parser.add_argument("--timeout", type=float, default=30)
     args = parser.parse_args()
@@ -396,6 +431,7 @@ def main():
                 args.database,
                 args.storage,
                 args.pg_bin,
+                runtime_role=args.runtime_role,
             )
     except Exception:  # noqa: BLE001 - CLI must never render credential-bearing exception locals
         print(

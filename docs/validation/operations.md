@@ -99,7 +99,7 @@ D:\Agico\App\scripts\backup.ps1 -PythonExe D:\Agico\App\.venv\Scripts\python.exe
 D:\Agico\App\scripts\restore.ps1 -PythonExe D:\Agico\App\.venv\Scripts\python.exe -PgBin 'C:\Program Files\PostgreSQL\16\bin' -Archive E:\AgicoBackup\run-20260915 -NewDatabase agico_recovery_20260915 -NewStorage D:\AgicoRecovery\run-20260915
 ```
 
-恢复先验证清单、全部哈希和路径，再用 template0 创建新数据库；已有数据库或目录一律拒绝。预装 public.vector、使用 `pg_restore --no-owner --no-acl`，默认 public 的 CREATE SCHEMA 项被精确跳过，避免与 template0 自带 public 冲突。恢复检查数据库原件引用与文件。业务权限/身份/活动版本随表数据保留；数据库角色与文件系统 ACL 由运维单独建立，不恢复来源库 owner/ACL。
+恢复先验证清单、全部哈希和路径，再用 template0 创建新数据库；已有数据库或目录一律拒绝。预装 public.vector、使用 `pg_restore --no-owner --no-acl`，默认 public 的 CREATE SCHEMA 项被精确跳过。业务权限、正式账号及活动版本随表数据保留。可传入 `-RuntimeRole agico_app`，为目标已有非超级用户角色授予新库业务表与序列的 DML 权限；不恢复来源数据库角色和 ACL。Windows 自动部署的原件路径必须保持 DataRoot\originals，具体准备空目录、读取维护配置和刷新服务配置步骤见[服务器安装](../server-setup.md)。文件 ACL 由目标服务注册脚本重新应用。
 
 仅新隔离库内 running 作业重新排队、清空 generation/lease 并重置尝试数；已发布版本和现有活动 generation 保留。queued 作业维持队列，失败/取消状态保留。恢复失败留下 `RESTORE_INCOMPLETE` 和新库/目录供检查，启动脚本拒绝使用此目录；绝不自动 DROP 或覆盖现网。
 

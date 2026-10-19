@@ -4,7 +4,6 @@ Conversion happens in the worker before parsing, on a copy in a temp directory; 
 original is never modified. LibreOffice is discovered once and cached.
 """
 
-import shutil
 import subprocess
 from pathlib import Path
 
@@ -12,24 +11,18 @@ CONVERTIBLE = {".xls": ".xlsx", ".doc": ".docx", ".ppt": ".pptx"}
 
 
 def find_soffice():
-    """Locate soffice.exe: PATH first, then the default LibreOffice install dirs."""
-    if path := shutil.which("soffice"):
-        return Path(path)
-    candidates = [
-        Path("C:/Program Files/LibreOffice/program/soffice.exe"),
-        Path("C:/Program Files (x86)/LibreOffice/program/soffice.exe"),
-    ]
-    for candidate in candidates:
-        if candidate.exists():
-            return candidate
-    return None
+    """Use the same configured converter as browser previews."""
+    from .thumbnails import office_converter
+
+    path = office_converter()
+    return Path(path) if path else None
 
 
 def needs_conversion(filename: str) -> bool:
     return Path(filename).suffix.lower() in CONVERTIBLE
 
 
-def convert_to_modern(blob_path: Path, filename: str, workdir: Path) -> tuple[Path, str]:
+def convert_to_modern(blob_path: Path, filename: str, workdir: Path, *, timeout=240) -> tuple[Path, str]:
     """Convert a legacy Office blob to its OOXML equivalent inside workdir.
 
     Returns (converted_path, converted_filename). Raises ValueError with a user-safe message on
@@ -60,7 +53,7 @@ def convert_to_modern(blob_path: Path, filename: str, workdir: Path) -> tuple[Pa
         ],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE,
-        timeout=240,
+        timeout=timeout,
         creationflags=subprocess.CREATE_NO_WINDOW if __import__("sys").platform == "win32" else 0,
         check=False,
     )

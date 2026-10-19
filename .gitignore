@@ -1,6 +1,7 @@
 .venv/
 .local/
 .runtime/
+.deployment-private/
 .superpowers/
 __pycache__/
 *.pyc

@@ -7,9 +7,18 @@ from anyio import to_thread
 from fastapi import FastAPI, Header, HTTPException, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 
-from . import access_management, catalog, files, lifecycle
+from . import (
+    access_management,
+    account_oauth,
+    accounts,
+    catalog,
+    feedback,
+    files,
+    lifecycle,
+    naming,
+)
 from .auth import authenticate
 from .config import Settings
 from .contracts import (
@@ -18,8 +27,11 @@ from .contracts import (
     DeleteDocument,
     Grants,
     LinkRequest,
+    NameReview,
+    NamingRequest,
     PrepareUpload,
     Publish,
+    PublishedRename,
     ReadRequest,
     Revision,
     SearchRequest,
@@ -29,12 +41,16 @@ from .db import Database
 from .errors import KBError
 from .failures import failure_log_path, log_failure
 from .mcp_server import create_mcp
+from .previews import DocumentPreviewService
 from .search import SearchService
+from .thumbnails import ThumbnailService
 
 
-def create_app(settings: Settings) -> FastAPI:
+def create_app(settings: Settings, *, portal_root: Path | None = None) -> FastAPI:
     db = Database(settings)
     search_service = SearchService(db, settings)
+    thumbnails = ThumbnailService(settings.storage_root)
+    previews = DocumentPreviewService(settings.storage_root)
     mcp_app = create_mcp(db, settings, search_service)
 
     @asynccontextmanager
@@ -42,13 +58,20 @@ def create_app(settings: Settings) -> FastAPI:
         async with mcp_app.router.lifespan_context(mcp_app):
             yield
         search_service.close()
+        thumbnails.close()
+        previews.close()
         db.close()
 
     app = FastAPI(title="AGICO Knowledge Store", lifespan=lifespan)
     app.state.db = db
     app.state.settings = settings
     app.state.search = search_service
+    default_portal = Path(__file__).with_name('portal')
+    portal_directory = portal_root or default_portal
     app.include_router(access_management.router(db))
+    app.include_router(accounts.router(db))
+    app.include_router(account_oauth.router(db))
+    app.include_router(feedback.router(db))
 
     @app.exception_handler(KBError)
     async def business_error(request, exc):
@@ -67,15 +90,44 @@ def create_app(settings: Settings) -> FastAPI:
     @app.middleware("http")
     async def check_identity(request: Request, call_next):
         if request.url.path.startswith("/v1/") or request.url.path.rstrip("/") == "/mcp":
+            public_auth = request.url.path in {'/v1/auth/settings', '/v1/auth/login', '/v1/auth/invitation', '/v1/auth/activate'}
+            if public_auth:
+                response = await call_next(request)
+                response.headers['Cache-Control'] = 'no-store'
+                response.headers['Referrer-Policy'] = 'no-referrer'
+                return response
             authorization = request.headers.get("authorization", "")
-            if not authorization.startswith("Bearer ") or not authorization[7:].strip():
-                return JSONResponse({"error": {"code": "UNAUTHENTICATED"}}, status_code=401)
-            principal = await to_thread.run_sync(authenticate, db, authorization[7:])
+            # Reject anonymous traffic without depending on DB availability. The discovery
+            # challenge also lets MCP clients begin account authorization from this 401.
+            if not request.cookies.get(accounts.COOKIE) and not authorization.startswith('Bearer '):
+                return JSONResponse({'error': {'code': 'UNAUTHENTICATED'}}, status_code=401,
+                    headers={'WWW-Authenticate':f'Bearer resource_metadata="{str(request.base_url).rstrip("/")}/.well-known/oauth-protected-resource", scope="kb:access"'})
+            account_mode = await to_thread.run_sync(accounts.enabled, db)
+            cookie_session = None
+            if account_mode and not request.url.path.startswith('/mcp'):
+                cookie_session = await to_thread.run_sync(accounts.authenticate_session, db, request.cookies.get(accounts.COOKIE))
+            if cookie_session:
+                principal, request.state.csrf_token = cookie_session
+            else:
+                principal = await to_thread.run_sync(authenticate, db, authorization[7:], str(request.base_url).rstrip('/')+'/mcp') if authorization.startswith('Bearer ') else None
             if principal is None:
-                return JSONResponse({"error": {"code": "UNAUTHENTICATED"}}, status_code=401)
+                headers = {'WWW-Authenticate':f'Bearer resource_metadata="{str(request.base_url).rstrip("/")}/.well-known/oauth-protected-resource", scope="kb:access"'} if account_mode else {}
+                return JSONResponse({"error": {"code": "UNAUTHENTICATED"}}, status_code=401, headers=headers)
             request.state.principal = principal
+            if account_mode:
+                try:
+                    if principal.must_change_password and request.url.path not in {'/v1/auth/me','/v1/auth/change-password','/v1/auth/logout'}:
+                        raise KBError('PASSWORD_CHANGE_REQUIRED','首次登录请先修改初始密码。',403)
+                    if request.url.path.startswith('/v1/admin/'):
+                        raise KBError('ACCESS_CODES_RETIRED','访问码管理已停用，请使用账号管理。',410)
+                    if request.url.path.startswith(('/v1/auth/','/v1/accounts')) and not cookie_session:
+                        raise KBError('BROWSER_SESSION_REQUIRED','请在浏览器中使用邮箱密码登录。',401)
+                    if cookie_session and request.method in {'POST','PUT','PATCH','DELETE'}:
+                        accounts.validate_csrf(request,request.state.csrf_token)
+                except KBError as exc:
+                    return JSONResponse(jsonable_encoder(exc.payload),status_code=exc.status)
         response = await call_next(request)
-        if request.url.path.startswith("/v1/admin/"):
+        if request.url.path.startswith(("/v1/admin/", '/v1/accounts', '/v1/auth/')):
             response.headers["Cache-Control"] = "no-store"
             response.headers["Referrer-Policy"] = "no-referrer"
         return response
@@ -127,7 +179,7 @@ def create_app(settings: Settings) -> FastAPI:
     @app.get("/v1/portal-session")
     def portal_session(request: Request):
         principal = request.state.principal
-        return {
+        result = {
             "identity": principal.id,
             "max_upload_bytes": settings.max_upload_bytes,
             # The portal shows the approval actions only for the units this account approves for.
@@ -138,13 +190,16 @@ def create_app(settings: Settings) -> FastAPI:
             # So a failure message can point at the exact file to inspect.
             "failure_log": str(failure_log_path(settings)),
         }
-
-    portal_root = Path(__file__).parent / "portal"
+        if principal.account_role:
+            with db.connection() as conn:
+                result['identity'] = conn.execute('SELECT email FROM account_users WHERE principal_id=%s', (principal.id,)).fetchone()['email']
+            result['account_role'] = principal.account_role
+        return result
 
     @app.get("/", include_in_schema=False)
     def portal():
         return FileResponse(
-            portal_root / "index.html",
+            portal_directory / "index.html",
             headers={
                 "Cache-Control": "no-store",
                 "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; "
@@ -157,12 +212,12 @@ def create_app(settings: Settings) -> FastAPI:
 
     @app.get("/portal/{asset}", include_in_schema=False)
     def portal_asset(asset: str):
-        if asset not in {"app.js", "styles.css", "agico-logo.png", "agico-mark.png", "admin.js"}:
+        if asset not in {"app.js", "account.js", "folder-upload.js", "document-preview.js", "styles.css", "agico-logo.png", "agico-mark.png", "admin.js", "feedback.js"}:
             raise HTTPException(status_code=404)
         # No caching: without Cache-Control the browser applies heuristic freshness to app.js and
         # keeps running an older portal after the service is updated.
         return FileResponse(
-            portal_root / asset,
+            (portal_directory / asset) if (portal_directory / asset).is_file() else (default_portal / asset),
             headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "no-store"},
         )
 
@@ -170,6 +225,14 @@ def create_app(settings: Settings) -> FastAPI:
     def prepare_upload(body: PrepareUpload, request: Request, idempotency_key: str = Header()):
         result, code = files.prepare(db, settings, request.state.principal, body, idempotency_key)
         return JSONResponse(jsonable_encoder(result), status_code=code)
+
+    @app.get("/v1/naming/rules")
+    def naming_rules():
+        return naming.shared_rules()
+
+    @app.post("/v1/naming/suggest")
+    def suggest_names(body: NamingRequest, request: Request):
+        return naming.suggest(db, settings, request.state.principal, body)
 
     @app.put("/v1/uploads/{upload_id}/content")
     async def upload(upload_id: UUID, request: Request):
@@ -203,11 +266,44 @@ def create_app(settings: Settings) -> FastAPI:
             headers={"Cache-Control": "no-store"},
         )
 
+    @app.get("/v1/versions/{version_id}/thumbnail")
+    def thumbnail(version_id: UUID, request: Request):
+        # Reuse the exact visibility checks used for the original download.
+        path, name = files.download(db, settings, request.state.principal, version_id)
+        preview = thumbnails.get(path, name)
+        if preview is None:
+            return Response(status_code=202, headers={"Retry-After": "2", "Cache-Control": "no-store"})
+        return FileResponse(preview, media_type="image/png",
+                            headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
+
+    @app.get("/v1/versions/{version_id}/preview")
+    def document_preview(version_id: UUID, request: Request):
+        path, name = files.download(db, settings, request.state.principal, version_id)
+        manifest = previews.manifest(path, name)
+        if manifest is None:
+            return Response(status_code=202, headers={"Retry-After": "2", "Cache-Control": "no-store"})
+        return JSONResponse(manifest, headers={"Cache-Control": "no-store"})
+
+    @app.get("/v1/versions/{version_id}/preview/pages/{page}")
+    def document_page(version_id: UUID, page: int, request: Request,
+                      width: int = Query(1800, ge=800, le=2400)):
+        # Authorize every page and cache hit using the original's current visibility.
+        path, name = files.download(db, settings, request.state.principal, version_id)
+        preview = previews.page(path, name, page, width)
+        if preview is None:
+            return Response(status_code=202, headers={"Retry-After": "2", "Cache-Control": "no-store"})
+        return FileResponse(preview, media_type="image/png",
+                            headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
+
     @app.get("/v1/submissions")
     def pending(
         request: Request, limit: int = Query(20, ge=1, le=100), offset: int = Query(0, ge=0)
     ):
         return lifecycle.pending(db, request.state.principal, limit, offset)
+
+    @app.patch("/v1/versions/{version_id}/name")
+    def review_name(version_id: UUID, body: NameReview, request: Request):
+        return lifecycle.review_name(db, request.state.principal, version_id, body)
 
     @app.post("/v1/versions/{version_id}/publish")
     def publish(version_id: UUID, body: Publish, request: Request):
@@ -224,6 +320,14 @@ def create_app(settings: Settings) -> FastAPI:
     @app.delete("/v1/documents/{document_id}")
     def delete_document(document_id: UUID, body: DeleteDocument, request: Request):
         return lifecycle.delete_document(db, settings, request.state.principal, document_id, body)
+
+    @app.patch("/v1/documents/{document_id}/title")
+    def rename_published(document_id: UUID, body: PublishedRename, request: Request):
+        return lifecycle.rename_published(db, request.state.principal, document_id, body)
+
+    @app.patch('/v1/versions/{version_id}/title')
+    def rename_pending(version_id: UUID, body: PublishedRename, request: Request):
+        return lifecycle.rename_pending(db, request.state.principal, version_id, body)
 
     @app.post("/v1/documents/{document_id}/withdraw")
     def withdraw(document_id: UUID, body: Revision, request: Request):
@@ -283,6 +387,7 @@ def create_app(settings: Settings) -> FastAPI:
     def retry(version_id: UUID, request: Request):
         return files.retry_processing(db, settings, request.state.principal, version_id)
 
+    app.router.routes.extend(account_oauth.routes(db, settings))
     app.mount("/", mcp_app)
     return app
 

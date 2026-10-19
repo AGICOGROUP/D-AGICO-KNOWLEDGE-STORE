@@ -1,7 +1,23 @@
+from .auth import DEFAULT_VISIBLE_ORGANIZATIONS
 from .errors import not_found
+from .parse_notices import public_warnings
+
+ORGANIZATION_ORDER = (
+    "general-group", "business-intelligence", "baiste", "baichuang", "xingyuan",
+    "aijike", "jimuke", "company-common",
+)
+
+
+def ordered_organizations(rows):
+    ranks = {key: index for index, key in enumerate(ORGANIZATION_ORDER)}
+    ordered = sorted(rows, key=lambda row: (ranks.get(row["id"], len(ranks)), row["id"]))
+    return [dict(row, name="公共知识库") if row["id"] == "company-common" else row
+            for row in ordered]
 
 
 def can_read_document(conn, principal, doc):
+    if not principal.can_access_department(doc['organization_id']):
+        return False
     if principal.publisher(doc["organization_id"]) or doc["created_by"] == principal.id:
         return True
     if doc["visibility"] == "department" and doc["organization_id"] in principal.memberships:
@@ -24,7 +40,7 @@ def get_version(conn, principal, version_id, history=False):
         JOIN uploads u ON u.id=v.upload_id WHERE v.id=%s""",
         (version_id,),
     ).fetchone()
-    if row is None:
+    if row is None or not principal.can_access_department(row['organization_id']):
         not_found()
     publisher = principal.publisher(row["organization_id"])
     if row["state"] == "draft":
@@ -64,16 +80,17 @@ def version_result(row):
             "capabilities",
             "warnings",
         ]
-    } | {"version_id": row["id"]}
+    } | {"version_id": row["id"], "warnings": public_warnings(row['warnings'])}
 
 
 def catalog(db, principal):
     with db.connection() as conn:
         return {
-            "organizations": conn.execute(
+            'default_visible_organizations': list(DEFAULT_VISIBLE_ORGANIZATIONS) if principal.account_role else [],
+            "organizations": ordered_organizations(conn.execute(
                 "SELECT * FROM organizations WHERE id=ANY(%s) ORDER BY id",
                 (list(principal.memberships),),
-            ).fetchall(),
+            ).fetchall()),
             "categories": conn.execute("SELECT * FROM categories ORDER BY id").fetchall(),
         }
 
@@ -100,12 +117,15 @@ def list_documents(db, principal, limit, offset, managed=False):
             (d.created_by=%s OR d.organization_id=ANY(%s)
              OR (d.visibility='department' AND d.organization_id=ANY(%s))
              OR EXISTS(SELECT 1 FROM document_grants g WHERE g.document_id=d.id AND g.principal_id=%s))
+            AND (%s OR d.organization_id=ANY(%s))
             ORDER BY d.created_at,d.id LIMIT %s OFFSET %s""",
             (
                 principal.id,
                 [k for k in principal.memberships if principal.publisher(k)],
                 list(principal.memberships),
                 principal.id,
+                not principal.department_restricted,
+                list(principal.memberships),
                 limit + 1,
                 offset,
             ),

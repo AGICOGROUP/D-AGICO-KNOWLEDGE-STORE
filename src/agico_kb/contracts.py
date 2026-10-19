@@ -29,6 +29,20 @@ class PrepareUpload(Contract):
         return value
 
 
+class NamingRequest(Contract):
+    organization_id: str = Field(min_length=1, max_length=64)
+    filenames: list[str] = Field(min_length=1, max_length=100)
+
+    @field_validator("filenames")
+    @classmethod
+    def safe_filenames(cls, values):
+        if any(not name or len(name) > 240 or name in {".", ".."}
+               or any(char in name for char in "/\\:")
+               or any(ord(char) < 32 for char in name) for name in values):
+            raise ValueError("待命名文件名不符合上传规则")
+        return values
+
+
 class Submission(Contract):
     upload_id: UUID
     organization_id: str = Field(min_length=1, max_length=64)
@@ -42,6 +56,22 @@ class Submission(Contract):
     model: str | None = Field(default=None, max_length=300)
     project: str | None = Field(default=None, max_length=300)
     business_date: date | None = None
+    naming_review_required: bool = False
+    naming_reason: str | None = Field(default=None, max_length=300)
+    naming_pending: bool = False
+
+
+class NameReview(Contract):
+    current_title: str = Field(min_length=1, max_length=300)
+    title: str = Field(min_length=1, max_length=300)
+    project: str | None = Field(default=None, max_length=300)
+    official_project_code: str | None = Field(default=None, max_length=120)
+
+
+class PublishedRename(Contract):
+    current_title: str = Field(min_length=1, max_length=300)
+    title: str = Field(min_length=1, max_length=300)
+    expected_revision: int = Field(ge=0)
 
 
 class Revision(Contract):
