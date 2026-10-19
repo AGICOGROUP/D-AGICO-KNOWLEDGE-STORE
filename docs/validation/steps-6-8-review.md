@@ -1,59 +1,58 @@
-# 第三批开发与 review
+# Third Batch Development and Review
 
-本文件保留第三批当时的验证结果；后续收尾已解决下述向量并发瓶颈，当前结果见[整体报告](final-review.md)。本批对应计划步骤 6、7、8；分支 `dev/steps-6-8`，起点 `65ea2da`，2026-09-16 完成本地实现、验证与独立 review。真实业务、客户端入口、正式服务器及容量验收仍需实际环境。
+This file preserves the verification results as they stood during the third batch; the later wrap-up has since resolved the vector concurrency bottleneck described below, and current results are in the [overall report](final-review.md). This batch corresponds to planned steps 6, 7, and 8; branch `dev/steps-6-8`, starting point `65ea2da`, with local implementation, verification, and independent review completed on 2026-09-16. Real business use, client entry points, production servers, and capacity acceptance still require the actual environment.
 
-## 已实现并验证的部分
+## Implemented and Verified Parts
 
-### Agent 企业知识扩展
+### Agent Enterprise Knowledge Extension
 
-- 共用的简短使用约定要求按任务主动取得公司背景、事实、规范与经验，并应用到工作结果，避免无意义全库读取。
-- 真实 Codex CLI 使用四份新上传、解析、发布的合成资料完成普通选型任务：识别超温、采用规定结构、升级技术评估，并区分历史经验与现行承诺。
-- 未知认证问题没有编造编号；通用乘法零 MCP 调用。未修改全局 Codex 配置，使用独立受限成员身份。
-- 业务例子工具文本 8,283 字符、11 次调用。累计输入包含客户端指令和多轮历史，不能把全部 token 当作知识库正文消耗；有两次可避免的空搜索，留待真实资料试点优化。
+- The shared brief usage convention requires proactively retrieving company background, facts, standards, and experience per task and applying them to work outputs, avoiding meaningless full-corpus reads.
+- The real Codex CLI completed a routine selection task using four newly uploaded, parsed, and published synthetic documents: identifying over-temperature, adopting the prescribed structure, escalating the technical assessment, and distinguishing historical experience from current commitments.
+- The unknown authentication question was not given a fabricated number; the generic multiplication made zero MCP calls. The global Codex configuration was not modified; an independent restricted member identity was used.
+- The business example had 8,283 characters of tool text over 11 calls. Cumulative input includes client instructions and multi-turn history, so the full token count cannot be treated as knowledge-base body consumption; there were two avoidable empty searches, left for optimization in the real-material pilot.
 
-证据：[Codex 普通任务](codex.md)、[使用约定](../../client/agent-usage.md)。真实企业质量、Accio、网页／钉钉仍未联调。
+Evidence: [Codex routine task](codex.md), [usage convention](../../client/agent-usage.md). Real enterprise quality, Accio, web/DingTalk are still not integration-tested.
 
-### 部署、备份与恢复
+### Deployment, Backup, and Recovery
 
-- 数据库事务统一进入写入暂停机制；备份等待旧事务结束，新写入快速返回可重试提示，读取和鉴权继续。
-- 保存数据库快照、对应原文件和校验清单；锁连接中断、文件缺失或哈希错误不会生成成功备份。恢复仅创建全新数据库和目录。
-- 已检查默认 `public` 与隔离 schema 恢复、原文件、私有权限、正式版本、检索和待处理任务。
-- Windows 脚本默认生成配置，支持普通专用账号及可选 gMSA；包含离线模型身份、日志、健康检查和故障重启配置。没有安装系统服务或修改防火墙。
-- 实际开发数据库停启暴露了旧连接问题，已通过连接池取用校验修复。恢复后的第一次鉴权读取、文件下载、跨部门拒绝、检索及版本／作业数量均通过。
+- Database transactions uniformly enter the write-pause mechanism; backup waits for old transactions to end, new writes quickly return a retryable notice, while reads and authentication continue.
+- The database snapshot, the corresponding original files, and a checksum manifest are saved; an interrupted lock connection, missing file, or hash error does not produce a successful backup. Recovery only creates a brand-new database and directory.
+- Checked recovery of the default `public` and isolated schemas, original files, private permissions, official versions, retrieval, and pending tasks.
+- The Windows script generates the configuration by default, supporting an ordinary dedicated account and optional gMSA; it includes offline model identity, logging, health-check, and failure-restart configuration. No system service was installed and no firewall was modified.
+- Stopping and restarting the actual development database exposed a stale-connection problem, fixed by validation at connection-pool checkout. The first authenticated read after recovery, file download, cross-department denial, retrieval, and version/job counts all passed.
 
-证据：[运维与恢复](operations.md)。同盘恢复演练不算独立灾备，正式 Windows 服务和无人登录启动仍待目标机验证。
+Evidence: [operations and recovery](operations.md). Same-disk recovery drills do not count as independent disaster recovery; a formal Windows service and no-login startup still await verification on the target machine.
 
-### 业务与并发测试工具
+### Business and Concurrency Testing Tools
 
-- 新增冻结配置、独立凭据和正确性校验的 Locust 工具；每次重新上传、处理合成文件，测完清理自己的运行资源。
-- 本机 50 个身份、约 75 秒测量、12,382 个完整搜索／读取周期，平均 331.5 请求／秒，p95 230 ms。这是 REST 后端短测，不是 50 个真实 MCP 会话或完整 Agent 任务。
-- 完整周期正确率 93.216%；840 个语义周期因向量繁忙降级而失败，总体搜索降级率 28.323%。精确事实、文件、现行修订、未知文件及权限样例通过；未降级语义查询 1,225／1,225 找到目标来源。
-- 首次语义查询目标排第 2；撤下后该版本不可搜索／读取，原文件校验一致，并发导入 2.129 秒后可查。
-- 保留初次探测失败及判据修正记录，没有修改核心搜索追求吞吐数字。下一轮优先处理已测出的查询向量并发瓶颈，再做真实规模验收。
+- Added a Locust tool with frozen configuration, independent credentials, and correctness checks; each run re-uploads and processes the synthetic files and cleans up its own run resources after testing.
+- On the local machine: 50 identities, about 75 seconds of measurement, 12,382 complete search/read cycles, an average of 331.5 requests/second, p95 230 ms. This is a short REST backend test, not 50 real MCP sessions or full Agent tasks.
+- Complete-cycle correctness was 93.216%; 840 semantic cycles failed due to vector-busy degradation, for an overall search degradation rate of 28.323%. Precise-fact, file, current-revision, unknown-file, and permission samples passed; non-degraded semantic queries found the target source in 1,225/1,225 cases.
+- On the first semantic query the target ranked 2nd; after takedown that version was not searchable/readable, the original file checksum matched, and it became queryable 2.129 seconds after the concurrent import.
+- Records of the initial probe failure and the criteria correction are retained; the core search was not modified to chase throughput numbers. The next round prioritizes the already-identified query-vector concurrency bottleneck before doing real-scale acceptance.
 
-证据：[业务质量](business-quality.md)、[50 用户探测](load-50.md)、[200 扩展路径](scale-200.md)。目前不满足宣称正式容量验收通过的条件。
+Evidence: [business quality](business-quality.md), [50-user probe](load-50.md), [200 scaling path](scale-200.md). The conditions for claiming that formal capacity acceptance has passed are currently not met.
 
-## Review 记录
+## Review Record
 
-源码分发包和 wheel 已通过 `uv build` 构建；wheel 中包含数据库迁移、分类配置及备份恢复模块。部署脚本、客户端适配脚本与验证说明随仓库交付，正式运维采用源码／锁定依赖部署。
+The source distribution and wheel were built with `uv build`; the wheel contains database migrations, classification configuration, and the backup/recovery modules. Deployment scripts, client adaptation scripts, and verification instructions are delivered with the repository; formal operations use source/locked-dependency deployment.
 
-修复后父任务全套回归：`pytest -q --tb=short` 为 **97 passed、1 skipped**（需显式启用的独立数据库重启演练）、9 条既有依赖警告，31.42 秒。实际开发数据库重启演练此前已单独通过；7 个 PowerShell 脚本解析通过。Ruff 全树检查、63 个 Python 文件格式检查、源码包与 wheel 构建均通过。
+After the fixes, the full parent-task regression: `pytest -q --tb=short` gave **97 passed, 1 skipped** (the independent database restart drill, which requires explicit opt-in), 9 pre-existing dependency warnings, 31.42 seconds. The actual development database restart drill had already passed separately; 7 PowerShell scripts parsed successfully. The Ruff full-tree check, format check on 63 Python files, and the source-distribution and wheel builds all passed.
 
-| 范围 | 结果 |
+| Scope | Result |
 |---|---|
-| 步骤 6 | 独立 review 无 Critical／Important；已澄清子进程继承环境及证据摘录范围，保留检索效率改进记录 |
-| 步骤 7 | 独立 review 无 Critical／Important；普通账号安装缺少事件日志来源的小问题已补齐，未执行系统安装 |
-| 步骤 8／本批最终 review | 本地实现与集成通过；1 个 Important 清理问题和 1 个 Minor 文案问题已修复，限定复查确认关闭，无未解决 Critical／Important |
+| Step 6 | Independent review found no Critical/Important issues; subprocess environment inheritance and the scope of evidence excerpts were clarified, and retrieval-efficiency improvement records were retained |
+| Step 7 | Independent review found no Critical/Important issues; the minor issue of the standard-account installation lacking an event log source has been addressed, and no system installation was performed |
+| Step 8 / this batch's final review | Local implementation and integration passed; 1 Important cleanup issue and 1 Minor wording issue were fixed, a scoped re-review confirmed closure, and no Critical/Important issues remain unresolved |
 
-最终 review 范围为 `65ea2da..cb03b37` 及状态文档，修复为 `fa903d4`，说明同步至 `7190db9`。压测清理现在具有数据库连接／锁／语句超时，独立删除凭据；延时导入可以取消，活动未停止时保留目录和 schema 并生成脱敏恢复记录，避免清理竞态。三个新增测试覆盖故障、取消和仍有活动的情况。复查结论只批准本地代码与集成，不批准生产上线或容量验收。
+The final review covered `65ea2da..cb03b37` plus the status documents; the fix is `fa903d4` and the documentation sync is `7190db9`. Load-test cleanup now has database connection/lock/statement timeouts and independent deletion credentials; delayed imports can be canceled, and when activity has not stopped, the directory and schema are retained and a sanitized recovery record is generated to avoid cleanup races. Three new tests cover the failure, cancellation, and still-active cases. The re-review conclusion approves only local code and integration, not production rollout or capacity acceptance.
+During development testing, one traceback once displayed the local test database connection information; the credentials for that local development account have been rotated and the new connection verified. No credentials are stored in source code, reports, or commits. Production credentials were not involved.
 
-开发测试中曾有一次 traceback 显示本机测试数据库连接信息；已轮换该本地开发账号凭证并验证新连接，源码、报告及提交中不保存凭证。生产凭证未涉及。
+## Actual Inputs That Must Be Completed Before Go-Live
 
-## 上线前必须补齐的实际输入
+1. Company details and the business owner for the approved pilot, to confirm how the facts, specifications, and cases apply to real tasks.
+2. The actual Accio version and how it runs, the web and DingTalk entry-point code or configuration, test employee identities, and the session delivery chain.
+3. Target Windows server, service account, TLS / network access scope, and an independent backup location.
+4. Real data volume, representative tasks, and response / accuracy requirements; the formal capacity acceptance configuration is frozen based on these.
 
-1. 获准试点的公司资料及业务负责人，确认事实、规范和案例在实际任务中的适用性。
-2. Accio 实际版本／运行方式、网页及钉钉入口代码或配置、测试员工身份和会话交付链路。
-3. 目标 Windows 服务器、服务账号、TLS／网络访问范围、独立备份位置。
-4. 真实资料规模、代表任务和响应／正确率要求；据此冻结正式容量验收配置。
-
-当前不宣称真实员工全链路、正式上线或 50／200 Agent 容量已验收。
+It is currently not claimed that the full end-to-end flow with real employees, formal go-live, or 50/200 Agent capacity has been accepted.

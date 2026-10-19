@@ -1,144 +1,141 @@
-# 公司知识库文件分类与命名规则（讨论稿）
+# Company Knowledge Base File Classification and Naming Rules (Discussion Draft)
 
-日期：2026-10-12。命名骨架沿用领导审阅稿；未成交项目临时编号及项目记录方式按后续讨论确定。
+Date: 2026-10-12. The naming skeleton follows the draft reviewed by leadership; the temporary numbering for projects whose deals are not closed and the method for recording projects will be determined in follow-up discussions.
 
-## 一、设计依据与范围
+## I. Design Basis and Scope
 
-已查看知识库既有资料《AI建议问题与核心诉求汇总-1.xlsx》《AGICO_Human_AI_Cement_Calcium_Magnesium_Industry_Chain_Institute_Planning_V2.1_CN.pdf》，以及客户基础设计提资清单、滤袋宣传册、供货工作范围、工艺设备表和图纸。需求汇总部分事项注明“根据需求归纳”，产业链设计院文件为“内部规划建议稿”，不把它们当作已批准的组织制度。
+The existing knowledge base materials reviewed include *AI_Suggestions_Issues_and_Core_Requirements_Summary-1.xlsx* and *AGICO_Human_AI_Cement_Calcium_Magnesium_Industry_Chain_Institute_Planning_V2.1_CN.pdf*, as well as the client basic design input list, the filter bag brochure, the scope of supply, the process equipment list, and drawings. Some items in the requirements summary are noted as "summarized from requirements," and the industry chain design institute document is an "internal planning recommendation draft"; they should not be treated as approved organizational policies.
 
-这些资料显示，业务资料涉及国际销售、客户研究、机械设备和工程技术、采购供应链、验货交付、营销素材、人事财务和内部管理。具体各事业部的全部产品边界、现有项目编码、订单编码和正式图号制度尚未完整核实。
+These materials show that business documents span international sales, customer research, mechanical equipment and engineering technology, procurement and supply chain, goods inspection and delivery, marketing assets, HR and finance, and internal management. The complete product boundaries of each business division, existing project codes, order codes, and the formal drawing numbering system have not yet been fully verified.
 
-采用按业务用途分类、按适用对象命名的方式。事业部、业务领域、文件用途、文件格式和权限分别记录，不能彼此替代。PDF、Excel、CAD、图片是格式，不作为业务主分类。
+The approach adopted is to classify by business purpose and name by applicable object. Business division, business domain, document purpose, document format, and permissions are recorded separately and cannot substitute for one another. PDF, Excel, CAD, and images are formats and are not used as primary business classifications.
 
-## 二、建议的10个业务主类
+## II. Suggested 10 Primary Business Categories
 
-| 主类 | 常见具体文件类型 | 适用对象与查找线索 |
+| Primary Category | Common Specific File Types | Applicable Objects and Search Clues |
 |---|---|---|
-| 1 公司与产品宣传 | 公司介绍、产品目录、产品宣传册、宣传图片、宣传视频、工厂介绍、对外项目案例册 | 公司、产品、型号、应用场景、语言 |
-| 2 客户与市场资料 | 询盘、客户需求、客户背调、沟通纪要、市场研究、竞争对手资料、展会商情 | 客户、国家、项目、沟通日期 |
-| 3 销售与商务文件 | 对客户报价、销售合同、技术商务协议、供货范围、商业条款、谈判记录 | 客户/项目、报价号、合同号、日期 |
-| 4 技术与工程设计 | 技术方案、工艺说明、参数表、计算书、设备清单、设计提资、工艺/机械/土建/电气图纸 | 产品、型号、项目、图号、专业、设计阶段 |
-| 5 采购与供应商资料 | 供应商档案、供应商报价、比价表、采购合同、采购技术协议、订单跟进表 | 供应商、采购单/项目、设备、日期 |
-| 6 生产与质量资料 | 制造记录、检验报告、验货记录、试验报告、合格证、验收记录、质量问题分析 | 项目/订单、设备、批次/序列号、检验日期 |
-| 7 交付与物流单据 | 装箱单、唛头、商业发票、装箱方案、监装记录、提单、报关和运输资料 | 项目/订单、发运批次、箱号、日期 |
-| 8 售后与运行维护 | 安装说明、操作手册、维护手册、备件清单、故障案例、售后报告 | 产品/型号、客户项目、设备序列号、故障主题 |
-| 9 标准、流程与模板 | 行业标准、技术规范、工作SOP、客户调查模板、报价模板、检验模板、业务培训材料 | 标准号、适用业务、适用产品、发布/实施版本 |
-| 10 经营与内部管理 | 战略规划、管理制度、经营报表、预算、财务资料、招聘与人事资料、内部会议纪要 | 责任部门、管理主题、报告期间 |
+| 1 Company and Product Promotion | Company profile, product catalogs, product brochures, promotional images, promotional videos, factory profile, external project casebooks | Company, product, model, application scenario, language |
+| 2 Customer and Market Materials | Inquiries, customer requirements, customer background checks, communication minutes, market research, competitor materials, trade fair intelligence | Customer, country, project, communication date |
+| 3 Sales and Commercial Documents | Quotations to customers, sales contracts, technical and commercial agreements, scope of supply, commercial terms, negotiation records | Customer/project, quotation number, contract number, date |
+| 4 Technical and Engineering Design | Technical proposals, process descriptions, parameter tables, calculation sheets, equipment lists, design inputs, process/mechanical/civil/electrical drawings | Product, model, project, drawing number, discipline, design stage |
+| 5 Procurement and Supplier Materials | Supplier profiles, supplier quotations, price comparison sheets, purchase contracts, procurement technical agreements, order follow-up sheets | Supplier, purchase order/project, equipment, date |
+| 6 Production and Quality Materials | Manufacturing records, inspection reports, goods inspection records, test reports, certificates of conformity, acceptance records, quality issue analyses | Project/order, equipment, batch/serial number, inspection date |
+| 7 Delivery and Logistics Documents | Packing lists, shipping marks, commercial invoices, packing plans, loading supervision records, bills of lading, customs declaration and transport documents | Project/order, shipment batch, case number, date |
+| 8 After-Sales and Operation & Maintenance | Installation instructions, operation manuals, maintenance manuals, spare parts lists, failure cases, after-sales reports | Product/model, customer project, equipment serial number, failure topic |
+| 9 Standards, Processes, and Templates | Industry standards, technical specifications, work SOPs, customer survey templates, quotation templates, inspection templates, business training materials | Standard number, applicable business, applicable product, publication/implementation version |
+| 10 Business Operations and Internal Management | Strategic planning, management policies, operating reports, budgets, financial materials, recruitment and HR materials, internal meeting minutes | Responsible department, management topic, reporting period |
+"Other/Uncategorized" serves only as a temporary holding place at upload time; specific types will be added later as actual new needs arise, and it is not treated as a long-term primary category.
 
-“其他/待分类”仅用作上传时临时容纳，后续按实际新增需求补充具体类型，不当作长期主类。
+### Easily Confused Boundary Cases
 
-### 容易混淆的边界
+- Quotations given to customers belong to Sales; quotations from suppliers to the company belong to Procurement. The specific types "Customer Quotation" and "Supplier Quotation" must be used respectively.
+- Blank general quotation templates belong to Processes and Templates; quotations filled in with customer information belong to Sales.
+- Product catalogs belong to Marketing; equipment technical parameter sheets belong to Technical. The same product may be linked to two documents with different purposes.
+- External-facing project casebooks belong to Marketing; customer project execution materials are classified by their specific purpose—Technical, Commercial, Quality, etc.—and share the same project object.
+- Design drawings belong to Technical; quality inspection records belong to Quality. An inspection record must not be filed as a drawing merely because it contains a schematic diagram.
+- Contract attachments are classified by their content and linked to the parent contract and project; they must not be uniformly placed under "Other".
+- For multi-purpose files, choose one primary category and add purpose tags; do not duplicate originals into multiple copies just for classification.
 
-- 对客户的报价归销售；供应商给公司的报价归采购。必须分别使用“客户报价单”和“供应商报价单”等具体类型。
-- 空白通用报价模板归流程与模板；填好客户信息的报价单归销售。
-- 产品目录归宣传；设备技术参数表归技术。相同产品可以关联两份不同用途的资料。
-- 对外项目案例册归宣传；客户项目执行资料按技术、商务、质量等具体用途分类，共用同一个项目对象。
-- 设计图纸归技术；质量检验记录归质量。不能因为检验记录含示意图就归图纸。
-- 合同附件按内容归类，并关联父合同与项目，不把合同附件一律放到“其他”。
-- 多用途文件选一个主类，另加用途标签；不为分类而复制多份原件。
-
-## 三、一套通用命名骨架
+## III. A Universal Naming Skeleton
 
 ```text
-适用对象_文件类型_内容主题_[业务日期]_语言_版本.扩展名
+ApplicableObject_FileType_ContentTopic_[BusinessDate]_Language_Version.Extension
 ```
 
-方括号只说明日期为条件字段，实际名称不包含方括号。不强制把每种属性都塞进文件名。
+The square brackets only indicate that the date is a conditional field; actual names do not include the brackets. You are not required to force every attribute into the file name.
 
-| 字段 | 规则 |
+| Field | Rule |
 |---|---|
-| 适用对象 | 专属文件优先使用已登记项目号/订单号/客户简称；通用文件使用产品/型号/业务范围，例如“石灰生产线”“AGICO”“采购业务” |
-| 文件类型 | 从统一清单选择，如客户报价单、工艺流程图、设备清单、装箱单、客户调查模板 |
-| 内容主题 | 简短回答“这份具体讲什么”；类型已足够明确时可以省略重复主题 |
-| 业务日期 | 对报价、沟通记录、检验、物流、照片、报表等有时间区分价值的资料使用；格式YYYYMMDD。报表用YYYYMM或YYYYQn报告期间 |
-| 语言 | 系统显示中文名称，名称采用ZH、EN、ES、RU、FR、PT等；中英ZH-EN，中西ZH-ES。多个语言版关联到同一资料，不当作互不相关文件 |
-| 版本 | 公司自己编制且无正式修订制度的资料用V01、V02；已有正式版本/修订号的原样保留，不能重新编号掩盖原版本 |
+| Applicable Object | Dedicated files should preferentially use a registered project number/order number/customer abbreviation; general files use product/model/business scope, e.g., "Lime Production Line", "AGICO", "Procurement Business" |
+| File Type | Chosen from the unified list, e.g., Customer Quotation, Process Flow Diagram, Equipment List, Packing List, Customer Survey Template |
+| Content Topic | Briefly answers "what exactly does this document cover"; may be omitted when the type is already sufficiently clear, to avoid repeating the topic |
+| Business Date | Used for materials where time distinction adds value, such as quotations, communication records, inspections, logistics, photos, and reports; format YYYYMMDD. Reports use YYYYMM or YYYYQn for the reporting period |
+| Language | The system displays Chinese names; file names use ZH, EN, ES, RU, FR, PT, etc.; Chinese-English ZH-EN, Chinese-Spanish ZH-ES. Multiple language versions are linked to the same document record and are not treated as unrelated files |
+| Version | For materials compiled by the company itself with no formal revision system, use V01, V02; materials that already have an official version/revision number keep it as-is, and must not be renumbered in a way that masks the original version |
 
-已成交项目使用公司正式项目编号；未成交且无正式编号的项目，由系统登记项目名称及证据并生成唯一的 `OPP-年份-流水号` 临时编号。国家、产品、日期一致只作为候选线索，还需结合客户、地点、产能等证据；归属不明时交人工确认。成交后保存正式编号与临时编号的关联，以正式编号作为规范标题前缀，旧编号保留检索能力。
+Won projects use the company's official project number; for projects that are not yet won and have no official number, the system registers the project name and supporting evidence and generates a unique temporary number of the form `OPP-Year-SerialNumber`. Matching country, product, and date serve only as candidate clues; evidence such as customer, location, and capacity must also be considered; when attribution is unclear, the case is referred for manual confirmation. After a deal is closed, the association between the official number and the temporary number is kept, the official number serves as the canonical title prefix, and the old number retains search capability.
 
-业务日期按文件实际性质确定：报价日期、签署日期、检验日期、发运日期、会议日期等，不用上传时间冒充。没有可靠日期时留空并待确认。合同生效日期、标准实施日期、原始出版日期等分别保存在属性中，不能混成一个含糊的“日期”。
+The business date is determined by the document's actual nature: quotation date, signing date, inspection date, shipment date, meeting date, etc.; the upload time must never be passed off as the business date. When no reliable date is available, leave it blank and pending confirmation. Contract effective date, standard implementation date, original publication date, and the like are stored separately as attributes and must not be conflated into one vague "date".
 
-“上传时间、提交人、事业部、权限、审核状态”由系统记录，通常不放进名称。对外导出的文件若需要组织/品牌标识，可由导出规则增加，不要求员工在每个名称重复输入。
+"Upload time, submitter, business division, permissions, and review status" are recorded by the system and are generally not included in the name. If externally exported files need organization/brand identification, it can be added by the export rules; employees are not required to enter it repeatedly in every name.
 
-## 四、三种常用变体
+## IV. Three Common Variants
 
-### 1 通用产品/知识资料
-
-```text
-产品或适用范围_文件类型_主题_语言_版本.扩展名
-```
-
-例：
-
-- AGICO_宣传册_滤袋_EN_V01.pdf
-- 梁式窑_技术说明_工作原理_ZH_V01.docx
-- 石灰生产线_客户调查模板_基础设计提资_ZH_V01.xlsx
-- 采购业务_SOP_供应商比价_ZH_V01.docx
-
-### 2 客户/项目/订单执行资料
+### 1 General Product/Knowledge Materials
 
 ```text
-项目或订单_文件类型_主题_[业务日期]_语言_版本.扩展名
+ProductOrApplicableScope_FileType_Topic_Language_Version.Extension
 ```
+Examples:
 
-例：
+- AGICO_Brochure_FilterBag_EN_V01.pdf
+- BeamKiln_TechnicalDescription_WorkingPrinciple_ZH_V01.docx
+- LimeProductionLine_CustomerSurveyTemplate_BasicDesignInput_ZH_V01.xlsx
+- Procurement_SOP_SupplierPriceComparison_ZH_V01.docx
 
-- 阿根廷400TPD石灰项目_客户报价单_设备供货_20261008_ES_V02.xlsx
-- 阿根廷400TPD石灰项目_设备清单_燃烧系统_ZH-ES_V01.xlsx
-- 某订单_装箱单_第二批发运_20261008_EN_V01.xlsx
-- 某项目_检验报告_减速机出厂试验_20261008_ZH_V01.pdf
-
-“某订单/某项目”、示例日期和版本仅演示规则，不作为正式编码，也不直接给现有文件赋值。
-
-### 3 工程图纸：保留工程标识
+### 2 Customer/Project/Order Execution Materials
 
 ```text
-项目或产品_[正式图号]_图名_语言_[正式修订号].扩展名
+ProjectOrOrder_DocumentType_Topic_[BusinessDate]_Language_Version.Extension
 ```
 
-有图号示意：`项目简称_原图号_回转窑总装图_ZH-EN_原修订号.dwg`。无图号示意：`10TPH氢氧化钙_工艺流程图_ZH.dwg`。方括号表示按现有资料有无填写，实际文件名不包含方括号。
+Examples:
 
-- 正式图号与修订号沿用图签和已有登记制度，不能由AI编造。
-- 同一修订的DWG与导出PDF使用同一主体名称，仅扩展名不同，并在系统中关联。
-- 原图没有图号或修订号时直接省略相应字段，不把取得图号作为上传或发布条件，也不由 AI 生成正式图号。
-- 中文、译文、双语、标注版分别记录语言与衍生关系；翻译版本更新不自动代表工程设计发生修订。
-- 存在外部参照、配套目录或签名包的图纸资料，保留内部文件名和路径；知识库规范显示名称即可，避免重命名破坏关联。
+- Argentina400TPDLimeProject_CustomerQuotation_EquipmentSupply_20261008_ES_V02.xlsx
+- Argentina400TPDLimeProject_EquipmentList_CombustionSystem_ZH-ES_V01.xlsx
+- SomeOrder_PackingList_SecondBatchShipment_20261008_EN_V01.xlsx
+- SomeProject_InspectionReport_ReducerFactoryTest_20261008_ZH_V01.pdf
 
-标准文件也保留标准号与标准发布者的版次，例如 `TB-T2629-2023_铁路有砟轨道混凝土弹性轨枕_ZH.pdf`；不擅自变成公司V01。标准中的图纸不会改变该标准文件的业务分类。
+"SomeOrder/SomeProject", the example dates, and the versions are only for demonstrating the rules; they are not formal codes and are not directly assigned to existing files.
 
-## 五、必须统一的少量规则
-
-1. 只统一字段顺序、类型词、对象简称、日期、语言和版本表达；中文和外文主题均可保留。
-2. 下划线分隔字段；字段内部尽量不用下划线，减少歧义。
-3. 不使用“新建文档、最终版、最终最终版、修改后、最新版、张某的表”等无业务含义的主体名称。
-4. 文件正式程度由业务状态和审批状态区分。“已发布”不等同合同已签署或设计已批准，不写进文件名。
-5. 语言不同不必改变内容版次；翻译修订、设计修订和知识库上传修订分别记录。
-6. 上传前不能确认的字段不由AI猜测。系统提出名称，负责人确认类型、对象与工程标识。
-7. 来源文件保留原名称与原件；规范名称作为知识库显示标题/别名。数字签名、图纸引用和来源追溯不受命名规范影响。
-
-## 六、知识库字段与当前落地流程
-
-当前网页上传时员工选择事业部，先传输原件并提交。提交后后台将运行时规则文件 `src/agico_kb/ai_naming_rules.md` 和有权访问的项目记录交给 AI 判断归属；同项目异名资料共用正式或临时编号，再进入解析队列。证据不足或 AI 暂不可用时由负责人确认名称，再解析。临时编号由数据库生成，正式项目号、图号、日期或版本不得由 AI 猜测。项目编号与别名持久保存在 `projects` 表，命名和解析进度保存在现有任务状态中，不依赖 AI 自行维护 Markdown 记忆。
-
-系统保留：原文件名、规范标题、业务主类、具体类型、事业部、客户/项目/订单、产品型号、图号/专业/修订、文件日期或期间、语言、来源方、原文/译文/导出件关系、权限和审批状态。
-
-推荐流程：
+### 3 Engineering Drawings: Retain Engineering Identifiers
 
 ```text
-选择原件和事业部 → 上传原件 → 提交
-→ AI 根据运行时规则、原文件名及可见项目记录提议规范名称；数据库分配或复用项目编号
-→ 名称明确：解析；名称不明确：负责人核对后解析
-→ 负责人审核 → 正式展示规范名称
+ProjectOrProduct_[OfficialDrawingNumber]_DrawingTitle_Language_[OfficialRevisionNumber].Extension
 ```
 
-不能把命名确认当成解析成功，不能让尚未提取到图号的AI猜测成为正式工程编号。搜索同时支持规范标题、原文件名、项目/客户简称、产品型号和解析内容；按属性筛选比只靠长文件名更可靠。文件名中的事业部标识不能决定访问权限。
+Example with a drawing number: `ProjectAbbreviation_OriginalDrawingNumber_RotaryKilnGeneralAssemblyDrawing_ZH-EN_OriginalRevisionNumber.dwg`. Example without a drawing number: `10TPHCalciumHydroxide_ProcessFlowDiagram_ZH.dwg`. The square brackets indicate that the field is filled in or omitted depending on the existing documents; actual file names do not include the square brackets.
 
-## 七、落地顺序与待核实事项
+- Official drawing numbers and revision numbers follow the drawing title block and the existing registration system; they must not be fabricated by AI.
+- The DWG and exported PDF of the same revision use the same base name, differing only in extension, and are linked in the system.
+- When the original drawing has no drawing number or revision number, the corresponding field is simply omitted; obtaining a drawing number is not made a condition for uploading or publishing, and AI does not generate official drawing numbers.
+- Chinese, translated, bilingual, and annotated versions record language and derivation relationships separately; an update to a translated version does not automatically mean the engineering design was revised.
+- For drawing materials with external references, accompanying directories, or signature packages, keep the internal file names and paths; the knowledge base only needs the standardized display name, to avoid renaming breaking the associations.
 
-1. 先确定这10个主类与常用具体类型，征求实际负责资料的人意见。
-2. 用典型文件试套规则：产品宣传、客户报价、采购合同、设备清单、工程图、检验报告、装箱单、SOP、标准、经营报表各选几份，找出员工最难填写的字段。
-3. 同一项目已有正式编号时优先沿用；未成交且无正式编号时系统分配稳定的临时编号。CAD 图纸有正式图号和修订号时照原样保留，没有则省略；客户、产品和项目的既有叫法作为搜索别名逐步整理，不要求事先建立全公司统一简称表。
-4. 新上传资料先执行规范标题；旧资料保留原件，通过受审核的标题/别名逐步整理，不进行全库物理改名。
-5. 上传界面的自动命名和人工核对已实现；十类业务主类、别名登记、更多属性筛选仍按实际使用情况推进，不以此阻塞现有文件入库。
+Standard documents also retain the standard number and the edition of the standard's publisher, e.g. `TB-T2629-2023_RailwayBallastedTrackConcreteElasticSleeper_ZH.pdf`; they are not arbitrarily converted into a company V01. Drawings contained within a standard do not change that standard document's business classification.
 
-当前无需先给每个部门制定完全不同的规则。共用骨架与少量必要例外，可以随着公司实际业务逐步扩展。
+## V. The Few Rules That Must Be Unified
+
+1. Only the field order, type words, object abbreviations, and the date, language, and version expressions are unified; topics in both Chinese and foreign languages may be retained.
+2. Underscores separate fields; avoid using underscores within a field as much as possible, to reduce ambiguity.
+3. Do not use base names with no business meaning, such as "New Document", "Final Version", "Final Final Version", "Revised", "Latest Version", or "Zhang's Spreadsheet".
+4. The formality of a file is distinguished by business status and approval status. "Published" is not equivalent to a signed contract or an approved design, and it is not written into the file name.
+5. A difference in language does not require changing the content version; translation revisions, design revisions, and knowledge base upload revisions are recorded separately.
+6. Fields that cannot be confirmed before upload are not guessed by AI. The system proposes the name, and the person in charge confirms the type, object, and engineering identifiers.
+7. Source files keep their original names and the originals; the standardized name serves as the knowledge base display title/alias. Digital signatures, drawing references, and source traceability are not affected by the naming convention.
+
+## VI. Knowledge Base Fields and the Current Implementation Process
+
+In the current web upload flow, the employee selects the business division, uploads the original file first, and submits it. After submission, the backend hands the runtime rules file `src/agico_kb/ai_naming_rules.md` and the project records the AI is authorized to access over to the AI to determine attribution; materials of the same project under different names share the official or temporary number, and then enter the parsing queue. When evidence is insufficient or the AI is temporarily unavailable, the person in charge confirms the name before parsing. Temporary numbers are generated by the database; official project numbers, drawing numbers, dates, or versions must not be guessed by AI. Project numbers and aliases are persistently stored in the `projects` table, and naming and parsing progress is kept in the existing task status, without relying on the AI to maintain its own Markdown memory.
+The system retains: original filename, canonical title, primary business category, specific type, business division, customer/project/order, product model, drawing number/discipline/revision, file date or period, language, source party, original/translation/export relationship, permissions, and approval status.
+
+Recommended process:
+
+```text
+Select original file and business division → Upload original file → Submit
+→ AI proposes a canonical name based on runtime rules, the original filename, and visible project records; the database assigns or reuses a project number
+→ Name unambiguous: parse; name ambiguous: the responsible person verifies, then parse
+→ Responsible person reviews → Canonical name officially displayed
+```
+
+Naming confirmation must not be treated as successful parsing, and AI guesses made before a drawing number has been extracted must not become official engineering numbers. Search simultaneously supports canonical titles, original filenames, project/customer abbreviations, product models, and parsed content; filtering by attributes is more reliable than relying on long filenames alone. The business division identifier in a filename must not determine access permissions.
+
+## 7. Implementation Order and Items to Verify
+
+1. First, settle these 10 primary categories and the commonly used specific types, seeking input from the people actually responsible for the documents.
+2. Trial-apply the rules to typical files: pick a few samples each of product marketing materials, customer quotations, procurement contracts, equipment lists, engineering drawings, inspection reports, packing lists, SOPs, standards, and business reports, to identify the fields employees find hardest to fill in.
+3. When the same project already has an official number, prefer to reuse it; if no deal has closed and there is no official number, the system assigns a stable temporary number. When a CAD drawing has an official drawing number and revision number, keep them as-is; if not, omit them. Gradually organize existing names for customers, products, and projects as search aliases; there is no requirement to establish a company-wide unified abbreviation table in advance.
+4. Newly uploaded files get canonical titles first; legacy files keep their originals and are gradually organized through reviewed titles/aliases, with no physical renaming across the entire repository.
+5. Automatic naming and manual verification in the upload interface are already implemented; the ten primary business categories, alias registration, and additional attribute filtering will continue to be advanced based on actual usage, and none of these should block existing files from being ingested.
+
+There is currently no need to draw up completely different rules for each department upfront. A shared skeleton plus a small number of necessary exceptions can be expanded step by step as the company's actual business grows.

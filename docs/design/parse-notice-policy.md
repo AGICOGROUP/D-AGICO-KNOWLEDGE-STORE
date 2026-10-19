@@ -1,32 +1,31 @@
-# 解析提醒处理策略
+# Parsing Alert Handling Strategy
 
-## 原则
+## Principles
 
-先修复解析能力，再减少问题提醒。不得通过隐藏实际缺失、降低普通文档标准、修改原文件或人工补写生产结果使提醒消失。未知提醒默认保留。
+Fix parsing capability first, then reduce problem alerts. Alerts must not be made to disappear by hiding actual gaps, lowering standards for ordinary documents, modifying source files, or manually backfilling production results. Unknown alerts are retained by default.
 
-## 三类提醒
+## Three Categories of Alerts
 
-1. 实际问题：内容未提取、数字冲突、字段无法读取、转换失败、接口不可用。由通用流程修复，尚未解决时明确显示。
-2. 正常过程：OCR或转述已完成、空字符已清理、公式缓存保留、按页保存、续处理排队。员工界面不展示为内容问题，内部诊断保留。
-3. 资料说明：图纸须结合原图、修订正文、仅保存原件。每份文件合并为一条简短说明。
+1. Actual problems: content not extracted, number conflicts, unreadable fields, conversion failures, unavailable interfaces. Fixed by the generic process and clearly displayed while unresolved.
+2. Normal process: OCR or transcription completed, null characters cleaned up, formula caches retained, saved page by page, queued for continued processing. Not shown as content problems in the staff interface; kept in internal diagnostics.
+3. Source notes: drawings must be read against the original image; body text revised; only the original is saved. Each document is merged into a single short note.
 
-## 项目能力
+## Project Capabilities
 
-- Word 收录脚注、尾注及其表格，保留正文引用；Excel 收录原生文本框及工作表、单元格锚点。真正缺失的图表、公式结果仍提示。
-- PDF 正文OCR路线由布局、置信度和未解释墨迹共同决定，单独的公差、表格、插图、文件名不能降低正文验收标准。纯OCR完成不依赖视觉API配置。
-- PDF 逐页识别图纸。明确的图名与分散布局、标题栏和视图等独立证据用于区分图纸；大型轮廓字体图纸可结合多个工程标题栏字段和密集矢量证据识别。覆盖西班牙语剖视／视图、克罗地亚语标题栏及扫描试验附图。试验附图必须同时有附图编号字段、多个视图、明确图面单位与分散布局，不能仅凭插图或附录字样分类。分类不确定时继续全文处理。
-- 字体映射中的替代字符、控制字符和异常字形簇触发像素OCR。确认映射损坏后，同页异常短片段也不作为原生可靠文字入库；其可见内容由OCR恢复。不能仅凭乱码字符数量判定正文完整。
-- 图纸收录图名、图号、项目、说明、明细和原图定位，不转述孤立尺寸及几何关系。OCR关键字段按原图区域由视觉API复核，相邻区域合并请求；说明／明细区域包含标题下面的正文。原生可靠字段与复核区域之外文字保留。
-- 复核只能依据原图像素纠正OCR。某字段不可辨认时，已恢复的其他字段仍收录，具体问题保留；未出现、未填写的字段不能冒充故障。API中断用正常断点续处理，缓存源区域；没有人工日额度。
-- 普通公差正文、短列说明书和中文换行正文保留全文语义处理；目录提到“图纸”不触发全图尺寸核对。
-- 数字核对只把明确小数点格式20.00/20视为等值。330/350、符号遗漏、直径和半径混淆仍是问题。多段编号和逗号的含义不靠猜测归一化。OCR证据不是标准答案，不能通过往输出中塞数字使核对通过。
-- 重复页眉页脚必须有多页和页边位置证据才能过滤；正文数字不因相同就被过滤。分段状态按真实完成情况聚合，不截断内部诊断以免漏掉后续问题。
-- 分段解析遇到一次临时子进程故障时，项目自动重试该段一次；持续失败仍记录具体未完成页码，不用无界重试堵塞队列。数据库建立连接设有限时，避免后台停留在无响应连接中。
+- Word captures footnotes, endnotes, and their tables, preserving body-text references; Excel captures native text boxes plus worksheet and cell anchors. Genuinely missing charts and formula results are still flagged.
+- The OCR route for PDF body text is determined jointly by layout, confidence, and unexplained ink; tolerance, tables, illustrations, or file names alone must not lower the body-text acceptance standard. Pure-OCR completion does not depend on vision API configuration.
+- PDFs are examined page by page to identify drawings. An explicit drawing title, together with independent evidence such as scattered layout, title blocks, and views, is used to distinguish drawings; large outline-font drawings can be identified by combining multiple engineering title-block fields with dense vector evidence. Coverage includes Spanish section/view labels, Croatian title blocks, and scanned test figures. A test figure must simultaneously have a figure-number field, multiple views, explicit drawing units, and a scattered layout; it must not be classified on "illustration" or "appendix" wording alone. When classification is uncertain, full-text processing continues.
+- Substitute characters, control characters, and abnormal glyph clusters in the font mapping trigger pixel OCR. Once mapping corruption is confirmed, abnormal short fragments on the same page are also not stored as native reliable text; their visible content is recovered by OCR. Body-text completeness cannot be judged from the number of garbled characters alone.
+- Drawings capture the drawing title, drawing number, project, description, itemized details, and original-image location; isolated dimensions and geometric relations are not transcribed. Key OCR fields are rechecked by the vision API per original-image region, with requests merged for adjacent regions; the description/detail region includes the body text below the title. Text outside the native-reliable fields and recheck regions is retained.
+- Rechecks may only correct OCR against original-image pixels. When a field is illegible, other fields already recovered are still captured and the specific problem is retained; fields that are absent or left blank must not be passed off as failures. API interruptions use normal checkpoint-resume processing, caching the source region; there is no manual daily quota.
+- Ordinary tolerance body text, short-column specification sheets, and Chinese line-wrapped body text retain full-text semantic processing; a table of contents mentioning "drawings" does not trigger a full-drawing dimension check.
+- Number checks treat only the explicit decimal-point formats 20.00/20 as equivalent. 330/350, omitted symbols, and diameter/radius confusion remain problems. The meaning of multi-segment numbering and commas is not normalized by guesswork. OCR evidence is not the ground truth; checks must not be made to pass by stuffing numbers into the output.
+- Repeated headers and footers may be filtered only with evidence spanning multiple pages and margin positions; body-text numbers are not filtered merely for being identical. Segment status is aggregated according to actual completion, and internal diagnostics are not truncated so that later problems are not missed.
+- When segmented parsing encounters a single transient subprocess failure, the project automatically retries that segment once; persistent failures still record the specific unfinished page numbers instead of clogging the queue with unbounded retries. Database connection establishment has a time limit so the background does not linger on unresponsive connections.
 
-## 历史记录
+## History Records
 
-展示策略适用于历史记录刷新。真实内容缺口必须由项目后台重新解析，正常Worker完成后更新索引与诊断；原文件和发布关系保留，已有有效索引在新代完成前继续服务。不得直接改生产片段或手工清空真实提醒。解析器与数字证据缓存已更新版本，旧路线结果不冒充新解析。
+The display strategy applies to history refreshes. Real content gaps must be re-parsed by the project background, with the index and diagnostics updated after a normal Worker run completes; source files and publication relationships are preserved, and an existing valid index keeps serving until the new generation completes. Production segments must not be edited directly, nor real alerts manually cleared. The parser and the number-evidence cache have been updated to new versions; results from the old route must not be passed off as new parses.
+## Acceptance Boundaries
 
-## 验收边界
-
-非图纸资料仍要求内容准确率超过95%，关键数字、单位、对应关系单独核查。图纸检查正确原图定位、图名图号、说明及明细。OCR提取量、置信度、流程完成、测试通过数与提醒数量都不等于内容准确率。
+Non-drawing materials are still required to achieve a content accuracy rate above 95%, with key numbers, units, and correspondences verified separately. Drawing checks verify correct positioning against the original image, drawing titles and numbers, notes, and itemized details. OCR extraction volume, confidence, process completion, number of tests passed, and number of reminders do not equal content accuracy.

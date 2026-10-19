@@ -1,18 +1,18 @@
-# 网页／钉钉员工入口
+# Web / DingTalk Employee Entry Points
 
-2026-09-15：两个入口均 **未联调**。未提供网页代码、钉钉应用、会话映射或测试员工。后台 MCP 与 HTTP 的独立身份测试不代替入口验收。
+2026-09-15: Both entry points are **not yet integration-tested**. No web code, DingTalk application, conversation mapping, or test employees have been provided. Standalone identity testing of the backend MCP and HTTP does not substitute for entry point acceptance.
 
-入口必须由可信服务从登录员工映射到独立可撤销凭证；Agent 参数不能决定身份。凭证不得交给浏览器脚本或写入聊天内容。可信文件交接层通过当前员工身份上传、下载，返回原任务的会话及原接收者。
+Entry points must map the logged-in employee to an independent, revocable credential via a trusted service; Agent parameters must not determine identity. Credentials must not be handed to browser scripts or written into chat content. The trusted file handoff layer uploads and downloads under the current employee's identity, and returns the conversation of the original task and the original recipient.
 
-## 待实机验证
+## Pending Live Verification
 
-| 场景 | 必须保存的证据 | 当前状态 |
+| Scenario | Evidence that must be saved | Current status |
 |---|---|---|
-| 网页员工 A／B 查询相同受限资料 | 入口员工、后端身份、各自结果，B 无权限 | 未联调 |
-| 钉钉员工 A／B 查询相同受限资料 | 同上及群／私聊会话绑定 | 未联调 |
-| 两入口上传、提交与状态查询 | 新文件哈希、upload_id、提交者和状态一致 | 未联调 |
-| 两入口下载与交付 | 当前权限、文件哈希、原接收者及原会话一致 | 未联调 |
-| 会话并发、切换账号、凭证撤销 | 不串人、不串会话，撤销后拒绝 | 未联调 |
-| 普通知识任务 | 背景／事实／规范／经验真正影响产出 | 未联调 |
+| Web employees A / B query the same restricted material | Entry-point employee, backend identity, each one's results; B has no permission | Not integration-tested |
+| DingTalk employees A / B query the same restricted material | Same as above, plus group / private chat conversation binding | Not integration-tested |
+| Upload, submission, and status query via both entry points | New file hash, upload_id, submitter, and status consistency | Not integration-tested |
+| Download and delivery via both entry points | Current permission, file hash, original recipient, and original conversation consistency | Not integration-tested |
+| Concurrent conversations, account switching, credential revocation | No identity crossover, no conversation crossover; requests rejected after revocation | Not integration-tested |
+| Ordinary knowledge tasks | Background / facts / standards / experience genuinely influence the output | Not integration-tested |
 
-真实资料须先获授权，由业务负责人确认后发布。尚缺这些资料及人员，因此也未完成真实业务知识质量验收。
+Real materials must first be authorized and may only be published after confirmation by the business owner. These materials and personnel are still missing, so the quality acceptance of real business knowledge has likewise not been completed.

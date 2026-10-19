@@ -1,43 +1,42 @@
-# Windows 运维与隔离恢复
+# Windows Operations and Isolation Recovery
 
-## 当前证据与边界
+## Current Evidence and Boundaries
 
-本轮在本机 PostgreSQL 16.15 / pgvector 0.8.6 上实测逻辑备份、新数据库及新目录恢复；随机业务 schema 和生产默认 `public` 均覆盖。每次测试新建合成原件及隔离对象。测试覆盖原件字节、私有权限、正式活动版本、关键词/向量检索、排队/运行作业及锁故障。测试目录位于同磁盘，只是恢复验证，不是独立灾备。
+In this round, logical backup and restore into a new database and a new directory were tested for real on a local machine running PostgreSQL 16.15 / pgvector 0.8.6; both a random business schema and the production default `public` were covered. Each test created fresh synthetic originals and isolated objects. Tests covered original bytes, private permissions, the official active version, keyword/vector retrieval, queued/running jobs, and lock failures. The test directory is on the same disk; this is restore validation only, not independent disaster recovery.
 
-本地真实数据库停止/启动演练通过：数据库停止时 live=200、ready=503，启动后 ready=200，首个普通鉴权读取、搜索、原件和发布/作业数量均正确。演练发现并修复闲置连接池中的旧连接：每次借出连接执行 psycopg_pool 的健康检查，自动丢弃已断开的连接。测试控制子进程在 Windows 使用 DEVNULL，避免新数据库进程继承捕获管道而使测试等待不结束。这个测试需显式设置 `AGICO_TEST_RESTART_DB=1`，只允许在该本地开发集群无人使用时运行。
+The stop/start drill on the real local database passed: with the database stopped, live=200 and ready=503; after startup, ready=200; the first ordinary authenticated read, search, and the counts of originals and publications/jobs were all correct. The drill found and fixed stale connections in the idle connection pool: every checked-out connection runs a psycopg_pool health check, and broken connections are discarded automatically. On Windows, the test control subprocess uses DEVNULL so that the new database process does not inherit a captured pipe, which would leave the test waiting indefinitely. This test requires explicitly setting `AGICO_TEST_RESTART_DB=1` and may only be run when nobody is using that local development cluster.
 
-服务脚本已生成 XML 并通过 PowerShell 语法检查。尚未在指定服务器安装服务，未修改防火墙、创建账号或执行 Windows 重启。无人登录启动、真实服务故障重启、日志达到阈值后的轮转、TLS 代理及跨磁盘/跨机灾备仍须目标服务器验收。不要据此宣称已完成生产长期运行验收。
+The service scripts have generated XML and passed PowerShell syntax checks. The service has not yet been installed on the designated server; no firewall modifications, account creation, or Windows restarts have been performed. Startup with no user logged in, restart after real service failure, log rotation after reaching thresholds, TLS proxying, and cross-disk/cross-machine disaster recovery still require acceptance on the target server. Do not claim, on this basis, that long-term production operation acceptance has been completed.
 
-## 安装目录、账号与依赖
+## Installation Directory, Accounts, and Dependencies
 
-1. 将本仓库及 `uv.lock` 放在固定绝对目录（示例 `D:\Agico\App`），执行 `uv sync --frozen --no-dev`。Python 固定为 3.12；部署保留源码、迁移和锁文件。升级新建一个应用版本目录，保留上一版；不要在服务运行中更新其虚拟环境。
-2. 由管理员准备专用普通本地或域账号（如 `SERVER\agico_kb`），授予“作为服务登录”，不加入管理员组。可选已有 gMSA，系统不要求 Active Directory。API 和 worker 使用同一专用账号；PostgreSQL 使用独立数据库账号。运行账号只能读应用及模型，写原件和日志，不能修改程序。维护账号另存，拥有新建恢复数据库/安装 vector 的权限；不放入服务配置。
-3. PostgreSQL 16 / pgvector 使用经过验证的软件包并单独按其官方服务流程部署。本脚本只管理 API/worker；实际 PostgreSQL Windows 服务、磁盘、内存、备份网络目标由运维确认。数据库连接池每个进程最多 8 个，解析子进程与 API 分离，查询向量同时仅一个任务。
-4. 从 WinSW 官方 **v2.12.0** 发布取得 exe，并独立记录真实 SHA-256。脚本不下载包装器；安装前核验 exe 路径、SHA-256、FileVersion。不要把示例哈希当真实签名。
-5. 从 `deploy/windows/runtime.example.json` 制作受保护的本地 JSON；填写真实 DSN、绝对原件/模型目录和模型身份。不要提交这个文件、在终端打印配置或把 DSN 放到命令行。配置 DACL 关闭继承，只允许专用账号（读）、SYSTEM 和 Administrators；父目录仅管理员可改，避免替换配置。`config-loader.ps1` 每次加载检查 DACL，不满足则拒绝启动。
-
-ACL 示例由管理员替换真实路径及账号后执行：
+1. Place this repository and `uv.lock` in a fixed absolute directory (example `D:\Agico\App`), and run `uv sync --frozen --no-dev`. Python is pinned to 3.12; the deployment keeps source code, migrations, and the lock file. For upgrades, create a new application version directory and keep the previous version; do not update the running service's virtual environment while the service is running.
+2. Have an administrator prepare a dedicated, regular local or domain account (e.g. `SERVER\agico_kb`), grant it "Log on as a service", and do not add it to the Administrators group. Using an existing gMSA is optional; the system does not require Active Directory. The API and the worker use the same dedicated account; PostgreSQL uses a separate database account. The runtime account may only read the application and models and write originals and logs; it must not modify the program. Keep the maintenance account stored separately, with permission to create the restore database / install vector; do not put it into the service configuration.
+3. PostgreSQL 16 / pgvector uses verified packages and is deployed separately following its official service procedures. These scripts only manage the API/worker; the actual PostgreSQL Windows service, disks, memory, and backup network target must be confirmed by operations. The database connection pool holds at most 8 connections per process; parsing runs in subprocesses separate from the API, and only one task queries vectors at a time.
+4. Obtain the exe from the official WinSW **v2.12.0** release and independently record its real SHA-256. The scripts do not download the wrapper; verify the exe path, SHA-256, and FileVersion before installation. Do not treat the example hash as the real signature.
+5. Create a protected local JSON from `deploy/windows/runtime.example.json`; fill in the real DSN, the absolute originals/models directories, and the model identity. Do not commit this file, print the configuration in a terminal, or put the DSN on the command line. Configure the DACL to disable inheritance and allow only the dedicated account (read), SYSTEM, and Administrators; the parent directory may be modified only by administrators to prevent the configuration from being replaced. `config-loader.ps1` checks the DACL on every load and refuses to start if it is not satisfied.
+The ACL example is executed by the administrator after replacing the real paths and accounts:
 
 ```powershell
 icacls D:\Agico\Secrets\runtime.json /inheritance:r
 icacls D:\Agico\Secrets\runtime.json /grant:r 'SERVER\agico_kb:R' '*S-1-5-18:F' '*S-1-5-32-544:F'
 ```
 
-检查并删除已有的其他显式授权；`/grant:r` 不会自动删除其他账号的 ACE。应用/脚本/服务 XML 目录亦应禁止业务账号写入。原件、备份、凭证分别授权；备份含访问令牌哈希及企业原文，需受控加密存放，密钥另行保管。
+Check for and remove any other existing explicit grants; `/grant:r` does not automatically remove ACEs belonging to other accounts. The application/scripts/service XML directories should likewise deny write access to business accounts. Grant permissions separately for originals, backups, and credentials; backups contain access token hashes and the original enterprise text, and must be stored under controlled encryption with the keys kept elsewhere.
 
-## 模型准备与离线运行
+## Model Preparation and Offline Operation
 
-首次联网准备在管理员维护窗口单独执行：
+First-time online preparation is performed separately during an administrator maintenance window:
 
 ```powershell
 D:\Agico\App\.venv\Scripts\python.exe -m agico_kb.embeddings --cache D:\AgicoModels
 ```
 
-把输出的完整模型 identity 写入受保护配置 `AGICO_KB_EXPECTED_MODEL_IDENTITY`，设置 `AGICO_KB_MODEL_OFFLINE` 为字符串 `true`。模型身份包含模型名、本地模型文件哈希、维度、fastembed 版本和实现标识。服务启动要求离线及身份 pin；指纹不匹配时语义检索/向量入库失败，保留关键词检索和原文。代码默认开发模式兼容联网；生产使用启动脚本强制离线。模型缓存需要单独受控归档，恢复到明确目录；本逻辑备份不内嵌模型大文件。上游下载不保证未来能取得同一模型，所以保留模型归档及锁文件，恢复后验证 identity 再开放服务。
+Write the full model identity output into the protected configuration `AGICO_KB_EXPECTED_MODEL_IDENTITY`, and set `AGICO_KB_MODEL_OFFLINE` to the string `true`. The model identity includes the model name, local model file hash, dimensions, fastembed version, and implementation identifier. Service startup requires offline mode and identity pinning; when the fingerprint does not match, semantic retrieval/vector ingestion fails, while keyword retrieval and the original text remain available. By default, the code is compatible with networking in development mode; in production, the startup script forces offline mode. The model cache requires a separately controlled archive restored to an explicit directory; this logical backup does not embed the large model files. Upstream downloads cannot guarantee the same model will be obtainable in the future, so keep the model archive and lock file, verify the identity after restoration, and only then open the service.
 
-## 生成与安装服务
+## Generating and Installing Services
 
-默认只生成新目录下的 `AgicoKbApi.xml` / `AgicoKbWorker.xml`，不修改服务或账号：
+By default, only `AgicoKbApi.xml` / `AgicoKbWorker.xml` are generated into a new directory, without modifying services or accounts:
 
 ```powershell
 $install = @{
@@ -50,36 +49,34 @@ $install = @{
 D:\Agico\App\scripts\install-services.ps1 @install
 ```
 
-审核后真正安装时，使用另一个尚不存在的输出目录，并额外传入：`-Install -TargetComputer SERVER -AccountProvisioned -WinSWExe <已校验绝对路径> -WinSWSha256 <真实64位哈希> -Credential (Get-Credential 'SERVER\agico_kb')`。普通账号凭证通过 PowerShell `PSCredential` 交给 SCM 的 `New-Service`，不写 XML/argv；gMSA 无需 Credential。禁止将密码做成脚本字符串。安装脚本要求显式提升的管理员会话，拒绝已有服务，不自动启动服务，失败不自动删除现场。普通账号的显式安装分支还通过 .NET `System.Diagnostics.EventLog` 为服务 ID 注册 Application 事件源（若不存在），与 [WinSW 2.12.0 原生安装行为](https://raw.githubusercontent.com/winsw/winsw/v2.12.0/src/WinSW/Program.cs)一致；无需 PowerShell 7 缺少的 `New-EventLog` cmdlet。默认生成模式不访问或创建事件源，实际事件日志写入仍须目标服务器验收。
+For the actual installation after review, use another output directory that does not yet exist and additionally pass in: `-Install -TargetComputer SERVER -AccountProvisioned -WinSWExe <verified absolute path> -WinSWSha256 <real 64-character hash> -Credential (Get-Credential 'SERVER\agico_kb')`. Credentials for a regular account are handed to SCM's `New-Service` via a PowerShell `PSCredential`, not written into XML/argv; gMSA requires no Credential. Turning the password into a script string is prohibited. The installation script requires an explicitly elevated administrator session, rejects pre-existing services, does not automatically start the service, and does not automatically clean up artifacts on failure. The explicit installation branch for a regular account also registers an Application event source for the service ID via .NET `System.Diagnostics.EventLog` (if it does not already exist), consistent with [the native installation behavior of WinSW 2.12.0](https://raw.githubusercontent.com/winsw/winsw/v2.12.0/src/WinSW/Program.cs); it does not need the `New-EventLog` cmdlet that is missing from PowerShell 7. The default generation mode neither accesses nor creates event sources; actual event log writing must still pass acceptance on the target server.
+The generated configuration specifies absolute paths, Automatic (delayed) start, restart after 10 seconds (never reboot Windows), a 30-second stop wait, a 10 MB threshold for each stdout/stderr log with 8 rotated files. The wrapper's own logs should also be included in disk monitoring. Use the official [WinSW 2.12.0 XML configuration](https://raw.githubusercontent.com/winsw/winsw/v2.12.0/doc/xmlConfigFile.md) and [logging configuration](https://raw.githubusercontent.com/winsw/winsw/v2.12.0/doc/loggingAndErrorReporting.md); actual SCM installation and rotation remain to be verified through testing on the target machine.
 
-生成配置指定绝对路径、Automatic 延迟启动、10 秒后重启（绝不重启 Windows）、30 秒停止等待、每个 stdout/stderr 日志 10 MB 阈值及 8 个轮转文件。包装器自身日志还应纳入磁盘监控。使用官方 [WinSW 2.12.0 XML 配置](https://raw.githubusercontent.com/winsw/winsw/v2.12.0/doc/xmlConfigFile.md)和[日志配置](https://raw.githubusercontent.com/winsw/winsw/v2.12.0/doc/loggingAndErrorReporting.md)；实际 SCM 安装和轮转尚待目标机实测。
+After configuration validation, model preparation, and database migration are complete, an administrator runs `Start-Service AgicoKbApi,AgicoKbWorker`. The startup script does not bypass the organization's execution policy; sign or unblock trusted files as required by the organization. The service console will not pop up an interactive desktop window.
 
-配置验证、模型准备和数据库迁移完成后，由管理员 `Start-Service AgicoKbApi,AgicoKbWorker`。启动脚本不旁路组织执行策略；按组织要求签名/解除可信文件阻止。服务控制台不会弹出交互桌面窗口。
+## Health, Network, and Routine Checks
 
-## 健康、网络与日常检查
+- The API binds to `127.0.0.1:8765` by default; the local `/health/live` endpoint only reports on the process; `/health/ready` uses a separate connection to perform a time-limited 2-second connection/query check, returning 503 on failure, without occupying application pool wait slots. ready does not mean the model is loaded, the queue is drained, or full business-permission acceptance has passed.
+- Enterprise access uses explicit hostnames and a trusted TLS reverse proxy; actual hostnames are configured in the allowlist, and the proxy preserves authorization and streaming MCP behavior. Only enterprise sources are allowed to reach the proxy over HTTPS; PostgreSQL and application ports are restricted to localhost/necessary sources. Specific certificates, proxy, addresses, and firewall have not yet been configured; there is no fictitious public entry point.
+- Check failed/backlogged jobs, free disk space, originals/backup capacity, log growth, the most recent successful backup, and restore time. Model unavailability will not damage originals; after processing repeatedly fails up to the limit, retry requires personnel with permission.
+- Re-authenticate after API restart; workers use PostgreSQL leases and generation fencing, and expired workers must not submit stale results. During a service interruption, the system may wait for leases to expire; normal recovery does not forcibly reset in-place leases.
 
-- API 默认绑定 `127.0.0.1:8765`，本机 `/health/live` 只报告进程；`/health/ready` 用独立连接做 2 秒连接/查询限时检查，失败返回 503，不占用应用池等待槽。ready 不代表模型已加载、队列已清空或完整业务权限验收。
-- 企业访问使用明确主机名和受信 TLS 反向代理，允许列表中配置实际主机名，代理保留授权及流式 MCP 行为。只开放企业来源到代理 HTTPS，PostgreSQL 与应用端口限制本机/必要来源。具体证书、代理、地址和防火墙尚未配置，无虚构公网入口。
-- 检查失败/积压作业、磁盘剩余量、原件/备份容量、日志增长、最近一次成功备份及恢复时间。模型不可用不会破坏原件；处理反复失败达上限后需要有权限人员重试。
-- API 重启后重新鉴权；worker 使用 PostgreSQL lease 与 generation fencing，过期 worker 不得提交旧结果。服务中断期间可能等待租约过期，正常恢复不强行重置现场 lease。
+## Read-Only Reconciliation of Original Files
 
-## 原文件只读对账
-
-加载上述受保护配置后，可对当前数据库与原文件目录做只读核对：
+After loading the protected configuration above, a read-only check can be performed against the current database and the originals directory:
 
 ```powershell
 D:\Agico\App\.venv\Scripts\python.exe -m agico_kb.operations reconcile --stale-part-age-seconds 86400 --timeout 30
 ```
 
-命令返回 JSON，列出缺失原件、大小或 SHA-256 不符的原件、无 complete/submitted 上传引用的 `.blob`，以及最后修改时间超过指定秒数的 `.part` 候选；默认年龄为 24 小时。只扫描当前平面原件目录中应用命名的文件，解析临时目录不在范围内。路径仅返回相对文件名，不返回数据库凭证；命令不会删除、改名或修复任何文件。
+The command returns JSON listing missing originals, originals whose size or SHA-256 does not match, `.blob` files with no complete/submitted upload references, and `.part` candidates whose last modification time exceeds the specified number of seconds; the default age is 24 hours. Only application-named files in the current flat originals directory are scanned; the parsing temp directory is out of scope. Paths return only relative file names, not database credentials; the command does not delete, rename, or repair any files.
+The scan reuses the backup write-pause lock: it waits for in-flight upload transactions to complete before acquiring a stable database reference; new uploads may continue streaming into temporary files, but the final rename and registration must wait until this reconciliation ends and be retried afterward. Reads remain available. Stale `.part` files may still belong to uploads paused mid-flight, so they are only candidates for manual verification and must not be deleted on that basis alone. Database/disk modifications that bypass the application are not protected by this lock. The result corresponds to this scan window; once the lock is released, the state may change.
 
-扫描复用备份写入暂停锁，等待正在完成的上传事务结束后，再取得稳定的数据库引用；新上传可以继续传入临时文件，但最终改名与登记需等待本次对账结束后重试。读取保持可用。陈旧 `.part` 仍可能属于暂停中的上传，只是人工核对候选，不能据此直接删除；不经过应用的数据库／磁盘修改不受该锁保护。结果对应本次扫描时段，释放锁后现场可能改变。
+By default it waits up to 30 seconds for write transactions, and the scan budget after acquiring the lock is also 30 seconds; check time is accounted per file and per 1 MiB hash block, and a single underlying disk read operation cannot be forcibly interrupted, so this is not a hard guarantee of total elapsed time. On timeout, unreadable files, or interruption of the lock connection, it returns failure, does not output a complete report, and releases the write pause. For large databases, `--timeout` can be explicitly adjusted during a maintenance window, and the frequency can be scheduled based on the reported `pause_seconds`. When an anomaly is found, operations staff verify the originals and backups; the site is not cleaned up automatically.
 
-默认等待写事务最多 30 秒，获得锁后的扫描预算也是 30 秒；每个文件及每 1 MiB 哈希块检查时间，底层单次磁盘读操作无法强制中断，因此这不是硬性总耗时保证。超时、文件不可读或锁连接中断时返回失败、不输出完整报告，并释放写入暂停。大资料库可在维护窗口显式调整 `--timeout`，根据输出的 `pause_seconds` 安排频率。发现异常后由运维核实原件及备份，不自动清理现场。
+## Backup
 
-## 备份
-
-事先配置**独立磁盘、受控网络位置或另一主机**的新目标目录。任务不自动选择磁盘或宣称同盘副本是灾备。用受保护配置加载 DSN 到当前进程环境；避免 PowerShell Transcript/调试回显配置。备用维护配置可通过同一个 `Import-ProtectedKbConfig` 加载，服务配置不包含维护凭证。
+Configure the new target directory in advance on an **independent disk, a controlled network location, or another host**. The task does not automatically select a disk or claim that a same-disk copy is disaster recovery. Load the DSN into the current process environment via the protected configuration; avoid PowerShell Transcript/debug echoing of the configuration. The backup maintenance configuration can be loaded through the same `Import-ProtectedKbConfig`; the service configuration does not contain maintenance credentials.
 
 ```powershell
 . D:\Agico\App\deploy\windows\config-loader.ps1
@@ -87,24 +84,23 @@ Import-ProtectedKbConfig -ConfigFile D:\Agico\Secrets\runtime.json -Account 'SER
 D:\Agico\App\scripts\backup.ps1 -PythonExe D:\Agico\App\.venv\Scripts\python.exe -PgBin 'C:\Program Files\PostgreSQL\16\bin' -Archive E:\AgicoBackup\run-20260915
 ```
 
-备份依次排队取得 schema 专用独占 advisory lock、等待已开始的写事务、复制数据库引用的 complete/submitted 原件并校验、执行 custom 格式 schema 范围 `pg_dump`、记录迁移版本/分类/模型身份/依赖锁及哈希，然后释放锁。新写入含上传最终 rename、提交、发布/撤下/授权、文件关联、身份令牌和 worker 写入，均快速返回可重试 `MAINTENANCE` 503；读取、鉴权继续，临时上传流可以继续但最终提交需重试。写事务最长等待 30 秒，pg 工具默认 300 秒；超时恢复写入并保留不完整现场。后台解析若遇暂停，将由保留的租约和重试恢复。
+The backup queues in turn to acquire the schema-specific exclusive advisory lock, waits for already-started write transactions, copies the complete/submitted originals referenced by the database and verifies them, runs a custom-format schema-scoped `pg_dump`, records migration version/classification/model identity/dependency locks and hashes, and then releases the lock. New writes—including upload final rename, submission, publish/unpublish/authorization, file associations, identity tokens, and worker writes—all quickly return a retryable `MAINTENANCE` 503; reads and authentication continue, temporary upload streams may continue, but final submission must be retried. Write transactions wait at most 30 seconds, and pg tools default to 300 seconds; on timeout, writes are resumed and the incomplete state is preserved. If background parsing encounters the pause, it will be recovered by the retained lease and retries.
 
-清单 `manifest.json` 只有成功释放原始锁连接后才成为完成标记；检查清单中的 `pause_seconds`。被终止的锁连接不能产生已完成备份。原件缺失/哈希错误则失败。`.part`、解析目录及未引用孤儿文件不作为完成原件备份；不自动删除孤儿。未通过应用写门的直接数据库/文件修改不受保护，备份期间禁止这类维护写入。大量原件时暂停包含完整复制时间；监控实际时长，必要时再设计存储快照。
+The `manifest.json` only becomes a completion marker after the original lock connection has been successfully released; check the `pause_seconds` in the manifest. A terminated lock connection cannot produce a completed backup. Missing originals or hash errors cause failure. `.part` files, parsing directories, and unreferenced orphan files do not count as completed-original backups; orphans are not deleted automatically. Direct database/file modifications that do not pass through the application write gate are unprotected, and such maintenance writes are forbidden during backup. With a large number of originals, the pause includes the full copy time; monitor the actual duration, and design storage snapshots if necessary.
+## Restore and Cutover to the New Target
 
-## 新目标恢复与切换
-
-只接受受控来源的可信备份；SHA-256 能检出意外损坏，不能代替签名鉴真，PostgreSQL archive 包含可执行 SQL。恢复账号仅注入 `AGICO_KB_MAINTENANCE_URL` 环境变量（从独立受保护配置加载）；命令行没有 DSN/密码。
+Only trusted backups from controlled sources are accepted; SHA-256 can detect accidental corruption but cannot substitute for signature verification, since a PostgreSQL archive contains executable SQL. The restore account only has the `AGICO_KB_MAINTENANCE_URL` environment variable injected (loaded from a separate protected configuration); no DSN/password appears on the command line.
 
 ```powershell
 D:\Agico\App\scripts\restore.ps1 -PythonExe D:\Agico\App\.venv\Scripts\python.exe -PgBin 'C:\Program Files\PostgreSQL\16\bin' -Archive E:\AgicoBackup\run-20260915 -NewDatabase agico_recovery_20260915 -NewStorage D:\AgicoRecovery\run-20260915
 ```
 
-恢复先验证清单、全部哈希和路径，再用 template0 创建新数据库；已有数据库或目录一律拒绝。预装 public.vector、使用 `pg_restore --no-owner --no-acl`，默认 public 的 CREATE SCHEMA 项被精确跳过。业务权限、正式账号及活动版本随表数据保留。可传入 `-RuntimeRole agico_app`，为目标已有非超级用户角色授予新库业务表与序列的 DML 权限；不恢复来源数据库角色和 ACL。Windows 自动部署的原件路径必须保持 DataRoot\originals，具体准备空目录、读取维护配置和刷新服务配置步骤见[服务器安装](../server-setup.md)。文件 ACL 由目标服务注册脚本重新应用。
+The restore first validates the manifest, all hashes, and paths, then creates the new database from template0; any pre-existing database or directory is rejected outright. The public.vector extension is pre-installed, `pg_restore --no-owner --no-acl` is used, and the CREATE SCHEMA entry for the default public schema is precisely skipped. Business permissions, official accounts, and the active version are retained along with the table data. You may pass `-RuntimeRole agico_app` to grant an existing non-superuser role on the target DML privileges on the new database's business tables and sequences; source database roles and ACLs are not restored. For Windows automated deployment, the originals path must remain DataRoot\originals; see [Server Installation](../server-setup.md) for the specific steps of preparing an empty directory, reading the maintenance configuration, and refreshing the service configuration. File ACLs are reapplied by the target service registration script.
 
-仅新隔离库内 running 作业重新排队、清空 generation/lease 并重置尝试数；已发布版本和现有活动 generation 保留。queued 作业维持队列，失败/取消状态保留。恢复失败留下 `RESTORE_INCOMPLETE` 和新库/目录供检查，启动脚本拒绝使用此目录；绝不自动 DROP 或覆盖现网。
+Only running jobs inside the new isolated database are re-queued, with generation/lease cleared and attempt counts reset; published versions and the existing active generation are preserved. queued jobs remain in the queue, and failed/cancelled statuses are retained. On restore failure, a `RESTORE_INCOMPLETE` marker plus the new database/directory are left behind for inspection, and the startup script refuses to use that directory; never automatically DROP or overwrite the live environment.
 
-隔离启动新配置后，验证 `/health/ready`、指定原件字节、普通/跨事业部/私有权限、正式版本和搜索引用；启动 worker 并确认遗留作业处理正常。校验模型归档及 identity，重新签发/撤销必要令牌。人工审核后停止旧写入并切流；未验证前旧服务继续使用原库。切换后产生新写入时，回退会涉及新增数据，不能简单恢复旧快照。纯代码升级可以保留数据原址并回到上一应用目录，但只在迁移向后兼容且验证通过时这样做。
+After starting the new configuration in isolation, verify `/health/ready`, the bytes of designated originals, normal/cross-division/private permissions, official versions, and search citations; start the worker and confirm that leftover jobs are handled correctly. Validate the model archive and identity, and re-issue/revoke tokens as necessary. After manual review, stop the old writes and cut over traffic; until verification is complete, the old service keeps using the original database. If new writes are produced after the cutover, a rollback will involve that newly added data, so simply restoring the old snapshot is not possible. A pure code upgrade may keep the data in its original location and revert to the previous application directory, but only do so when migrations are backward-compatible and validation has passed.
 
-## 目标服务器最终验收清单
+## Final Acceptance Checklist for the Target Server
 
-记录实际服务器、服务身份、软件哈希、独立备份位置和执行时间；执行无人登录 Windows 重启、API/worker 进程退出重启、数据库临时不可用后 ready 恢复、日志轮转、TLS/防火墙和隔离恢复。没有这些目标机证据，不勾选 Task 7 的完整生产运行通过条件。
+Record the actual server, service identity, software hashes, independent backup location, and execution times; perform a Windows restart with no one logged in, a restart after API/worker process exit, ready recovery after temporary database unavailability, log rotation, TLS/firewall checks, and an isolated restore. Without this evidence from the target machine, do not check off the full production run pass condition of Task 7.

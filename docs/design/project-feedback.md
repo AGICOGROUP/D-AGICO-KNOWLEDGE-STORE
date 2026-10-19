@@ -1,9 +1,9 @@
-# 问题与建议
+# Issues and Suggestions
 
-在现有侧栏增加独立入口，所有已登录且完成首登改密的账号都可以使用。它服务于知识库项目优化，不作为企业资料分类或公开的跨部门资料库。
+Add a standalone entry to the existing sidebar, available to all accounts that are logged in and have completed the first-login password change. It serves knowledge base project optimization and is not intended as an enterprise document classification system or a public cross-departmental document repository.
 
-提交字段：使用问题／功能需求／改进建议、标题、详细说明、相关功能（可选）。提交后生成编号。只有开发人员（内部角色 superadmin）可以查看全部反馈、回复并设置待查看、已采纳、处理中、已完成、暂不采纳。管理员和普通用户可以提交反馈，并查看自己提交的反馈及处理回复；不能查看其他用户或全部反馈，也不能回复或更新处理状态。即使请求 scope=all，服务器也强制限定为本人，列表、数量统计、筛选和分页均使用同一个权限范围。
+Submission fields: issue / feature request / improvement suggestion, title, detailed description, related feature (optional). A serial number is generated after submission. Only developers (internal role superadmin) can view all feedback, reply, and set the statuses Pending Review, Adopted, In Progress, Completed, and Not Adopted. Administrators and regular users can submit feedback and view their own submissions along with handling replies; they cannot view other users' feedback or all feedback, nor reply or update handling status. Even if the request specifies scope=all, the server enforces restriction to the user's own data; the list, count statistics, filtering, and pagination all use the same permission scope.
 
-以普通文本展示内容，不能执行用户输入的 HTML 或脚本。列表按时间倒序分页，可按类型和状态筛选，展开查看详情。提交期间禁用表单；保存跟进时校验修订号，阻止管理员间的覆盖冲突。退出登录清理页面内容，异步响应不得把上一账号的反馈显示给下一账号。
+Content is displayed as plain text; user-input HTML or scripts must not be executed. The list is paginated in reverse chronological order, can be filtered by type and status, and details can be viewed by expanding entries. The form is disabled during submission; when saving follow-ups, the revision number is validated to prevent overwrite conflicts between administrators. Page content is cleared on logout, and asynchronous responses must not display the previous account's feedback to the next account.
 
-使用现有 PostgreSQL、登录会话、CSRF 和备份恢复流程。增加两张表：反馈记录、提交和处理审计。仅新增 migration 006，不改账号、密码、部门权限、上传原件和解析结果。正式反馈随数据库备份恢复持久保存。不依赖额外服务、邮箱通知或解析 API。
+Uses the existing PostgreSQL, login sessions, CSRF, and backup/restore processes. Adds two tables: feedback records, and submission and handling audit. Only migration 006 is added; accounts, passwords, department permissions, uploaded originals, and parsing results are unchanged. Formal feedback is persistently preserved along with database backup and restore. No dependence on additional services, email notifications, or parsing APIs.

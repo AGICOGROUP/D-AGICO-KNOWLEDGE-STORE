@@ -1,17 +1,17 @@
-# CAD 和图纸 PDF 的原图关联检索
+# Original-File-Linked Retrieval for CAD and Drawing PDFs
 
-2026-10-09。按用户确认的用途，图纸用于员工文件库和 AI 查找资料；图纸文字须结合原图理解。此策略仅限 DWG／DXF 和 PDF 的图纸页面，不改变普通文档、扫描正文、常规表格或其他图片的解析策略。
+2026-10-09. Per the user-confirmed use case, drawings are used in the employee document library and for AI material lookup; drawing text must be understood in the context of the original file. This strategy applies only to drawing pages in DWG/DXF and PDF; it does not change the parsing strategy for ordinary documents, scanned body text, regular tables, or other images.
 
-## 分类与处理
+## Classification and Processing
 
-1. CAD 由原生读取／临时副本转换建立文字、块属性索引。保留图号、型号、标题、技术说明、明细线索及布局、图层、实体位置。跳过 DIMENSION 几何对象及没有上下文的孤立尺寸；标题／明细图层、带字段上下文的图块中的纯数字仍保留。
-2. PDF 逐页预检，不用文件名定类型。原生页同时检查文字布局、图名图号标签、尺寸／视图标记和矢量图形。总平面图可通过密集矢量、X/Y 坐标及场地标识的组合识别。扫描页必须先读取像素证据；复用一次本地 OCR 的文字、位置和布局，在全页视觉语义处理前决定路线，不额外调用 API 做文件类型判断。
-3. 长篇连续正文优先保持完整解析；单个公差、许多公差单元格、插图或标题栏引用均不能单独作为图纸依据。识别需要多项独立证据。未确定的页面继续原有完整解析，不自动降低内容标准。分类是保守启发式，不保证所有模糊或无标题图纸都能正确识别。
-4. 已确认图纸页保存原生／本地识别的检索文字和原页位置，取消全页分区尺寸转述与尺寸线关系推断。数字标题栏、材料明细和技术说明保留已有上下文；其他零散尺寸不作为知识事实。图像中的说明、嵌入式对象、模糊 OCR 仍需要按原图核查，不能因状态 ready 就宣称明细无遗漏。
+1. For CAD, text and block-attribute indexes are built through native reading or temporary-copy conversion. Preserve drawing numbers, model designations, titles, technical notes, and BOM clues, as well as layout, layers, and entity positions. Skip DIMENSION geometry objects and isolated dimensions without context; pure numbers on title/BOM layers and in blocks with field context are still retained.
+2. PDFs undergo page-by-page pre-checking; file names are not used to determine type. Native pages are checked simultaneously for text layout, drawing-title/drawing-number labels, dimension/view markers, and vector graphics. Site master plans can be identified through a combination of dense vectors, X/Y coordinates, and site identifiers. Scanned pages must first have pixel evidence read; the text, positions, and layout from a single local OCR run are reused to decide the route before full-page visual semantic processing, with no extra API calls for file-type determination.
+3. Long continuous body text keeps full parsing as the priority; a single tolerance, many tolerance cells, illustrations, or title-block references cannot individually serve as the basis for classifying a page as a drawing. Identification requires multiple independent pieces of evidence. Undetermined pages continue with the original full parsing, without automatically lowering content standards. Classification is a conservative heuristic and does not guarantee that every ambiguous or untitled drawing will be identified correctly.
+4. Confirmed drawing pages store the retrieval text recognized natively/locally and the original page position, and drop full-page region-by-region dimension transcription and dimension-line relationship inference. Numeric title blocks, material BOMs, and technical notes retain their existing context; other scattered dimensions are not treated as knowledge facts. Notes in images, embedded objects, and ambiguous OCR still need to be verified against the original drawing; completeness of the BOM must not be claimed merely because the status is ready.
 
-## 使用与验收
+## Usage and Acceptance
 
-- 每个图纸片段包含 `content_type=drawing`、`requires_original=true` 和位置；PDF 使用 `kind=drawing_index`。搜索及读取返回需要原文件的标识，MCP 提示 AI 只用这些索引定位图纸、核对标题和查看说明明细，不根据孤立数值回答尺寸或结构问题。
-- 图纸验收检查：找到正确原图、图名／图号正确、原有说明／明细完整；不再计算全图尺寸转写的90%准确率。说明和明细中可核对的关键数值或对应关系错误仍不应通过。
-- 普通文档仍要求内容准确率超过95%；混合 PDF 逐页分别验收。自动路由、可发布状态、文字保留率均不是已测得的语义准确率。
-- 此次改变项目代码和验收规则，不人工改源文件、上传原件或生产解析片段。已发布结果不会因代码升级自动替换；新上传／由项目正常重新处理的文件才采用新路线。
+- Each drawing fragment includes `content_type=drawing`, `requires_original=true`, and a position; PDFs use `kind=drawing_index`. Search and read return an indicator that the original file is required; MCP prompts the AI to use these indexes only to locate drawings, verify titles, and view notes and BOM details, and not to answer dimension or structural questions based on isolated values.
+- Drawing acceptance checks: the correct original file is found, the drawing title/number is correct, and the original notes/BOM are complete; the 90% accuracy rate for whole-drawing dimension transcription is no longer calculated. Errors in verifiable key values or correspondences within notes and the BOM still must not pass.
+- Ordinary documents still require content accuracy above 95%; mixed PDFs are accepted page by page. Auto-routing, publishable status, and text retention rate do not constitute measured semantic accuracy.
+- This change modifies project code and acceptance rules; it does not manually modify source files, upload originals, or produce parsing fragments. Already published results will not be automatically replaced due to a code upgrade; only newly uploaded files or files normally reprocessed by the project adopt the new route.

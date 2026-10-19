@@ -1,8 +1,8 @@
-# 本地进程重启与 32 MiB 文件完整性验证
+# Local Process Restart and 32 MiB File Integrity Verification
 
-## 运行
+## Running
 
-在开发数据库 `127.0.0.1:15432/agico_test` 可用、`.local/pg-password.txt` 已配置且 Python 环境包含 `psutil` 时，从仓库根目录执行：
+With the development database `127.0.0.1:15432/agico_test` available, `.local/pg-password.txt` configured, and the Python environment containing `psutil`, run from the repository root:
 
 ```powershell
 $env:AGICO_KB_RUN_PROCESS_RESTARTS = '1'
@@ -12,39 +12,39 @@ try {
 } finally {
     Remove-Item Env:AGICO_KB_RUN_PROCESS_RESTARTS -ErrorAction SilentlyContinue
 }
-if ($restartTestExit -ne 0) { throw '进程重启验证未通过' }
+if ($restartTestExit -ne 0) { throw 'Process restart verification failed' }
 ```
 
-默认完整测试会跳过本项；显式启用后每次创建新的隔离 schema、随机身份和令牌，并生成全新随机二进制文件。数据库密码只进入子进程环境，不出现在命令行或结果中。
+The default full test suite skips this item; once explicitly enabled, each run creates a new isolated schema, random identity and token, and generates a brand-new random binary file. The database password only enters the subprocess environment and never appears on the command line or in results.
 
-## 验证范围
+## Verification Scope
 
-- 使用真实 HTTP 和现有 `FileTransfer`，以 1 MiB 块生成、上传、下载 32 MiB `.bin` 文件；校验大小和 SHA-256，不使用 base64，不将文件内容送入模型。
-- 发布为 `file_only`，实际终止 uvicorn 后在相同端口重启；检查正式版本仍可见、重复发布被拒绝。
-- worker 子进程通过真实 `Worker.claim()` 取得工作和租约后，在解析子进程创建前由测试暂停；通过原子标记确认实际 worker PID 没有解析器后代，实际终止整个自有进程树。Windows venv 启动器本身可有 Python 和 conhost 后代。
-- 只将本次隔离 schema 中该任务的租约缩短到未来 1 秒，等待自然过期，再启动未修改的 `python -m agico_kb.worker`。不重置任务状态、generation 或 attempts，不更改生产逻辑。
-- 检查替代 worker 以不同 generation 和第二次 attempts 完成 `stored_only` 处理；正式版本、文档 revision 和发布审计均不重复；跨事业部无权限身份在重启前后均无法下载；文件哈希保持一致。
+- Uses real HTTP and the existing `FileTransfer` to generate, upload, and download a 32 MiB `.bin` file in 1 MiB chunks; verifies size and SHA-256, without using base64 and without sending file content to the model.
+- Publishes as `file_only`, actually terminates uvicorn and then restarts on the same port; checks that the official release is still visible and that duplicate publishing is rejected.
+- After the worker subprocess obtains work and a lease through a real `Worker.claim()`, the test suspends it before the parser subprocess is created; via atomic flags it confirms that the actual worker PID has no parser descendants, and actually terminates the entire owned process tree. The Windows venv launcher itself may have Python and conhost descendants.
+- Only the lease for that task in this isolated schema is shortened to 1 second in the future; after waiting for it to expire naturally, the unmodified `python -m agico_kb.worker` is started. Task state, generation, and attempts are not reset, and production logic is not changed.
+- Checks that the replacement worker completes the `stored_only` processing with a different generation and a second attempts value; the official release, document revision, and publish audit are not duplicated; the cross-business-unit identity without permission cannot download either before or after the restart; and the file hash remains consistent.
 
-生产租约由 `max(60, parse_timeout_seconds + 300)` 决定，默认 420 秒。本测试显式缩短租约，因此验证的是进程故障后的正常过期回收路径，不代表实际生产恢复只需 1 秒，也不覆盖解析器执行到一半的崩溃或模型初始化恢复。
+The production lease is determined by `max(60, parse_timeout_seconds + 300)`, defaulting to 420 seconds. This test explicitly shortens the lease, so what it verifies is the normal expiry-and-reclaim path after a process failure; it does not mean that actual production recovery takes only 1 second, nor does it cover a crash partway through parser execution or recovery from model initialization.
 
-所有 Windows 子进程设置 `CREATE_NO_WINDOW`。清理只操作记录的 PID/创建时间及其后代，逐层暂停每个进程再枚举子进程，随后按倒序终止进程树，每次等待最多 10 秒；只删除经名称和数据库验证的本次 schema。文件由 pytest 临时目录管理，不递归删除工作区目录。
+All Windows subprocesses set `CREATE_NO_WINDOW`. Cleanup only operates on the recorded PID/creation time and its descendants, suspending each process level by level before enumerating its children, then terminating the process tree in reverse order, waiting up to 10 seconds each time; only this schema, verified by name and against the database, is deleted. Files are managed by pytest's temporary directory; the workspace directory is not recursively deleted.
 
-## 执行记录
+## Execution Record
 
-2026-09-16，在同机 MCP 负载和其他数据库测试结束后单独执行，父任务最终同时启用进程重启和数据库重启两项演练，结果：**2 passed in 11.78s**；本文件场景内部耗时 **4.532s**。
+On 2026-09-16, this was executed separately after the same-machine MCP load and other database tests finished; the parent task ultimately enabled both the process-restart and database-restart drills, with the result: **2 passed in 11.78s**; the scenario in this file itself took **4.532s**.
 
-| 项目 | 实测结果 |
+| Item | Measured Result |
 | --- | --- |
-| 新文件大小 | 33,554,432 字节（32 MiB） |
-| 上传及两次下载 SHA-256 | `d8e2e4926817a92291548dbd1b79f3bc1354656c4caa12773a9a50ebba6fcb99` |
-| uvicorn 启动器 PID | 25332 → 2568 |
-| worker 启动器 PID | 7792 → 10520 |
-| 四个自有进程退出码 | 15，15，15，15（故意强制终止） |
-| 首次 claim 原租约剩余 | 419.918706 秒 |
-| 测试故障注入租约 | 改为未来 1 秒，然后等待自然过期 |
-| 恢复后任务 | complete，attempts=2，generation 已变更 |
-| 正式版本 | 单一版本，revision=1，单次发布审计，file_only |
-| 权限 | 跨事业部身份两次下载均返回 404 |
-| 最终处理能力 | stored_only；file=true，text=false，vector=false |
+| New file size | 33,554,432 bytes (32 MiB) |
+| SHA-256 of upload and two downloads | `d8e2e4926817a92291548dbd1b79f3bc1354656c4caa12773a9a50ebba6fcb99` |
+| uvicorn launcher PID | 25332 → 2568 |
+| worker launcher PID | 7792 → 10520 |
+| Exit codes of the four owned processes | 15, 15, 15, 15 (deliberately force-terminated) |
+| Remaining original lease at first claim | 419.918706 seconds |
+| Fault-injected lease in test | Changed to 1 second in the future, then waited for natural expiry |
+| Task after recovery | complete, attempts=2, generation changed |
+| Official release | single release, revision=1, a single publish audit, file_only |
+| Permissions | the cross-business-unit identity received 404 on both downloads |
+| Final processing capability | stored_only; file=true, text=false, vector=false |
 
-首轮暴露的是测试对 Windows venv 启动器后代的错误假设，修正为识别实际 worker PID 后，用新 schema、新身份和新随机文件重新完整执行通过。没有修改生产代码。pytest 的现有 Starlette/AnyIO 弃用提示仍存在。
+The first run exposed an incorrect assumption in the test about Windows venv launcher descendants; after fixing it to identify the actual worker PID, a complete re-run with a new schema, a new identity, and a new random file passed. No production code was modified. pytest's existing Starlette/AnyIO deprecation warnings remain present.

@@ -1,28 +1,28 @@
-# 200 用户扩展路径
+# 200-User Scaling Path
 
-200 用户是中后期目标，本任务没有运行 200 用户测试，也没有据此宣称容量合格。扩展继续使用同一 `locustfile.py`、配置结构、独立凭据、合成准备和正确性计数；运行器可以生成最多 200 个独立身份，但必须先复制并冻结一份 200 用户配置，预热时间至少覆盖完整爬升。
+200 users is a mid-to-late-stage goal; this task did not run a 200-user test, nor does it claim capacity qualification on that basis. Scaling continues to use the same `locustfile.py`, configuration structure, independent credentials, synthetic preparation, and correctness counting; the runner may generate up to 200 independent identities, but it must first copy and freeze a 200-user configuration, and warmup time must cover at least the full ramp-up.
 
-## 测量顺序
+## Measurement Order
 
-1. 在真实 50 用户、30 分钟和业务质量阈值通过后，冻结 200 用户目标配置、200 个独立凭据和同一份业务问题集。
-2. 保持每个用户同时最多一个请求、搜索后读取、无思考间隔；报告完整周期和真实吞吐，不把连接数当作吞吐。
-3. 记录 p50/p95/p99、HTTP 状态、document/version/chunk/source 正确性、完整混合与关键词降级、CPU/RSS/磁盘、数据库 active/wait event、连接池等待者、向量队列和 ingestion backlog。
-4. 在负载前后重复权限、撤下、旧修订和原件校验；并发导入产生的资料不得回写到已经冻结的初始语料快照。
+1. After the real 50-user, 30-minute run and the business quality thresholds pass, freeze the 200-user target configuration, the 200 independent credentials, and the same business question set.
+2. Keep each user to at most one request at a time, read after search, with no think time; report complete cycles and true throughput, and do not treat connection count as throughput.
+3. Record p50/p95/p99, HTTP status, document/version/chunk/source correctness, full hybrid and keyword degradation, CPU/RSS/disk, database active/wait events, connection pool waiters, the vector queue, and the ingestion backlog.
+4. Repeat the permission, takedown, old-revision, and original-document checks before and after the load; material produced by concurrent imports must not be written back into the already-frozen initial corpus snapshot.
 
-开发探测命令示例（不是验收命令）：
+Development probe command example (not an acceptance command):
 
 ```powershell
 uv run python scripts/run_load_probe.py --users 200 --spawn-rate 5 --warmup 45 --duration 75
 ```
 
-## 依据瓶颈逐步决定扩容
+## Decide Scaling Step by Step Based on Bottlenecks
 
-| 证据 | 优先处理 | 复测要求 |
+| Evidence | Address First | Re-test Requirement |
 |---|---|---|
-| 语义降级或向量排队高 | 测量并调整查询向量槽、模型服务并发或独立模型服务 | 语义正确率不能因回退而下降 |
-| 数据库 active、池等待或慢查询高 | 先检查查询计划、索引、连接池与分页候选规模 | 权限过滤和来源正确性保持一致 |
-| 语料增长后向量扫描成为瓶颈 | 用真实规模与查询计划评估 pgvector HNSW | 召回质量与重建/恢复过程同时验证 |
-| ingestion backlog 持续增长 | 调整解析资源或增加 worker | 搜索服务延迟、作业 fencing 和撤下正确性不退化 |
-| 单服务 CPU 饱和且上述项已排除 | 再评估额外 API worker/检索节点 | 明确共享模型、连接数和一致性成本 |
+| High semantic degradation or vector queueing | Measure and adjust query vector slots, model-service concurrency, or a separate model service | Semantic correctness must not drop because of fallback |
+| High database active, pool waits, or slow queries | First check query plans, indexes, connection pooling, and pagination candidate size | Permission filtering and source correctness stay consistent |
+| Vector scans become the bottleneck after corpus growth | Evaluate pgvector HNSW with real scale and query plans | Recall quality and the rebuild/restore process verified simultaneously |
+| Continuously growing ingestion backlog | Adjust parsing resources or add workers | Search service latency, job fencing, and takedown correctness do not degrade |
+| Single-service CPU saturation with the above items ruled out | Then evaluate additional API workers/retrieval nodes | Clarify the shared model, connection count, and consistency costs |
 
-本地原先的向量繁忙降级已通过同模型的有界等待解决；最新 50 身份 REST 和真实 MCP 短测均正确且无降级。真实更大语料、30 分钟稳定性、队列／连接池等待及目标机器仍需测量，不能据此外推 200 容量。没有测量证据时不预先增加 HNSW、模型服务、worker 或检索节点。
+The original local vector-busy degradation has been resolved through bounded waiting on the same model; the latest 50-identity REST and real MCP short tests were both correct with no degradation. A real larger corpus, 30-minute stability, queue/connection-pool waits, and the target machine still need to be measured, and 200-user capacity cannot be extrapolated on this basis. Without measured evidence, do not preemptively add HNSW, model services, workers, or retrieval nodes.

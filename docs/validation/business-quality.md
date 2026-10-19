@@ -1,33 +1,33 @@
-# 业务质量验收矩阵
+# Business Quality Acceptance Matrix
 
-## 结论边界
+## Boundary of Conclusions
 
-2026-09-16 的自动化结果来自全新合成资料，只证明检索、来源读取和权限规则能够被机器复核。它不代表公司真实资料质量，也不能替代事业部业务负责人对背景、事实、规范、模板和案例适用条件的签字确认。
+The automated results from 2026-09-16 come from entirely fresh synthetic materials and only demonstrate that retrieval, source reading, and permission rules can be machine-verified. They do not represent the quality of the company's real materials, nor can they replace the business unit owner's signed confirmation of the applicability conditions for background, facts, specifications, templates, and cases.
 
-正式业务验收必须先填写并冻结 `tests/load/acceptance-profile.json` 中的资料数量/容量/片段/模型身份、代表性问题、目标 origin、服务器与客户端说明、全部 SLO，以及业务负责人姓名和签字状态；这些必要字段缺失会阻止正式运行。
+Formal business acceptance must first fill in and freeze, in `tests/load/acceptance-profile.json`, the material quantity/capacity/chunks/model identity, representative questions, target origin, server and client descriptions, all SLOs, and the business owner's name and sign-off status; missing any of these required fields blocks a formal run.
 
-## 覆盖矩阵
+## Coverage Matrix
 
-| 能力 | 合成自动检查 | 2026-09-16 结果 | 正式验收仍需 |
+| Capability | Synthetic automated check | 2026-09-16 result | Still required for formal acceptance |
 |---|---|---|---|
-| 背景理解 | 事业部背景文件和限定组织范围读取 | 背景控制源可搜索、可读取 | 业务负责人标注应采用的企业背景及缺失风险 |
-| 事实查询 | 紧急停机授权代码，核对 document/version/chunk 和原文 | 精确代码负载样例全部通过；自然语言事实观察目标排第 1，无降级，61.348 ms | 用真实产品事实和可接受表述复核 |
-| 规范应用 | 现行检验周期及旧修订隔离 | 两个事业部现行修订样例全部通过 | 负责人确认规范、模板和例外条件 |
-| 经验参考 | 现场经验资料与适用事业部 | 已导入并可按组织读取 | 负责人判断案例是否适用于新问题，不能由模型自评 |
-| 文件查找与正文读取 | 同一闭环先搜索再读取来源 | 文件样例全部通过；完整周期严格 1:1 | 在已联调入口复核文件名、来源和正文 |
-| 同名不同部门 | 两个事业部均有“联合交付清单” | 各身份只命中本事业部版本 | 使用真实同名文件验证组织归属 |
-| 相似型号 | `AX-620/AX-620X`、`PX-410/PX-410X` 分开建档 | 合成资料保留不同压力参数 | 用真实相似型号任务复核不得串用参数 |
-| 历史业务与旧修订 | 60 天旧版被 30 天现行版替换 | 现行修订负载样例全部通过，旧版不作为正式来源 | 业务负责人确认历史资料是否仍可引用 |
-| 未知问题 | 不存在的“量子纠缠中继器”文件 | 文件无答案样例全部通过 | 真实问题集中补充允许“无答案”的标注 |
-| 权限拒绝 | 私有报价文件仅授权一人；其他身份检查禁止 document_id，并读取返回 404 | 搜索未泄露受限 document；REST 1,951 次预期 404 均判为正确业务结果 | 用目标身份目录和真实授权策略复核 |
-| 撤下 | 撤下前可查可读，撤下后禁止该 version | 撤下 version 不再出现，正文读取 404 | 已联调客户端验证缓存和撤下传播 |
-| CAD/3D 原件 | STEP 仅保存原件，正文能力不虚构 | 原件按 file-only 发布并纳入资料快照 | 真实 CAD/3D 文件需核对下载、关联说明和客户端打开方式 |
-| 原文件不可变 | 撤下前后以历史权限下载并比对 SHA-256 | 32 MiB 新二进制原件在真实 API/worker 重启前后 SHA-256 一致，详见进程重启记录 | 对代表性大文件单独测量，不混入小正文延迟 |
+| Background understanding | Business-unit background documents and organization-scoped reading | Background control sources are searchable and readable | Business owner annotates the enterprise background to be adopted and the risks of missing background |
+| Fact lookup | Emergency shutdown authorization codes, verifying document/version/chunk and original text | All exact-code payload samples passed; natural-language fact observation target ranked 1st, no degradation, 61.348 ms | Re-verify with real product facts and acceptable wording |
+| Specification application | Current inspection intervals and isolation of old revisions | All current-revision samples for both business units passed | Owner confirms specifications, templates, and exception conditions |
+| Experience reference | Field experience materials and applicable business units | Imported and readable by organization | Owner judges whether a case applies to a new question; the model cannot self-assess |
+| Document lookup and full-text reading | Same closed loop: search first, then read the source | All document samples passed; complete cycles strictly 1:1 | Re-verify file names, sources, and full text at the integrated entry point |
+| Same name across departments | Both business units have a "Joint Delivery Checklist" | Each identity only hits its own business unit's version | Use real same-named documents to verify organizational attribution |
+| Similar models | `AX-620/AX-620X` and `PX-410/PX-410X` filed as separate records | Synthetic materials retain distinct pressure parameters | Re-verify with real similar-model tasks that parameters must not be mixed up |
+| Historical business and old revisions | 60-day-old version superseded by the 30-day current version | All current-revision payload samples passed; the old version is not used as a formal source | Business owner confirms whether historical materials may still be cited |
+| Unknown questions | Nonexistent "quantum entanglement repeater" document | All no-answer document samples passed | Add annotations permitting "no answer" to the real question set |
+| Permission denial | Private quotation document authorized to only one person; checks by other identities forbid document_id, and reads return 404 | Search did not leak restricted documents; all 1,951 expected 404s in REST were judged correct business results | Re-verify with the target identity directory and the real authorization policy |
+| Takedown | Searchable and readable before takedown; that version is forbidden after takedown | The taken-down version no longer appears; full-text reads return 404 | Integrated clients verify caching and takedown propagation |
+| CAD/3D originals | STEP stores only the original; full-text capability is not fabricated | Originals published as file-only and included in the material snapshot | Real CAD/3D files require verification of download, the associated description, and how clients open them |
+| Original file immutability | Downloaded with historical permissions before and after takedown and compared via SHA-256 | The 32 MiB new binary original has a consistent SHA-256 before and after real API/worker restarts; see the process restart record | Measure representative large files separately; do not mix in small full-text latency |
 
-## 语义质量观察
+## Semantic Quality Observations
 
-有界等待修复后，最新 REST 11,714 和 MCP 7,347 个完整查询／读取周期全部正确、无降级；来源仍要求正确 document/version/chunk 和原文，不以 HTTP 成功代替。首次 REST 语义查询来源排第 2，无降级。详见 [当前负载证据](load-50.md)；原来的 840 个失败语义周期属于修复前记录。
+After the bounded-wait fix, the latest 11,714 REST and 7,347 MCP complete query/read cycles were all correct, with no degradation; sources still require the correct document/version/chunk and original text, and HTTP success is not accepted as a substitute. The first REST semantic query's source ranked 2nd, with no degradation. See [current load evidence](load-50.md); the original 840 failed semantic cycles belong to pre-fix records.
 
-[真实 Codex 普通任务](codex.md)另行证明背景、事实、规范及经验应用到结果；上述负载矩阵本身没有答案生成阶段。字符数不是 token，业务质量仍由实际资料和负责人确认。
+[Real Codex general tasks](codex.md) separately demonstrate the application of background, facts, specifications, and experience to results; the load matrix above has no answer-generation phase of its own. Character counts are not tokens; business quality is still confirmed by the actual materials and the owner.
 
-[进程重启和 32 MiB 文件证据](process-restarts.md)补齐本地文件验证，未覆盖公司实际 CAD／3D 软件打开与装配依赖。
+[Process restart and 32 MiB file evidence](process-restarts.md) supplements local file verification; it does not cover opening in the company's actual CAD/3D software or assembly dependencies.

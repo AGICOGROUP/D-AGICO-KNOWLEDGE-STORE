@@ -1,40 +1,39 @@
-# 邮箱账号、分级邀请与 AI 授权
+# Email Accounts, Tiered Invitations, and AI Authorization
 
-## 正式状态与持久化
+## Official Status and Persistence
 
-2026-10-14 起账号系统为正式版本，现有及后续登记账号均为正式持久化数据。服务器部署应迁移当前数据库，保留邮箱、原密码哈希、身份、角色、事业部、启停状态、邀请和审计；不能重新初始化或将这些账号作为测试数据清理。数据保存在受保护运行目录中，不进入源码和 Git。详见服务器安装说明中的正式账号迁移步骤。
+As of 2026-10-14, the account system is an official release; existing and future registered accounts are official persisted data. Server deployments must migrate the current database, preserving email, original password hashes, identity, roles, business divisions, enabled/disabled status, invitations, and audit records; the database must not be reinitialized, nor may these accounts be cleared as test data. Data is stored in a protected runtime directory and does not enter source code or Git. See the official account migration steps in the server installation instructions for details.
 
-## 已确定需求
+## Confirmed Requirements
 
-网页采用邮箱和密码登录。首个开发人员由本机初始化工具创建，为 `pxk@agicogroup.cn`；初始密码由操作人传入工具，不写进项目源码、配置模板或日志，首次登录必须修改。其他账号只能通过管理员登记并邀请加入。
+The web app uses email and password login. The first developer is created by the local initialization tool and is `pxk@agicogroup.cn`; the initial password is passed into the tool by the operator, is not written into project source code, configuration templates, or logs, and must be changed at first login. All other accounts can only join by being registered and invited by administrators.
 
-开发人员默认可查看和管理全部事业部的文件，并可邀请开发人员、管理员、普通用户。管理员只能查看和管理登记时选定、此后由开发人员明确调整的事业部文件，可邀请自己有管理权限的事业部内的管理员和普通用户，不能邀请开发人员；账号管理仅限自己首次登记的子用户。普通用户无邀请或账号管理权限。管理员的部门范围是强制边界：历史上传者身份、个人文件共享和原有链接不能绕过；删除部门授权后，相应资料立即从已发布列表、待审核、搜索、读取、原件下载、缩略图和预览中隐藏，管理操作也被拒绝。通用国际集团和公共知识库全员默认可读已发布部门可见资料，登记／编辑账号固定默认勾选；服务器自动补齐，已有账号同样适用。这两项默认读取不增加部门管理员的审批或管理权限，其他业务事业部仍需明确选择。开发人员受邀后与首个开发人员同级，没有“只能创建管理员”的特殊限制。
+Developers can by default view and manage files across all business divisions, and can invite developers, administrators, and regular users. Administrators can only view and manage files in the business divisions selected at registration and subsequently adjusted explicitly by developers; they can invite administrators and regular users within business divisions where they hold management permission, but cannot invite developers; account management is limited to the sub-users they registered themselves. Regular users have no invitation or account management permissions. An administrator's division scope is a hard boundary: historical uploader identity, personal file sharing, and pre-existing links cannot bypass it; once a division authorization is removed, the corresponding materials are immediately hidden from published lists, pending review, search, reads, original file downloads, thumbnails, and previews, and management operations are rejected as well. For Universal International Group and the Public Knowledge Base, all members can by default read published, division-visible materials; when registering or editing accounts these are fixed as default-checked; the server fills them in automatically, and this applies to existing accounts as well. These two default reads do not add any approval or management permissions for division administrators; other business divisions still require explicit selection. Once invited, developers are at the same level as the first developer, without any special restriction such as "only able to create administrators."
 
-已登记账号以可展开的归属树展示。开发人员位于最高层、同级并列；其余账号挂在首次登记人名下，使用既有 `account_users.created_by` 持久化字段，部署备份恢复时一并保留。管理员仅能查看、编辑权限、启停、重发邀请或生成密码重置链接给自己创建、且仍在其事业部管理范围内的管理员和普通用户；同部门其他账号创建的子用户不在其账号管理范围。开发人员仍可以管理全部账号。此规则限定账号管理，不改变既有事业部资料的审批权。重发邀请、编辑权限和重置密码不改变登记人；历史未记录登记人的账号保留原状、单独列出，不猜测归属。分页按最高层分支计算，不把一个管理员与其子账号拆开。
+Registered accounts are displayed as an expandable ownership tree. Developers sit at the top level, side by side as peers; all other accounts are attached under their first registrar, using the existing persistent `account_users.created_by` field, which is preserved along with deployment backup restores. Administrators can only view, edit permissions for, enable/disable, resend invitations to, or generate password reset links for administrators and regular users whom they created themselves and who are still within their business division management scope; sub-users created by other accounts in the same division are outside their account management scope. Developers can still manage all accounts. This rule constrains account management only and does not change existing approval rights over business division materials. Resending invitations, editing permissions, and resetting passwords do not change the registrar; accounts whose registrar was not historically recorded keep their original state and are listed separately, without guessing ownership. Pagination is calculated by top-level branches and does not split an administrator from their sub-accounts.
 
-管理员先输入收件人邮箱、角色、事业部，再生成一次性邀请链接。第一版复制链接人工分享，不增加 SMTP 依赖。受邀者打开链接，邮箱自动填入且不可更改，密码填写两次，激活后使用账号密码登录。有效期默认七天，重发撤销前一链接，已使用、过期、被撤销的链接不可激活。
+The administrator first enters the recipient's email, role, and business divisions, then generates a one-time invitation link. In the first version, the link is copied and shared manually, without adding an SMTP dependency. The invitee opens the link; the email is auto-filled and cannot be changed, the password is entered twice, and after activation the user logs in with the account and password. The validity period defaults to seven days; resending revokes the previous link; used, expired, and revoked links cannot be activated.
 
-用户已确认：AI 助手也采用浏览器账号授权。MCP 使用标准 OAuth 授权码与 PKCE；前端接入指令仅含服务地址，不再包含共享访问码。OAuth 的短期内部凭证由客户端与服务器管理，不作为员工网页登录方式。
+The user has confirmed: the AI assistant will also use browser-based account authorization. MCP uses the standard OAuth authorization code flow with PKCE; the frontend integration instructions contain only the service address and no longer include a shared access code. OAuth's short-lived internal credentials are managed by the client and the server, and are not used as the employees' web login method.
 
-## 技术边界
+## Technical Boundaries
 
-- 复用现有 PostgreSQL、principals、memberships 和所有业务权限检查。保留原件、历史作者、审核审计，不迁移或人工修改解析内容。
-- 新增账号资料、密码哈希、服务器登录会话、邀请、登录节流和账号审计表。角色变化和停用在每次访问时重新检查。
-- 密码采用加盐 PBKDF2-HMAC-SHA256（600000 次），只保存哈希。网页登录用 HttpOnly／SameSite cookie；HTTPS 设置 Secure。本机 HTTP 仅用于现有开发入口。
-- 修改类请求校验同源和 CSRF；初始密码未修改时只允许查看本人、修改密码、退出登录。登录失败统一报错并限速。密码修改、停用账号和重置密码撤销已有会话及 AI 授权。
-- 管理员的所属事业部和目标账号权限由服务器检查，不能通过构造请求越权。禁止停用或降级最后一个有效开发人员。
-- 登录页、邀请激活页、修改密码、账号管理取代旧访问码 UI。现有下载、上传、预览都改用登录会话；缩略图刷新复用和默认 75% 缩放保留。
-- 启用账号模式后旧共享访问码不再用于网页或 MCP 认证；原访问码记录保留为历史证据，不删除原上传与审批记录。
-- MCP 实现资源发现、授权服务器发现、客户端注册、授权码＋S256 PKCE、短期 access credential 和轮换 refresh credential。资源／回调地址／客户端／授权码均绑定；账号停用或密码修改撤销授权。不得将用户密码提供给 AI 助手。
+- Reuse the existing PostgreSQL, principals, memberships, and all business permission checks. Preserve original files, historical authors, and review audits; do not migrate or manually modify parsed content.
+- Add new tables for account profiles, password hashes, server login sessions, invitations, login throttling, and account audits. Role changes and deactivation are re-checked on every access.
+- Passwords use salted PBKDF2-HMAC-SHA256 (600000 iterations); only the hash is stored. Web login uses HttpOnly/SameSite cookies; Secure is set for HTTPS. Local HTTP is used only for the existing development entry point.
+- State-modifying requests validate same-origin and CSRF; while the initial password has not been changed, only viewing one's own profile, changing the password, and logging out are allowed. Login failures return a unified error and are rate-limited. Password changes, account deactivation, and password resets revoke existing sessions and AI authorizations.
+- The administrator's own business divisions and the target account's permissions are checked by the server; privilege escalation through crafted requests is not possible. Deactivating or downgrading the last active developer is prohibited.
+- The login page, invitation activation page, password change, and account management replace the old access-code UI. Existing downloads, uploads, and previews all switch to login sessions; thumbnail refresh reuse and the default 75% zoom are retained.
+- After account mode is enabled, the old shared access code is no longer used for web or MCP authentication; the original access code records are kept as historical evidence, and the original upload and approval records are not deleted.
+- MCP implements resource discovery, authorization server discovery, client registration, authorization code + S256 PKCE, short-term access credentials, and rotating refresh credentials. Resource / callback URL / client / authorization code are all bound; account deactivation or password change revokes authorization. User passwords must never be provided to the AI assistant.
+## Implementation and Acceptance Order
 
-## 实施与验收顺序
+1. Add migrations to the standalone test database, along with regression checks for accounts, invitations, and role permissions.
+2. Implement password, session, rate-limiting, and CSRF protections; implement invitation activation, tiered management, deactivation, password changes, and resets.
+3. Implement account authorization for MCP; verify PKCE, resource binding, replay protection, and that deactivation takes effect immediately.
+4. Replace the web login and administrator UI; update the instructions for upload, download, preview, and AI access.
+5. Acceptance testing of new synthetic accounts on an isolated instance: first-login password change, developer inviting a department head, the head inviting employees, rejection of privilege escalation, rejection of reused links, and logout and deactivation.
+6. Back up the database, initialize the single first developer on the local machine, enable account mode, and reload the service. Verify that the file count and references to original files remain unchanged.
+7. Verify the actual login page and the first-login password change page; actual users set their own new passwords. The client may claim "Current Agent is connected" only after completing OAuth authorization again.
 
-1. 独立测试库新增迁移与账号、邀请、角色权限回归检查。
-2. 实现密码／会话／限速／CSRF；实现邀请激活、分级管理、停用、改密与重置。
-3. 实现账号授权 MCP；验证 PKCE、资源绑定、重放防护、停用立即生效。
-4. 替换网页登录与管理员 UI；更新上传、下载、预览和 AI 接入指令。
-5. 新合成账号在隔离实例验收：首登改密、开发人员邀请部门负责人、负责人邀请员工、越权拒绝、重复链接拒绝、退出与停用。
-6. 备份数据库，在本机初始化唯一首个开发人员，启用账号模式并重载服务。核对文件数量与原件引用不变。
-7. 验证实际登录页和首登修改密码页面；实际用户的新密码由用户自己设置。客户端重新完成 OAuth 授权后再声称“当前 Agent 已连接”。
-
-参考：[OWASP 密码存储](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)、[MCP 授权规范](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization)。
+References: [OWASP Password Storage](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html), [MCP Authorization Specification](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization).
