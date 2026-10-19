@@ -2,6 +2,8 @@
 
 2026-09-16. Per the user's request, 3 files each of Office, PDF, and CAD were selected, 9 files in total, with the original files totaling 799,134 bytes (780.4 KiB). Office covers one file each of Word, Excel, and PPT, selecting the smallest non-temporary file for each format; for PDF and CAD, the smallest 3 files of each were selected, excluding lock files, backups, and auto-save copies.
 
+Paths using <local-data-root> below are redacted placeholders for the protected local data directory, not literal paths.
+
 ## Files and Results
 
 | Type | Anonymized sample (original file list kept in local test records) | KiB | Processing result |
@@ -34,6 +36,6 @@ The full test suite this time came out at **136 passed / 2 skipped**; the two sk
 
 ## Records and Scope of Use
 
-The complete results (including version IDs, hashes, processing warnings, validation results, and partial extracted text) are kept in a protected directory: `D:\EnterpriseKnowledgeBase\validation\4cad93b9804e44559ec2fe12df53a95b\results.json`; the original files, body text, and tokens were not committed to Git.
+The complete results (including version IDs, hashes, processing warnings, validation results, and partial extracted text) are kept in a protected directory: `<local-data-root>\validation\4cad93b9804e44559ec2fe12df53a95b\results.json`; the original files, body text, and tokens were not committed to Git.
 
 The samples are saved as private test material under the "Company Public Knowledge" category; no real business division was assigned, and they have not been opened to regular employees. The current services continue to run locally.

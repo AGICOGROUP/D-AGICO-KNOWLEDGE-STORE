@@ -2,22 +2,24 @@
 
 2026-09-16. Code, test materials, and runtime data have been separated. This is currently a local-machine test service: no Windows auto-start service has been installed, and LAN access is not open.
 
+The angle-bracketed roots below stand for protected local directories whose localized names are omitted from this public English edition. They are not literal paths.
+
 ## Directories
 
 | Path | Purpose |
 |---|---|
 | `D:\AGICO-KNOWLEDGE-STORE` | Source code, virtual environment, PostgreSQL executables, test tools |
-| `D:\TestFiles` | Licensed materials; source files unmodified |
-| `D:\EnterpriseKnowledgeBase\originals` | Original files managed by the system; do not manually rename or overwrite them |
-| `D:\EnterpriseKnowledgeBase\postgres` | Current database data directory, containing the development test database and the separate `agico_preview` preview database |
-| `D:\EnterpriseKnowledgeBase\models` | Offline vector models |
-| `D:\EnterpriseKnowledgeBase\logs` | Database, API, and worker logs |
-| `D:\EnterpriseKnowledgeBase\config` | Runtime configuration and test tokens protected by NTFS permissions; not committed to Git, not printed |
-| `D:\EnterpriseKnowledgeBase\validation` | Migration verification, real-file test records, and download-verification copies |
+| `<local-source-files-root>` | Licensed materials; source files unmodified |
+| `<local-data-root>\originals` | Original files managed by the system; do not manually rename or overwrite them |
+| `<local-data-root>\postgres` | Current database data directory, containing the development test database and the separate `agico_preview` preview database |
+| `<local-data-root>\models` | Offline vector models |
+| `<local-data-root>\logs` | Database, API, and worker logs |
+| `<local-data-root>\config` | Runtime configuration and test tokens protected by NTFS permissions; not committed to Git, not printed |
+| `<local-data-root>\validation` | Migration verification, real-file test records, and download-verification copies |
 
 During the copy performed with services stopped, all 2,027 database files and 14 model files were compared one by one via SHA-256. The old `.local/pgdata` was kept as a pre-cutover copy and is no longer in use; it is not a continuously updated backup. The old `.local/models` is temporarily retained for the existing automated tests.
 
-When the local PostgreSQL is started from a Chinese path, the path encoding it returns is inconsistent with the UTF-8 client. For this reason, `.local/runtime-postgres` is set up as an NTFS Junction (path mapping) pointing to `D:\EnterpriseKnowledgeBase\postgres`; the physical data remains in the user-specified directory. When migrating to another machine, the mapping and configuration must be recreated — copying only the code repository is not enough.
+When the local PostgreSQL is started from a Chinese path, the path encoding it returns is inconsistent with the UTF-8 client. For this reason, `.local/runtime-postgres` is set up as an NTFS Junction (path mapping) pointing to `<local-data-root>\postgres`; the physical data remains in the user-specified directory. When migrating to another machine, the mapping and configuration must be recreated — copying only the code repository is not enough.
 
 Non-sensitive path configuration is located in `.local/test-layout.json`. Materials and runtime data are not placed in Git. The data directory and credentials are accessible only to the current Windows user, SYSTEM, and Administrators. The service runs under the currently logged-in account; the preview database uses a separate non-superuser, `agico_preview`.
 ## Start/Stop and Access
@@ -52,7 +54,7 @@ The source material directory contains 349 files in total, including temporary l
 | DWG | Original file only; no claim of being able to understand drawing contents |
 All 5 samples passed the upload/download SHA-256 consistency checks against the source files, library-wide filename lookup, MCP file lookup, and private-material unauthorized-access rejection checks. The 4 samples with body content passed library-wide content retrieval (target within the top 5 results), reads with source attribution, and MCP/HTTP body content consistency checks. These results validate the workflow and basic retrieval; they do not constitute full acceptance of semantic, translation, or engineering content quality.
 
-Final fresh upload batch: `23730fa1ca6b45c4bf90b008c60c4679`, with details at `D:\EnterpriseKnowledgeBase\validation\23730fa1ca6b45c4bf90b008c60c4679\results.json`. The 10 versions from the first two rounds have been taken down via the admin interface, with audit records and original files retained; this batch keeps 5 items. Later, 3 files each of Office/PDF/CAD were added, 9 in total, bringing the current valid versions to 14 — see [Small File Ingestion Test](small-files.md).
+Final fresh upload batch: `23730fa1ca6b45c4bf90b008c60c4679`, with details at `<local-data-root>\validation\23730fa1ca6b45c4bf90b008c60c4679\results.json`. The 10 versions from the first two rounds have been taken down via the admin interface, with audit records and original files retained; this batch keeps 5 items. Later, 3 files each of Office/PDF/CAD were added, 9 in total, bringing the current valid versions to 14 — see [Small File Ingestion Test](small-files.md).
 
 Real XLSX files exposed two issues, which have been fixed: missing optional worksheet range metadata, and internal `.blob` filenames being rejected by openpyxl's extension check. Files are now read as file streams, and the 1,000,000-cell protection over the actual traversal range is retained. Six regression tests were added covering normal, empty, and oversized ranges under both `.xlsx` and `.blob` storage names; the old implementation was first confirmed to fail before the fix.
 
