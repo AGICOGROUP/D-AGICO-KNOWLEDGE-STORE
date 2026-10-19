@@ -1,9 +1,5 @@
 # AGICO 企业知识扩展库
 
-**项目方：** [AGICOGROUP（Gavin）](https://github.com/AGICOGROUP)
-
-**联合开发者：** [Dennis-pan-x](https://github.com/Dennis-pan-x)
-
 为现有 Codex、Accio 等 Agent 提供企业知识与文件能力，复用现有网页／钉钉入口。已实现文件后台、身份与版本管理、解析索引、混合检索、业务 MCP、发布分类审核、原文件对账，以及备份恢复和 Windows 运行配置；Codex 已通过普通任务的合成资料验证。
 
 **当前测试版：** 已分离代码与运行数据，完成初始 5 份及新增 9 份真实文件基本流程验证，见[目录与操作说明](docs/validation/local-preview.md)及[小文件测试结果](docs/validation/small-files.md)。新增 Windows 单目录安装入口已完成本机隔离服务验证，见[安装验证](docs/validation/server-setup.md)。企业资料整体质量、Accio／员工入口、实际服务器环境和容量仍待验收，尚未正式上线。
@@ -121,3 +117,5 @@ uv run python client/file_transfer.py download VERSION_ID ./下载资料.docx
 - Windows 安装脚本默认仅生成配置；正式安装需明确目标和专用账号。TLS、ACL、无人登录启动及独立灾备尚待目标服务器验证，当前不要把开发服务直接开放给企业多人使用。
 
 开发计划：[计划](docs/superpowers/plans/2026-09-15-enterprise-knowledge-store.md)。当前验证：[整体报告](docs/validation/final-review.md)、[REST／MCP 50 身份短测](docs/validation/load-50.md)、[进程重启与 32 MiB 文件](docs/validation/process-restarts.md)、[Codex](docs/validation/codex.md)、[运维与恢复](docs/validation/operations.md)、[接入契约](docs/validation/integration-contract.md)、[进度](docs/validation/progress.md)。
+
+项目协作：[贡献者](CONTRIBUTORS.md)。
