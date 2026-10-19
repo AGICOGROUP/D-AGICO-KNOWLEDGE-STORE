@@ -1,26 +1,26 @@
-# AGICO 企业知识扩展库
+# AGICO Enterprise Knowledge Store
 
-为现有 Codex、Accio 等 Agent 提供企业知识与文件能力，复用现有网页／钉钉入口。已实现文件后台、身份与版本管理、解析索引、混合检索、业务 MCP、发布分类审核、原文件对账，以及备份恢复和 Windows 运行配置；Codex 已通过普通任务的合成资料验证。
+This project adds enterprise knowledge and file capabilities to existing agents such as Codex and Accio while reusing the current web and DingTalk entry points. It includes file storage, identity and version management, parsing and indexing, hybrid search, business MCP tools, publication review, original-file reconciliation, backup and restore, and Windows deployment support. Codex has been validated with synthetic materials in ordinary tasks.
 
-**当前测试版：** 已分离代码与运行数据，完成初始 5 份及新增 9 份真实文件基本流程验证，见[目录与操作说明](docs/validation/local-preview.md)及[小文件测试结果](docs/validation/small-files.md)。新增 Windows 单目录安装入口已完成本机隔离服务验证，见[安装验证](docs/validation/server-setup.md)。企业资料整体质量、Accio／员工入口、实际服务器环境和容量仍待验收，尚未正式上线。
+**Current test release:** Code and runtime data are separate. Basic workflows have been checked with an initial five real files and nine additional real files; see the [catalog and operating notes](docs/validation/local-preview.md) and [small-file results](docs/validation/small-files.md). The Windows single-directory installer has passed an isolated local service check; see [installation validation](docs/validation/server-setup.md). Overall quality on company materials, Accio and employee access, the target server environment, and capacity still require acceptance testing. This is not yet a production deployment.
 
-## 新 Windows 服务器安装
+## Install on a new Windows server
 
-在管理员 PowerShell 中拉取代码，然后指定一个独立的知识库数据目录：
+In an administrator PowerShell session, clone the code and choose a separate, empty data directory:
 
 ```powershell
 git clone https://github.com/AGICOGROUP/D-AGICO-KNOWLEDGE-STORE.git D:\AGICO-KNOWLEDGE-STORE
 cd D:\AGICO-KNOWLEDGE-STORE
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\setup.ps1 -DataRoot "D:\企业知识库"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\setup.ps1 -DataRoot "D:\KnowledgeBaseData"
 ```
 
-脚本安装依赖、数据库与本地模型，生成受保护凭证，并注册自动启动服务。首次需要 Windows x64、管理员权限、Git 和联网下载；代码路径使用英文，数据目录使用独立空目录。代码与真实文件、数据库、模型、凭证分离，GitHub 只保存项目代码。详见[服务器安装与管理](docs/server-setup.md)。其他电脑接入所需的 HTTPS／域名和员工权限仍需按实际环境设置。
+The installer downloads dependencies, prepares the database and local models, generates protected credentials, and registers auto-start services. Initial installation requires Windows x64, administrator access, Git, and network access for downloads. Keep the code path in English and use a separate, empty data directory. Source code is separate from uploaded files, the database, models, and credentials; GitHub contains only project files. See [server installation and management](docs/server-setup.md). Configure HTTPS, a domain, and employee permissions for access from other computers.
 
-## 开发与当前本机测试环境
+## Development and the current local test environment
 
-Python 3.12，依赖见 `uv.lock`。本机 PostgreSQL 程序位于 `.local`，数据已迁移至 `D:\企业知识库\postgres`，通过 `.local/test-layout.json` 指定的英文路径映射启动，仅监听 127.0.0.1:15432。真实样本位于独立的 `agico_preview` 数据库，开发测试仍使用 `agico_test`。无系统服务或正式员工账号。
+The project uses Python 3.12; dependencies are pinned in `uv.lock`. On this machine, PostgreSQL binaries are under `.local`. The database data lives in a separate data root and starts through the English-path mapping specified in `.local/test-layout.json`; it listens only on `127.0.0.1:15432`. Real samples are in the separate `agico_preview` database; development tests use `agico_test`. This version has no system service or formal employee accounts.
 
-本机测试 API／worker：`./scripts/test-runtime.ps1 start`；状态与停止分别用 `status`、`stop`。服务地址 `http://127.0.0.1:8765`，MCP 路径 `/mcp`。本机路径和凭证不随仓库分发，新机器按运维说明配置。
+Start the local test API and worker with `./scripts/test-runtime.ps1 start`; use `status` and `stop` to inspect or stop them. The local service is at `http://127.0.0.1:8765`, with MCP at `/mcp`. Local paths and credentials are not distributed with this repository; configure them on each new machine following the operations guide.
 
 ```powershell
 uv sync --locked --group load
@@ -29,70 +29,70 @@ uv run python scripts/prepare_dev_db.py
 uv run pytest -q
 ```
 
-完整开发测试需安装上面的 `load` 依赖组（含负载工具及资源采样库）；正式服务不需要该组。测试使用专用 `agico_test` 数据库，每个用例创建随机 schema 和新合成文件；结束只清理该 schema 和测试临时目录。当前测试夹具读取本机 `.local/pg-password.txt`，不能指向生产数据库。新机器需先按[组件记录](docs/validation/component-check.md)安装 PostgreSQL、初始化集群和该凭证文件；`.local` 不随代码分发。
+Full development tests need the `load` dependency group, which includes load-testing and resource-sampling tools; the production service does not. Tests use the dedicated `agico_test` database. Each test creates a random schema and new synthetic files, then removes only that schema and its temporary directory. The current test fixtures read the local `.local/pg-password.txt` and must never point at the production database. On a new machine, install PostgreSQL, initialize the cluster, and create that credential file as described in the [component record](docs/validation/component-check.md). The `.local` directory is not distributed with the code.
 
-启动 API 与 worker 前，由运维在受保护环境中设置 `AGICO_KB_DATABASE_URL`（正式运行业务使用非超级用户）和 `AGICO_KB_STORAGE_ROOT`（两进程共用的可写 NTFS 绝对目录）；凭证不放命令参数、仓库或日志。`AGICO_KB_MODEL_CACHE` 默认 `.local/models`，部署时指定共用绝对路径。`AGICO_KB_ALLOWED_HOSTS` 指定 MCP 允许域名，默认仅本机。迁移需要已安装 pgvector。
+Before starting the API and worker, operations staff must set `AGICO_KB_DATABASE_URL` (use a non-superuser for production) and `AGICO_KB_STORAGE_ROOT` (an absolute writable NTFS path shared by both processes) in a protected environment. Do not place credentials in command-line arguments, the repository, or logs. `AGICO_KB_MODEL_CACHE` defaults to `.local/models`; set it to a shared absolute path for deployment. `AGICO_KB_ALLOWED_HOSTS` specifies allowed MCP hostnames and defaults to local access only. Database migrations require pgvector.
 
 ```powershell
 uv run python -m agico_kb.admin migrate
-uv run python -m agico_kb.admin set-identity employee-id 员工姓名 baiste member
+uv run python -m agico_kb.admin set-identity employee-id "Employee Name" baiste member
 uv run python -m agico_kb.admin issue-token employee-id
 uv run uvicorn agico_kb.main:app_factory --factory --host 127.0.0.1 --port 8000
 ```
 
-`issue-token` 在运维终端仅输出一次密钥，请交给可信客户端配置，不记录输出。`revoke-tokens employee-id` 撤销该身份所有令牌。负责人角色为 `publisher`，每个事业部独立配置。身份运维 CLI 需要数据库管理权限，不向普通员工开放。
+`issue-token` prints a secret only once in the operations terminal. Give it to a trusted client without recording the output. `revoke-tokens employee-id` revokes all tokens for that identity. The responsible manager's role is `publisher`, configured separately for each division. The identity-management CLI requires database-administration permissions and is unavailable to ordinary employees.
 
-另一个终端运行 `uv run python -m agico_kb.worker`。开发模式首次获取模型需要访问公共模型源；文档解析、OCR 与向量推理在本机执行。正式部署先单独准备模型，设置离线模式和预期模型身份，具体命令见[运维说明](docs/validation/operations.md)。模型文件指纹、维度、FastEmbed 与解析版本共同标记索引，防止不同模型空间混用。
+Run `uv run python -m agico_kb.worker` in another terminal. Development mode needs access to a public model source for the first download; document parsing, OCR, and vector inference run locally. For formal deployment, provision models separately, enable offline mode, and pin the expected model identity as described in [operations](docs/validation/operations.md). Model fingerprint, vector dimension, FastEmbed version, and parser version jointly identify an index so incompatible vector spaces are not mixed.
 
-## Agent 与文件适配
+## Agent and file access
 
-### 员工网页入口
+### Employee web portal
 
-浏览器打开服务根地址（本机 `http://127.0.0.1:8765/`），输入成员访问码即可提交和查找文件。先批量选择文件，再显式选择本批所属事业部，不自动代选；资料类型与型号可不填，提交后进入待审核区。页面支持处理状态、已发布资料搜索、事业部／类型筛选和原件下载。详见[网页使用与验证](docs/validation/employee-portal.md)。
+Open the service root (locally `http://127.0.0.1:8765/`) and enter a member access code to submit or find files. Select a batch of files, then explicitly choose its division; the portal does not choose one automatically. Material type and model are optional. Submitted files enter the review queue. The portal shows processing status, published-file search, division and type filters, and original-file downloads. See [portal usage and validation](docs/validation/employee-portal.md).
 
-业务 MCP 地址为 API 的 `/mcp`，使用独立 Bearer token。`kb_context` 按需查背景；`kb_search` 默认返回 5 项相关资料，`kb_read` 读取必要原文；上传、提交、状态与文件工具共用同一后台。负责人另有发布、撤下、恢复与历史管理工具。
+The business MCP endpoint is `/mcp` on the API and uses a separate bearer token. `kb_context` fetches background on demand; `kb_search` returns five relevant materials by default; `kb_read` fetches only the needed source content. Upload, submission, status, and file tools share the same backend. Managers also have publish, withdraw, restore, and history tools.
 
-将[简短使用约定](client/agent-usage.md)放入客户端现有指令机制，让 Agent 在需要公司知识时主动查阅并应用，复用任务内已有依据，避免全库读取。真实 Codex 合成任务已验证背景、事实、规范和经验会影响产出，见[结果与用量](docs/validation/codex.md)。Accio、网页和钉钉仍需实机联调。
+Place the [short agent-use guidance](client/agent-usage.md) in the client's existing instruction mechanism so agents consult company knowledge when needed, reuse evidence already found in a task, and avoid reading the entire library. Synthetic Codex tasks have shown that background, facts, standards, and experience can affect output; see [results and usage](docs/validation/codex.md). Accio, web, and DingTalk still need live integration checks.
 
-在实际持有文件的环境配置 `AGICO_KB_URL` 和 `AGICO_KB_TOKEN`，运行仓库附带的 `client/file_transfer.py`：
+Set `AGICO_KB_URL` and `AGICO_KB_TOKEN` where the files reside, then run the included `client/file_transfer.py`:
 
 ```powershell
-uv run python client/file_transfer.py upload ./资料.docx --organization baiste --title 产品资料
-uv run python client/file_transfer.py download VERSION_ID ./下载资料.docx
+uv run python client/file_transfer.py upload ./document.docx --organization baiste --title "Product Information"
+uv run python client/file_transfer.py download VERSION_ID ./downloaded-document.docx
 ```
 
-脚本校验大小与 SHA-256，凭证只发送到配置服务，不跟随重定向；下载验证完整后才生成最终文件，不覆盖已有文件。原文件不通过模型上下文传输。该脚本随仓库交付，未打包成独立员工应用。
+The script checks size and SHA-256. It sends the credential only to the configured service and does not follow redirects. A download is finalized only after integrity checks and never overwrites an existing file. The original file is not transferred through model context. This script ships with the repository and is not packaged as a separate employee application.
 
-结束开发数据库：`./scripts/dev-db.ps1 stop`。API 路由说明位于启动后的 `/docs`。
+Stop the development database with `./scripts/dev-db.ps1 stop`. API routes are documented at `/docs` when the service is running.
 
-## 当前 API 流程
+## Current API workflow
 
-1. `POST /v1/uploads`，携带 Bearer 与 `Idempotency-Key`，提交文件名、大小、可选 SHA-256。
-2. `PUT /v1/uploads/{upload_id}/content` 流式传原文件；大小与哈希校验完成后才允许提交。
-3. `POST /v1/submissions`，绑定事业部、用途、标题、可选产品／型号／项目／业务日期；缺省用途为“其他资料”。原文件不依赖解析进程，草稿作者可下载。
-4. worker 处理解析与索引；负责人在 `/v1/submissions` 查看草稿，通过 `/v1/versions/{version_id}/publish` 发布。可选 `category_id` 在发布事务中修正用途，无需重新上传；MCP `kb_publish` 使用同一参数。正文不完整时只有显式 `accept_incomplete=true` 才能发布，处理状态与警告仍如实显示。
-5. `/v1/documents` 只列有权访问的当前正式版本；`/v1/versions/{version_id}` 和其 `/content` 返回状态和原文件。历史版本必须显式 `history=true` 且具有所属事业部负责人权限。
+1. `POST /v1/uploads` submits filename, size, and optional SHA-256 with a bearer token and an `Idempotency-Key`.
+2. `PUT /v1/uploads/{upload_id}/content` streams the original file. Submission is allowed only after size and hash checks pass.
+3. `POST /v1/submissions` binds division, purpose, title, and optional product, model, project, and business date. The default purpose is "other material." The original file remains independent of the parser process and can be downloaded by the draft author.
+4. The worker handles parsing and indexing. Managers see drafts at `/v1/submissions` and publish through `/v1/versions/{version_id}/publish`. Optional `category_id` corrects the purpose in the publication transaction without re-uploading; MCP `kb_publish` accepts the same parameter. Incomplete body content requires explicit `accept_incomplete=true` to publish, while processing state and warnings remain visible.
+5. `/v1/documents` lists only current published versions the requester may access. `/v1/versions/{version_id}` and its `/content` endpoint return state and the original file. Historical versions require `history=true` and manager permission for the owning division.
 
-替换稿携带 `document_id`、`base_revision` 并沿用文件当前元数据。管理操作携带 `expected_revision`；发布还校验草稿实际 `base_revision`，修改请求里的期望号不能绕过旧稿冲突。冲突稿保留，需核对后作为新提交。
+Replacement drafts carry `document_id` and `base_revision` and inherit the current file metadata. Management operations supply `expected_revision`. Publication also checks the draft's actual `base_revision`; changing the expected revision in a request cannot bypass an old-draft conflict. Conflicting drafts are preserved for review and may be submitted again.
 
-撤下：`POST /v1/documents/{id}/withdraw`；恢复曾发布版本：`POST /v1/versions/{id}/restore`；撤回自己的草稿：`POST /v1/submissions/{id}/withdraw`；负责人共享：`PUT /v1/documents/{id}/grants`；审计：`GET /v1/documents/{id}/audit`。
+Withdraw: `POST /v1/documents/{id}/withdraw`; restore a previously published version: `POST /v1/versions/{id}/restore`; withdraw your own draft: `POST /v1/submissions/{id}/withdraw`; manager sharing: `PUT /v1/documents/{id}/grants`; audit: `GET /v1/documents/{id}/audit`.
 
-负责人通过 `GET /v1/documents?managed=true` 查找职责范围内全部文件（包括撤下资料），再用 `GET /v1/documents/{id}/versions` 选择历史版本恢复。普通员工不能通过这些管理接口看到撤下资料。
+Managers use `GET /v1/documents?managed=true` to find all files in their scope, including withdrawn items, then `GET /v1/documents/{id}/versions` to choose a historical version to restore. Ordinary employees cannot view withdrawn materials through these management endpoints.
 
-所有新请求重新认证。共享只授予读取，不复制文件；私有文档默认只有作者和所属负责人可读。新下载请求受当前授权与正式状态约束，已交付的副本不能追回。
+Every new request is authenticated again. Sharing grants read access without copying the file. Private documents are readable by their author and responsible manager by default. New download requests depend on current authorization and publication status; already delivered copies cannot be recalled.
 
-## 一致性与阶段限制
+## Consistency and current limits
 
-- 保存临时文件、校验、同盘改名后才登记完整状态；断传清理临时文件。进程在改名与数据库提交之间退出可能留下孤立文件；`python -m agico_kb.operations reconcile` 只读报告缺失、损坏、无引用原件和陈旧临时文件，不自动删除。
-- 文件提交、作业登记、发布切换、修订号及审计使用数据库事务；并发发布锁住同一文件记录，旧稿不能覆盖新稿。
-- 解析子进程有超时，后台失败有限重试；索引完成后原子切换代次，旧进程不能覆盖新结果。向量失败时仍可检索已解析文字。
-- 支持 DOCX／XLSX／PPTX、原生 PDF、扫描 PDF OCR 和文本资料；未覆盖的文本框、图形、公式缓存等如实提示。旧二进制 Office／CAD／模型包仅保存原文件，可关联说明附件。具体边界见本批次报告。
-- 内容候选先按权限过滤，融合关键词和精确向量排名；默认只返回短片段，再按需读取完整单元。长单元的向量可能受模型长度限制，原文与关键词仍保留并提示。
-- 查询向量共用一个模型，忙时按先后顺序短暂等待；总数有上限，等待和推理共用超时预算，防止无界积压。
-- 测试为真实 PostgreSQL 和 NTFS 文件操作，不证明 50／200 Agent 容量。
-- 备份通过短暂暂停写入保存数据库和已完成原件，读取继续；恢复拒绝已有数据库或目录，先校验哈希，再恢复权限、正式版本与待处理任务。只在隔离的新目标演练恢复。
-- Windows 安装脚本默认仅生成配置；正式安装需明确目标和专用账号。TLS、ACL、无人登录启动及独立灾备尚待目标服务器验证，当前不要把开发服务直接开放给企业多人使用。
+- A temporary file is written, checked, and renamed on the same volume before its complete state is registered. Interrupted transfers clean up temporary files. A process exit between renaming and database commit may leave an orphan; `python -m agico_kb.operations reconcile` reports missing, damaged, unreferenced, and stale temporary files without deleting them.
+- File submission, job registration, publication switching, revisions, and audit records use database transactions. Concurrent publication locks the same file record so an old draft cannot overwrite a newer one.
+- Parser subprocesses have timeouts and background failures have bounded retries. A completed index generation is switched atomically; an old process cannot overwrite newer results. If vector indexing fails, parsed text remains searchable.
+- DOCX, XLSX, PPTX, native PDFs, scanned PDFs with OCR, and text materials are supported. Uncovered text boxes, graphics, formula caches, and similar content are reported honestly. Legacy binary Office files, CAD files, and model packages are stored as originals and may have explanatory attachments. See the batch reports for the precise coverage boundary.
+- Candidates are permission-filtered before keyword and exact-vector ranking are combined. Short excerpts are returned by default; full units are read on demand. Long units may exceed the vector model's length limit, but source text and keywords remain available with a notice.
+- Query vectors share one model and wait briefly in arrival order when it is busy. Queue length is bounded; waiting and inference share one timeout budget to prevent unbounded backlogs.
+- Tests perform real PostgreSQL and NTFS operations but do not prove capacity for 50 or 200 concurrent agents.
+- Backup briefly pauses writes while saving the database and completed originals; reads continue. Restore refuses an occupied database or directory, verifies hashes first, and then restores permissions, published versions, and pending jobs. Restore is rehearsed only on an isolated new target.
+- The Windows installer creates configuration by default. Formal installation needs an explicit target and dedicated account. TLS, ACLs, unattended startup, and independent disaster recovery still require verification on the target server. Do not expose the development service directly to many company users.
 
-开发计划：[计划](docs/superpowers/plans/2026-09-15-enterprise-knowledge-store.md)。当前验证：[整体报告](docs/validation/final-review.md)、[REST／MCP 50 身份短测](docs/validation/load-50.md)、[进程重启与 32 MiB 文件](docs/validation/process-restarts.md)、[Codex](docs/validation/codex.md)、[运维与恢复](docs/validation/operations.md)、[接入契约](docs/validation/integration-contract.md)、[进度](docs/validation/progress.md)。
+Development [plan](docs/superpowers/plans/2026-09-15-enterprise-knowledge-store.md). Current validation: [overall review](docs/validation/final-review.md), [50-identity REST/MCP smoke test](docs/validation/load-50.md), [process restart and 32 MiB file](docs/validation/process-restarts.md), [Codex](docs/validation/codex.md), [operations and restore](docs/validation/operations.md), [integration contract](docs/validation/integration-contract.md), and [progress](docs/validation/progress.md).
 
-项目协作：[贡献者](CONTRIBUTORS.md)。
+Project collaboration: [contributors](CONTRIBUTORS.md).
