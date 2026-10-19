@@ -1,28 +1,28 @@
-# AGICO 企业知识扩展库
+# AGICO Enterprise Knowledge Store
 
-为现有 Codex、Accio 等 Agent 提供企业知识与文件能力，复用现有网页／钉钉入口。已实现文件后台、身份与版本管理、解析索引、混合检索、业务 MCP、发布分类审核、原文件对账，以及备份恢复和 Windows 运行配置；Codex 已通过普通任务的合成资料验证。
+This project adds enterprise knowledge and file capabilities to existing agents such as Codex and Accio while reusing the current web and DingTalk entry points. It includes file storage, identity and version management, parsing and indexing, hybrid search, business MCP tools, publication review, original-file reconciliation, backup and restore, and Windows deployment support. Codex has been validated with synthetic materials in ordinary tasks.
 
-**当前测试版：** 已分离代码与运行数据，完成初始 5 份及新增 9 份真实文件基本流程验证，见[目录与操作说明](docs/validation/local-preview.md)及[小文件测试结果](docs/validation/small-files.md)。新增 Windows 单目录安装入口已完成本机隔离服务验证，见[安装验证](docs/validation/server-setup.md)。企业资料整体质量、Accio／员工入口、实际服务器环境和容量仍待验收，尚未正式上线。
+**Current test release:** Code and runtime data are separate. Basic workflows have been checked with an initial five real files and nine additional real files; see the [catalog and operating notes](docs/validation/local-preview.md) and [small-file results](docs/validation/small-files.md). The Windows single-directory installer has passed an isolated local service check; see [installation validation](docs/validation/server-setup.md). Overall quality on company materials, Accio and employee access, the target server environment, and capacity still require acceptance testing. This is not yet a production deployment.
 
-**账号系统正式数据：** 自 2026-10-14 起，当前及后续登记账号作为正式运行数据保留。服务器部署必须迁移最新数据库与原件，保持原密码、身份、角色和事业部权限，不重新初始化账号；详见[正式账号迁移](docs/server-setup.md)和[数据保护要求](agent.md)。账号数据保存在受保护运行目录，不提交 Git。
+**Persistent account data:** Accounts registered on or after October 14, 2026, including accounts already present on that date, are formal operational data. A server migration must carry over the latest database and originals, preserving passwords, identities, roles, and division permissions. Do not bootstrap the accounts again. See [account migration](docs/server-setup.md) and [data protection requirements](agent.md). Account data stays in the protected runtime directory and is not committed to Git.
 
-## 新 Windows 服务器安装
+## Install on a new Windows server
 
-在管理员 PowerShell 中拉取代码，然后指定一个独立的知识库数据目录：
+In an administrator PowerShell session, clone the code and choose a separate, empty data directory:
 
 ```powershell
 git clone https://github.com/AGICOGROUP/D-AGICO-KNOWLEDGE-STORE.git D:\AGICO-KNOWLEDGE-STORE
 cd D:\AGICO-KNOWLEDGE-STORE
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\setup.ps1 -DataRoot "D:\企业知识库"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\setup.ps1 -DataRoot "D:\KnowledgeBaseData"
 ```
 
-脚本安装依赖、数据库与本地模型，生成受保护凭证，并注册自动启动服务。首次需要 Windows x64、管理员权限、Git 和联网下载；代码路径使用英文，数据目录使用独立空目录。代码与真实文件、数据库、模型、凭证分离，GitHub 只保存项目代码。详见[服务器安装与管理](docs/server-setup.md)。其他电脑接入所需的 HTTPS／域名和员工权限仍需按实际环境设置。
+The installer downloads dependencies, prepares the database and local models, generates protected credentials, and registers auto-start services. Initial installation requires Windows x64, administrator access, Git, and network access for downloads. Keep the code path in English and use a separate, empty data directory. Source code is separate from uploaded files, the database, models, and credentials; GitHub contains only project files. See [server installation and management](docs/server-setup.md). Configure HTTPS, a domain, and employee permissions for access from other computers.
 
-## 开发与当前本机测试环境
+## Development and the current local test environment
 
-Python 3.12，依赖见 `uv.lock`。本机 PostgreSQL 程序位于 `.local`，数据已迁移至 `D:\企业知识库\postgres`，通过 `.local/test-layout.json` 指定的英文路径映射启动，仅监听 127.0.0.1:15432。真实样本位于独立的 `agico_preview` 数据库，开发测试仍使用 `agico_test`。本机由现有 watchdog 维护 API 与 worker；账号采用三级角色和邀请注册，正式服务器环境仍需部署验收。
+The project uses Python 3.12; dependencies are pinned in `uv.lock`. On this machine, PostgreSQL binaries are under `.local`. The database data lives in a separate protected data root and starts through the English-path mapping specified in `.local/test-layout.json`; it listens only on `127.0.0.1:15432`. Real samples are in the separate `agico_preview` database; development tests use `agico_test`. An existing local watchdog maintains the API and worker. Accounts use three roles and invitation-based registration. Deployment on the target server still needs acceptance testing.
 
-本机测试 API／worker：`./scripts/test-runtime.ps1 start`；状态与停止分别用 `status`、`stop`。服务地址 `http://127.0.0.1:8765`，MCP 路径 `/mcp`。本机路径和凭证不随仓库分发，新机器按运维说明配置。
+Start the local test API and worker with `./scripts/test-runtime.ps1 start`; use `status` and `stop` to inspect or stop them. The local service is at `http://127.0.0.1:8765`, with MCP at `/mcp`. Local paths and credentials are not distributed with this repository; configure them on each new machine following the operations guide.
 
 ```powershell
 uv sync --locked --group load
@@ -31,9 +31,9 @@ uv run python scripts/prepare_dev_db.py
 uv run pytest -q
 ```
 
-完整开发测试需安装上面的 `load` 依赖组（含负载工具及资源采样库）；正式服务不需要该组。测试使用专用 `agico_test` 数据库，每个用例创建随机 schema 和新合成文件；结束只清理该 schema 和测试临时目录。当前测试夹具读取本机 `.local/pg-password.txt`，不能指向生产数据库。新机器需先按[组件记录](docs/validation/component-check.md)安装 PostgreSQL、初始化集群和该凭证文件；`.local` 不随代码分发。
+Full development tests need the `load` dependency group, which includes load-testing and resource-sampling tools; the production service does not. Tests use the dedicated `agico_test` database. Each test creates a random schema and new synthetic files, then removes only that schema and its temporary directory. The current test fixtures read the local `.local/pg-password.txt` and must never point at the production database. On a new machine, install PostgreSQL, initialize the cluster, and create that credential file as described in the [component record](docs/validation/component-check.md). The `.local` directory is not distributed with the code.
 
-启动 API 与 worker 前，由运维在受保护环境中设置 `AGICO_KB_DATABASE_URL`（正式运行业务使用非超级用户）和 `AGICO_KB_STORAGE_ROOT`（两进程共用的可写 NTFS 绝对目录）；凭证不放命令参数、仓库或日志。`AGICO_KB_MODEL_CACHE` 默认 `.local/models`，部署时指定共用绝对路径。`AGICO_KB_ALLOWED_HOSTS` 指定 MCP 允许域名，默认仅本机。迁移需要已安装 pgvector。
+Before starting the API and worker, operations staff must set `AGICO_KB_DATABASE_URL` (use a non-superuser for production) and `AGICO_KB_STORAGE_ROOT` (an absolute writable NTFS path shared by both processes) in a protected environment. Do not place credentials in command-line arguments, the repository, or logs. `AGICO_KB_MODEL_CACHE` defaults to `.local/models`; set it to a shared absolute path for deployment. `AGICO_KB_ALLOWED_HOSTS` specifies allowed MCP hostnames and defaults to local access only. Database migrations require pgvector.
 
 ```powershell
 uv run python -m agico_kb.admin migrate
@@ -41,81 +41,83 @@ uv run python -m agico_kb.accounts bootstrap --email administrator@example.com
 uv run uvicorn agico_kb.main:app_factory --factory --host 127.0.0.1 --port 8000
 ```
 
-初始化工具只创建一次首个开发人员，交互输入初始密码，首次登录必须修改。后续账号全部通过网页“账号管理”登记邮箱、角色和事业部，再复制一次性邀请链接；开发人员可邀请三种角色，管理员可邀请自己有管理权限的事业部内的管理员和普通用户，不能邀请开发人员。普通用户无邀请权限。密码加盐哈希保存，网页登录使用 HttpOnly 会话，改密或停用会撤销已有会话与 AI 授权。详见[账号与邀请设计](docs/design/account-login-and-invitations.md)。
+Bootstrap creates the first developer account once. It prompts for an initial password, which must be changed at first sign-in. Later accounts are registered in the web account-management page with an email, role, and divisions; the administrator then copies a one-time invitation link. Developers can invite all three roles. Administrators can invite administrators and ordinary users only within divisions they manage, and cannot invite developers. Ordinary users cannot invite anyone. Passwords are salted and hashed. Web sign-in uses an HttpOnly session; password changes and deactivation revoke existing sessions and AI authorizations. See [account and invitation design](docs/design/account-login-and-invitations.md).
 
-另一个终端运行 `uv run python -m agico_kb.worker`。开发模式首次获取模型需要访问公共模型源；文档解析、OCR 与向量推理在本机执行。正式部署先单独准备模型，设置离线模式和预期模型身份，具体命令见[运维说明](docs/validation/operations.md)。模型文件指纹、维度、FastEmbed 与解析版本共同标记索引，防止不同模型空间混用。
+Run `uv run python -m agico_kb.worker` in another terminal. Development mode needs access to a public model source for the first download; document parsing, OCR, and vector inference run locally. For formal deployment, provision models separately, enable offline mode, and pin the expected model identity as described in [operations](docs/validation/operations.md). Model fingerprint, vector dimension, FastEmbed version, and parser version jointly identify an index so incompatible vector spaces are not mixed.
 
-### 入库图片识别（可选）
+### Optional image understanding during ingestion
 
-默认关闭。启用时，在服务器的受保护目录保存视觉 API 配置文件：第一行 `api=<密钥>`，第二行指定模型。主线路为官方 GLM：`AGICO_KB_VISION_API_URL=https://open.bigmodel.cn/api/paas/v4/chat/completions`、`AGICO_KB_VISION_PDF_MODEL=glm-5.3-flash`。备用线路已改为端脑云：独立的 `AGICO_KB_VISION_FALLBACK_CONFIG_FILE` 保存其密钥及通过当前评测的模型，`AGICO_KB_VISION_FALLBACK_API_URL=https://cephalon.cloud/user-center/v1/model/chat/completions`。多个通过评测的备用模型可写为 `model=glm-5.3-flashx/glm-5.3-flash`，`AGICO_KB_VISION_FALLBACK_MODEL` 与第一项一致。没有通过图片题的模型不得加入视觉备用池。
+Image understanding is off by default. To enable it, store a vision API configuration file in a protected server directory, with `api=<key>` on the first line and a model on the second. The primary route is the official GLM API: `AGICO_KB_VISION_API_URL=https://open.bigmodel.cn/api/paas/v4/chat/completions` and `AGICO_KB_VISION_PDF_MODEL=glm-5.3-flash`. The fallback route uses Cephalon Cloud: its separate `AGICO_KB_VISION_FALLBACK_CONFIG_FILE` holds the key and a model that has passed the current evaluation, while `AGICO_KB_VISION_FALLBACK_API_URL=https://cephalon.cloud/user-center/v1/model/chat/completions`. Multiple evaluated fallback models may be written as `model=glm-5.3-flashx/glm-5.3-flash`; `AGICO_KB_VISION_FALLBACK_MODEL` must match the first entry. Do not add a model to the vision fallback pool unless it passes image tests.
 
-命名备用池独立配置 `AGICO_KB_NAMING_FALLBACK_MODELS=glm-5.3-flashx,glm-5.3-flash,deepseek-v4-flash`，依次尝试，仅发送文件名、文字片段及可见项目线索。DeepSeek 作为命名可选备用，不向其发送图片；视觉接口拒绝 DeepSeek 系列。HY4 已弃用，不能加入任何任务的模型配置。此设置不改变官方 GLM 主线路。
+The naming fallback pool is configured separately as `AGICO_KB_NAMING_FALLBACK_MODELS=glm-5.3-flashx,glm-5.3-flash,deepseek-v4-flash`. Models are tried in order and receive only filenames, text excerpts, and visible project clues. DeepSeek is an optional naming fallback; images are never sent to it, and the vision endpoint rejects DeepSeek models. HY4 is deprecated and must not be configured for any task. These settings do not change the official GLM primary route.
 
-主线路连接失败、超时、限流或服务端错误，重试一次后当前视觉请求临时走备用；备用模型仍遇到可重试故障时仅尝试配置内下一模型，下一独立请求仍优先官方 GLM。供应商由线路选择确定，不能因两家模型同名而直接跳过主线路；备用缓存区分供应商，Word/Excel 不把备用内容再存入主缓存。端脑云的视觉和命名请求通过共享存储中的文件锁，在 API/worker 进程之间共用一个并发槽，官方 GLM 保留原并发。输出截断继续扩展或分区处理，不跨供应商切换；余额不足明确报错。旧 B.AI 地址不再作为默认线路。视觉只在 **worker 处理新提交或显式重试** 时调用，不会因网页搜索、MCP 查询、下载或 Agent 对话调用；AI 命名也会调用配置的主/备用线路。支持 Word、Excel、PPT、PDF 和独立 PNG/JPG/TIFF/BMP；旧 Office 格式转换后按对应新格式处理。选中的图片会发送给外部服务，部署前按公司资料外发规则决定是否启用。
+If the primary route fails to connect, times out, is rate-limited, or returns a server error, the current vision request retries once and temporarily uses the fallback. If a fallback model also has a retryable failure, only the next configured fallback model is tried. Each independent request starts with official GLM again. The selected route determines the provider even when both providers use the same model name. Fallback caches are provider-specific; Word and Excel do not write fallback results into the primary cache. A file lock in shared storage gives Cephalon Cloud vision and naming requests one concurrency slot across API and worker processes; official GLM retains its own concurrency. Truncated output is continued or split into regions without switching providers; insufficient balance is reported explicitly. The former B.AI URL is no longer the default route.
 
-在受保护的 worker 运行配置中指定 `AGICO_KB_VISION_CONFIG_FILE` 为配置文件绝对路径。`AGICO_KB_VISION_MAX_IMAGES_PER_FILE` 默认 64，`AGICO_KB_VISION_MAX_CALLS_PER_DAY` 默认 0（不限量）；每天的调用计数和图片摘要缓存在知识库数据目录的 `originals/.vision`，相同图像不再次调用模型。短暂超时、网络错误、限流和模型输出未完成会在同一次解析中自动重试一次，每次请求记录调用次数，默认不限制每日调用；失败或仍有未处理图时保留“图片未解释”提示，正文解析照常进行。摘要供检索定位，工程数值、接线和尺寸仍以原图为准。无需此功能时移除该环境变量并重启 worker。
+Vision is called only when the **worker handles a new submission or an explicit retry**. Web search, MCP queries, downloads, and agent conversations do not call it. AI naming can also call the configured primary or fallback route. Supported inputs include Word, Excel, PowerPoint, PDF, and standalone PNG/JPG/TIFF/BMP images; legacy Office files are converted before processing. Selected images are sent to an external provider, so deployment must follow company rules on sending materials outside the organization.
 
-解析状态和提醒不等于内容准确率。用 `python scripts/score_ingestion.py <独立标注的评分清单.json> --vision-config <本地配置文件>` 对源文件全新解析、逐条核对页码／幻灯片／工作表上的事实。非图纸资料要求超过95%，并须完成独立参考核对；CAD 和图纸 PDF 改验收原图定位、图名图号、说明和明细，不做全图尺寸转写准确率验收。混合 PDF 按页分别检查。清单格式和边界见 [解析质量验收](docs/validation/ingestion-quality.md)、[图纸检索策略](docs/design/drawing-lookup-policy.md)。此命令不会读取已发布的解析结果，也不会修改知识库记录。
+Set `AGICO_KB_VISION_CONFIG_FILE` to the absolute path of the protected configuration file in the worker runtime. `AGICO_KB_VISION_MAX_IMAGES_PER_FILE` defaults to 64; `AGICO_KB_VISION_MAX_CALLS_PER_DAY` defaults to 0, meaning no daily limit. The daily call count and image summaries are cached under `originals/.vision` in the knowledge-base data directory, so identical images are not sent again. Transient timeouts, network errors, rate limits, and incomplete model output are retried once within the same parsing run. Calls are counted, but daily calls are unlimited by default. If a request still fails or images remain untreated, the system keeps an "image not explained" notice while body-text parsing continues. Summaries help locate materials; the original drawing remains authoritative for engineering values, wiring, and dimensions. Remove the environment variable and restart the worker to disable this feature.
 
-Word 读取正文、文本框、内容控件以及脚注／尾注，注释编号与正文引用相连；处理行内和浮动内容图时跳过小 Logo。Excel 原生文本框文字保留工作表、锚定单元格和段落；浮动图片和单元格内图片先用本地 OCR 收录可辨认文字，再由视觉模型转述图片。已识别的 AGICO、NORM 等品牌 Logo 跳过，不调用外部 API。空白绘图形状不视为缺失内容；真正的图表和未能提取的图片仍保留提醒。查询时不会调用视觉模型。
+Processing status and notices are not content-accuracy scores. Use `python scripts/score_ingestion.py <independently-annotated-scoring-manifest.json> --vision-config <local-config-file>` to freshly parse source files and check each fact against its page, slide, or worksheet. Non-drawing materials require more than 95% accuracy and independent reference checks. CAD and drawing PDFs are evaluated for source-image retrieval, drawing title and number, notes, and schedules; full-drawing dimension transcription is not scored. Mixed PDFs are assessed page by page. See the [drawing retrieval policy](docs/design/drawing-lookup-policy.md) for the acceptance boundary. This command does not read published parsing results or modify knowledge-base records.
 
-PPT 按有实际视觉内容的幻灯片渲染后转述，并保留页码；非图纸 PDF 的扫描正文优先采用通过本地布局与置信度筛选的 OCR，完成状态不依赖视觉 API 配置；复杂视觉内容再调用 API。PDF 字体映射乱码先回退到像素 OCR，不把乱码当作可靠正文；工艺流程图与大型轮廓字体图纸结合图名、图框字段、视图和版面分类，公差正文不会进入全图尺寸路线。图纸中的 OCR 图名、图号、说明和明细只对关键区域做像素复核；未核定字段仍保留具体提醒。数字核对容许20.00与20等明确等值格式，仍区分330/350、正负号、直径／半径和多段编号。独立图片保留本地 OCR 文字并按内容路线补充视觉转述。纯装饰图形不触发 PPT 缺失提醒。
+Word parsing reads body text, text boxes, content controls, footnotes, and endnotes, with note numbers linked to body references. Small logos in inline and floating images are skipped. Native Excel text-box text retains its worksheet, anchored cell, and paragraph. Recognizable text in floating and in-cell images is first captured with local OCR, then supplemented with vision descriptions. Recognized AGICO, NORM, and similar brand logos are skipped without external API calls. Empty drawing shapes are not treated as missing content; real charts and images that could not be extracted retain notices. Queries never invoke the vision model.
 
-解析提醒统一分三类：实际内容缺失、数字冲突、转换或接口故障保留为问题并推动通用能力修复；已完成 OCR／转述、空字符清理、公式缓存保留和按页存储等正常过程信息不展示；图纸需结合原图、修订正文、仅保存原件等保留一条简短资料说明。未知提醒默认保留。新旧记录在列表、审批详情、查询和读取接口使用同一展示规则；不会修改历史正文或诊断，提示消失不代表历史缺失已补齐。详见[提醒处理策略](docs/design/parse-notice-policy.md)。
+PowerPoint slides with meaningful visual content are rendered and described with slide numbers. For non-drawing PDFs, scanned body text uses local OCR first when layout and confidence checks pass; completion does not depend on vision API configuration. Complex visual material can then use the API. Corrupt PDF font mappings fall back to pixel OCR instead of being treated as reliable text. Process diagrams and large outline-font drawings are classified using titles, title-block fields, views, and layout; tolerance text in ordinary body copy does not trigger the full-drawing route. OCR drawing titles, numbers, notes, and schedules are pixel-checked only in key regions; unverified fields retain specific notices. Numeric checks accept clearly equivalent formats such as 20.00 and 20, but distinguish 330 from 350, signs, diameter from radius, and multipart identifiers. Standalone images retain local OCR text and may receive an additional vision description according to content. Decorative graphics do not trigger missing-content notices for PowerPoint.
 
-## Agent 与文件适配
+Parsing notices have three categories. Actual missing content, numeric conflicts, and conversion or API failures remain actionable problems requiring general capability fixes. Normal process details such as completed OCR or descriptions, NUL cleanup, formula-cache preservation, and per-page storage are hidden. Drawings that require the original, revised body text, and files stored without parsing retain one short informational note. Unknown notices remain visible by default. Lists, review details, queries, and read APIs use the same presentation rules for old and new records. Hiding a notice does not alter historical text or diagnostics and does not mean a historical omission was repaired. See the [parse-notice policy](docs/design/parse-notice-policy.md).
 
-### 员工网页入口
+## Agent and file access
 
-浏览器打开服务根地址（本机 `http://127.0.0.1:8765/`），使用已激活的邮箱和密码登录后即可提交和查找文件。新成员只能通过管理员邀请链接加入，邮箱自动填入且不可修改，初始密码填写两次。可选择文件或整个文件夹，也可拖入文件夹及所有层级的子文件夹；显式选择本批所属事业部，不自动代选。资料类型与型号可不填，提交后进入待审核区。页面支持处理状态、已发布资料搜索、事业部／类型筛选和原件下载。
+### Employee web portal
 
-待审核和已发布的 PDF、Word、Excel、PPT、图片，点击缩略图或文件名即可进入只读文件预览，支持全文滚动、上一页／下一页、页码跳转、旋转与缩放。Office 使用本机 LibreOffice（可配置 `AGICO_KB_OFFICE_CONVERTER`）生成完整 PDF 预览副本，Excel 清除预览副本的打印区域限制并分页展示工作表；图片使用独立大图，多页 TIFF 可翻页。预览页按需生成、缓存与加载，关闭后取消请求并释放浏览器图片；原件与检索解析内容不变，不发送至第三方 Office 预览服务。CAD、模型、视频等维持图像预览。每次读取预览及缓存页都检查原件权限；撤回后不可继续读取旧缓存。详见[全文预览验证](docs/validation/document-preview-20261013.md)及[网页使用与验证](docs/validation/employee-portal.md)。
+Open the service root (locally `http://127.0.0.1:8765/`) and sign in with an activated email and password to submit or find files. New members join only through an administrator's invitation link; the email is prefilled and cannot be changed, and the initial password is entered twice. Users can select individual files or whole folders, or drag in a folder with all nested subfolders. They explicitly choose the submission's division; the portal does not select one automatically. Material type and model are optional. Submitted files enter the review queue. The portal shows processing status, published-file search, division and type filters, and original-file downloads.
 
-业务 MCP 地址为 API 的 `/mcp`，通过 OAuth 浏览器账号授权连接；配置仅含服务地址，员工密码不提供给 Agent。客户端完成授权码与 PKCE 流程后管理短期凭证。旧共享访问码在账号模式启用后不再认证。`kb_context` 按需查背景；`kb_search` 默认返回 5 项相关资料，`kb_read` 读取必要原文；上传、提交、状态与文件工具共用同一后台。负责人另有发布、撤下、恢复与历史管理工具。
+For pending and published PDF, Word, Excel, PowerPoint, and image files, clicking the thumbnail or filename opens a read-only preview with continuous scrolling, previous/next page, page-number navigation, rotation, and zoom. Office previews use local LibreOffice (configurable through `AGICO_KB_OFFICE_CONVERTER`) to produce a complete PDF preview copy. Excel preview copies ignore print-area restrictions and paginate worksheets; images open in a separate large view, and multipage TIFF files support page navigation. Preview pages are generated, cached, and loaded on demand. Closing the preview cancels requests and releases browser images. Originals and indexed content remain unchanged, and no files are sent to a third-party Office preview service. CAD, models, and video retain image previews. Permission checks apply to every preview and cached-page read; a withdrawn file cannot be accessed through an old cache. See [portal usage and validation](docs/validation/employee-portal.md).
 
-将[简短使用约定](client/agent-usage.md)放入客户端现有指令机制，让 Agent 在需要公司知识时主动查阅并应用，复用任务内已有依据，避免全库读取。真实 Codex 合成任务已验证背景、事实、规范和经验会影响产出，见[结果与用量](docs/validation/codex.md)。Accio、网页和钉钉仍需实机联调。
+The business MCP endpoint is `/mcp` on the API and uses OAuth browser-account authorization. Client configuration contains only the service address; employee passwords are not given to agents. After the authorization-code and PKCE flow, the client manages short-lived credentials. Legacy shared access codes no longer authenticate in account mode. `kb_context` fetches background on demand; `kb_search` returns five relevant materials by default; `kb_read` fetches only the needed source content. Upload, submission, status, and file tools share the same backend. Managers also have publish, withdraw, restore, and history tools.
 
-受控传输脚本可由已经完成 OAuth 的可信客户端调用。在实际持有文件的环境设置 `AGICO_KB_URL` 和 `AGICO_KB_TOKEN`（当前 OAuth 短期访问凭证，不是员工密码或旧共享码），运行仓库附带的 `client/file_transfer.py`：
+Place the [short agent-use guidance](client/agent-usage.md) in the client's existing instruction mechanism so agents consult company knowledge when needed, reuse evidence already found in a task, and avoid reading the entire library. Synthetic Codex tasks have shown that background, facts, standards, and experience can affect output; see [results and usage](docs/validation/codex.md). Accio, web, and DingTalk still need live integration checks.
+
+Trusted clients that have completed OAuth may use the controlled transfer script. Set `AGICO_KB_URL` and `AGICO_KB_TOKEN` (the current short-lived OAuth access token, not an employee password or legacy shared code) where the files reside, then run the included `client/file_transfer.py`:
 
 ```powershell
-uv run python client/file_transfer.py upload ./资料.docx --organization baiste --title 产品资料
-uv run python client/file_transfer.py download VERSION_ID ./下载资料.docx
+uv run python client/file_transfer.py upload ./document.docx --organization baiste --title "Product Information"
+uv run python client/file_transfer.py download VERSION_ID ./downloaded-document.docx
 ```
 
-脚本校验大小与 SHA-256，凭证只发送到配置服务，不跟随重定向；下载验证完整后才生成最终文件，不覆盖已有文件。原文件不通过模型上下文传输。该脚本随仓库交付，未打包成独立员工应用。
+The script checks size and SHA-256. It sends the credential only to the configured service and does not follow redirects. A download is finalized only after integrity checks and never overwrites an existing file. The original file is not transferred through model context. This script ships with the repository and is not packaged as a separate employee application.
 
-结束开发数据库：`./scripts/dev-db.ps1 stop`。API 路由说明位于启动后的 `/docs`。
+Stop the development database with `./scripts/dev-db.ps1 stop`. API routes are documented at `/docs` when the service is running.
 
-## 当前 API 流程
+## Current API workflow
 
-1. `POST /v1/uploads`，携带 OAuth Bearer（客户端）或登录会话＋CSRF（网页），以及 `Idempotency-Key`，提交文件名、大小、可选 SHA-256。
-2. `PUT /v1/uploads/{upload_id}/content` 流式传原文件；大小与哈希校验完成后才允许提交。
-3. `POST /v1/submissions`，绑定事业部、用途、原文件名等元数据；网页提交时设置 `naming_pending=true`。缺省用途为“其他资料”。原文件不依赖解析进程，草稿作者可下载。
-4. 提交成功后，后台 worker 读取 `src/agico_kb/ai_naming_rules.md`，按原文件名、同批名称和同事业部可访问的项目记录用 AI 判断归属和规范标题。已成交项目沿用正式编号；未成交项目由数据库分配稳定的 `OPP-年份-流水号`，后续文件复用该编号。项目记录保存在数据库 `projects` 表，AI 不自行编造编号；命名任务进度保存在 `versions.capabilities.naming_review`。证据不足或 AI 暂不可用时显示“命名待核对”，由负责人通过 `PATCH /v1/versions/{version_id}/name` 确认后再解析；该接口可填写 `official_project_code`。原文件及下载文件名不变。`POST /v1/naming/suggest` 仅预览建议，不分配项目编号。
-5. worker 按提交先后领取已完成命名的解析任务，默认最多同时处理 5 份文件；完成一份后补入下一份。`AGICO_KB_WORKER_CONCURRENCY` 可设为 1–5，数据库限制跨执行器的运行总数。页面区分“AI 命名中”“命名待核对”“等待解析”和“解析中---”。负责人在 `/v1/submissions` 查看草稿，通过 `/v1/versions/{version_id}/publish` 发布；待核对文件未确认名称时不能发布。可选 `category_id` 在发布事务中修正用途，无需重新上传；MCP `kb_publish` 使用同一参数。正文不完整时只有显式 `accept_incomplete=true` 才能发布，处理状态与警告仍如实显示。
-6. `/v1/documents` 只列有权访问的当前正式版本；`/v1/versions/{version_id}` 和其 `/content` 返回状态和原文件。历史版本必须显式 `history=true` 且具有所属事业部负责人权限。
+1. `POST /v1/uploads` submits filename, size, and optional SHA-256 with an OAuth bearer token (client) or login session plus CSRF token (web), and an `Idempotency-Key`.
+2. `PUT /v1/uploads/{upload_id}/content` streams the original file. Submission is allowed only after size and hash checks pass.
+3. `POST /v1/submissions` binds division, purpose, original filename, and other metadata. Web submissions set `naming_pending=true`; the default purpose is "other material." The original file remains independent of the parser process and can be downloaded by the draft author.
+4. After submission, the worker reads `src/agico_kb/ai_naming_rules.md` and uses AI to infer a project and standardized display name from the original filename, other names in the same batch, and accessible project records in the same division. Won projects keep their official project code. The database assigns a stable `OPP-year-sequence` code to an unwon project, and later files reuse it. Project records are stored in the `projects` table; the AI does not invent codes. Naming progress is stored in `versions.capabilities.naming_review`. When evidence is insufficient or the AI is unavailable, the file waits for name review. A manager confirms it with `PATCH /v1/versions/{version_id}/name` before parsing; this endpoint can set `official_project_code`. The original file and downloaded filename do not change. `POST /v1/naming/suggest` only previews a suggestion and does not allocate a project code.
+5. The worker claims parsing jobs in submission order after naming completes, processing up to five files concurrently by default and taking another job as one finishes. `AGICO_KB_WORKER_CONCURRENCY` can be set from 1 to 5; the database also limits total running jobs across executors. The portal distinguishes AI naming, name review, waiting to parse, and parsing in progress. Managers see drafts at `/v1/submissions` and publish through `/v1/versions/{version_id}/publish`. A file awaiting name review cannot be published until its name is confirmed. Optional `category_id` corrects the purpose in the publication transaction without re-uploading; MCP `kb_publish` accepts the same parameter. Incomplete body content requires explicit `accept_incomplete=true` to publish, while processing state and warnings remain visible.
+6. `/v1/documents` lists only current published versions the requester may access. `/v1/versions/{version_id}` and its `/content` endpoint return state and the original file. Historical versions require `history=true` and manager permission for the owning division.
 
-替换稿携带 `document_id`、`base_revision` 并沿用文件当前元数据。管理操作携带 `expected_revision`；发布还校验草稿实际 `base_revision`，修改请求里的期望号不能绕过旧稿冲突。冲突稿保留，需核对后作为新提交。
+Replacement drafts carry `document_id` and `base_revision` and inherit the current file metadata. Management operations supply `expected_revision`. Publication also checks the draft's actual `base_revision`; changing the expected revision in a request cannot bypass an old-draft conflict. Conflicting drafts are preserved for review and may be submitted again.
 
-撤下：`POST /v1/documents/{id}/withdraw`；恢复曾发布版本：`POST /v1/versions/{id}/restore`；撤回自己的草稿：`POST /v1/submissions/{id}/withdraw`；负责人共享：`PUT /v1/documents/{id}/grants`；审计：`GET /v1/documents/{id}/audit`。
+Withdraw: `POST /v1/documents/{id}/withdraw`; restore a previously published version: `POST /v1/versions/{id}/restore`; withdraw your own draft: `POST /v1/submissions/{id}/withdraw`; manager sharing: `PUT /v1/documents/{id}/grants`; audit: `GET /v1/documents/{id}/audit`.
 
-负责人通过 `GET /v1/documents?managed=true` 查找职责范围内全部文件（包括撤下资料），再用 `GET /v1/documents/{id}/versions` 选择历史版本恢复。普通员工不能通过这些管理接口看到撤下资料。
+Managers use `GET /v1/documents?managed=true` to find all files in their scope, including withdrawn items, then `GET /v1/documents/{id}/versions` to choose a historical version to restore. Ordinary employees cannot view withdrawn materials through these management endpoints.
 
-所有新请求重新认证。共享只授予读取，不复制文件；私有文档默认只有作者和所属负责人可读。新下载请求受当前授权与正式状态约束，已交付的副本不能追回。
+Every new request is authenticated again. Sharing grants read access without copying the file. Private documents are readable by their author and responsible manager by default. New download requests depend on current authorization and publication status; already delivered copies cannot be recalled.
 
-## 一致性与阶段限制
+## Consistency and current limits
 
-- 保存临时文件、校验、同盘改名后才登记完整状态；断传清理临时文件。进程在改名与数据库提交之间退出可能留下孤立文件；`python -m agico_kb.operations reconcile` 只读报告缺失、损坏、无引用原件和陈旧临时文件，不自动删除。
-- 文件提交、作业登记、发布切换、修订号及审计使用数据库事务；并发发布锁住同一文件记录，旧稿不能覆盖新稿。
-- 解析子进程有超时，后台失败有限重试；索引完成后原子切换代次，旧进程不能覆盖新结果。向量失败时仍可检索已解析文字。
-- 支持 DOCX／XLSX／PPTX、原生 PDF、扫描 PDF OCR 和文本资料；未覆盖的文本框、图形、公式缓存等如实提示。DWG／DXF 从原生文字和块属性建立带布局、图层和实体出处的图纸检索索引，保留图名图号、说明、明细的文字线索，不推算几何尺寸。PDF 在完整语义解析前逐页预检；扫描页复用本地 OCR 进行分类，明确的图纸页只建立原图关联索引，不调用全页尺寸视觉转写；正文、普通表格及分类不确定页继续完整解析。索引处理完成前不可审核通过。没有可提取原生文字的 CAD 会标为“仅保存原件”，审核后可作为文件库资料发布。图纸结果读取必须结合原图。DXF 由 `ezdxf` 读取；DWG 需在受保护运行配置中设置 `AGICO_KB_CAD_CONVERTER` 为本机 ODA File Converter 可执行文件绝对路径。转换只处理临时副本，失败时原文件仍可下载。旧二进制 Office／模型包仅保存原文件，可关联说明附件。
-- 文件库支持 `.blend`、`.glb`、`.step` 和 `.stp` 的静态 3D 缩略图：Blender 在独立后台进程中渲染，STEP 先用 Open Cascade 网格化；不改变原件或解析结果。Windows 会自动查找 Program Files 下的 Blender，也可设置 `AGICO_KB_BLENDER` 指向可执行文件。超过 64 MiB、渲染器缺失、模型无可见网格或超时的文件显示原文件卡片，仍可下载原件。
-- 内容候选先按权限过滤，融合关键词和精确向量排名；默认只返回短片段，再按需读取完整单元。长单元的向量可能受模型长度限制，原文与关键词仍保留并提示。
-- 查询向量共用一个模型，忙时按先后顺序短暂等待；总数有上限，等待和推理共用超时预算，防止无界积压。
-- 测试为真实 PostgreSQL 和 NTFS 文件操作，不证明 50／200 Agent 容量。
-- 备份通过短暂暂停写入保存数据库和已完成原件，读取继续；恢复拒绝已有数据库或目录，先校验哈希，再恢复权限、正式版本与待处理任务。只在隔离的新目标演练恢复。
-- Windows 安装脚本默认仅生成配置；正式安装需明确目标和专用账号。TLS、ACL、无人登录启动及独立灾备尚待目标服务器验证，当前不要把开发服务直接开放给企业多人使用。
+- A temporary file is written, checked, and renamed on the same volume before its complete state is registered. Interrupted transfers clean up temporary files. A process exit between renaming and database commit may leave an orphan; `python -m agico_kb.operations reconcile` reports missing, damaged, unreferenced, and stale temporary files without deleting them.
+- File submission, job registration, publication switching, revisions, and audit records use database transactions. Concurrent publication locks the same file record so an old draft cannot overwrite a newer one.
+- Parser subprocesses have timeouts and background failures have bounded retries. A completed index generation is switched atomically; an old process cannot overwrite newer results. If vector indexing fails, parsed text remains searchable.
+- DOCX, XLSX, PPTX, native PDFs, scanned PDFs with OCR, and text materials are supported. Uncovered text boxes, graphics, formula caches, and similar content are reported honestly. DWG/DXF drawings get a searchable index of native text and block attributes with layout, layer, and entity provenance. It preserves clues for drawing titles and numbers, notes, and schedules without inferring geometric dimensions. PDFs are screened page by page before full semantic parsing. Scanned pages reuse local OCR for classification; clearly identified drawing pages receive only an index linked to the original image, not full-page AI dimension transcription. Body text, ordinary tables, and uncertain pages continue through full parsing. Review approval is unavailable until indexing finishes. CAD files without extractable native text are marked as original-only storage and may be published as library files after review. Drawing answers must be checked against the original image. DXF is read with `ezdxf`; DWG needs `AGICO_KB_CAD_CONVERTER` set to the absolute path of the local ODA File Converter executable in protected runtime configuration. Conversion uses temporary copies only; the original remains downloadable if conversion fails. Legacy binary Office files and model packages are stored as originals and may have explanatory attachments.
+- The library supports static 3D thumbnails for `.blend`, `.glb`, `.step`, and `.stp`. Blender renders in a separate background process; STEP is meshed with Open Cascade first. Originals and parsing results are unchanged. Windows searches Program Files for Blender automatically, or `AGICO_KB_BLENDER` can point to its executable. Files above 64 MiB, missing renderers, models with no visible mesh, and timeouts show an original-file card instead; the original remains downloadable.
+- Candidates are permission-filtered before keyword and exact-vector ranking are combined. Short excerpts are returned by default; full units are read on demand. Long units may exceed the vector model's length limit, but source text and keywords remain available with a notice.
+- Query vectors share one model and wait briefly in arrival order when it is busy. Queue length is bounded; waiting and inference share one timeout budget to prevent unbounded backlogs.
+- Tests perform real PostgreSQL and NTFS operations but do not prove capacity for 50 or 200 concurrent agents.
+- Backup briefly pauses writes while saving the database and completed originals; reads continue. Restore refuses an occupied database or directory, verifies hashes first, and then restores permissions, published versions, and pending jobs. Restore is rehearsed only on an isolated new target.
+- The Windows installer creates configuration by default. Formal installation needs an explicit target and dedicated account. TLS, ACLs, unattended startup, and independent disaster recovery still require verification on the target server. Do not expose the development service directly to many company users.
 
-开发计划：[计划](docs/superpowers/plans/2026-09-15-enterprise-knowledge-store.md)。当前验证：[整体报告](docs/validation/final-review.md)、[REST／MCP 50 身份短测](docs/validation/load-50.md)、[进程重启与 32 MiB 文件](docs/validation/process-restarts.md)、[Codex](docs/validation/codex.md)、[运维与恢复](docs/validation/operations.md)、[接入契约](docs/validation/integration-contract.md)、[进度](docs/validation/progress.md)。
+Development [plan](docs/superpowers/plans/2026-09-15-enterprise-knowledge-store.md). Current validation: [overall review](docs/validation/final-review.md), [50-identity REST/MCP smoke test](docs/validation/load-50.md), [process restart and 32 MiB file](docs/validation/process-restarts.md), [Codex](docs/validation/codex.md), [operations and restore](docs/validation/operations.md), [integration contract](docs/validation/integration-contract.md), and [progress](docs/validation/progress.md).
 
-项目协作：[贡献者](CONTRIBUTORS.md)。
+Project collaboration: [contributors](CONTRIBUTORS.md).
