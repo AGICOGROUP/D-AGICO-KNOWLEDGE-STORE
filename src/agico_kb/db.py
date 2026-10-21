@@ -22,7 +22,8 @@ class Database:
             min_size=0,
             max_size=8,
             check=ConnectionPool.check_connection,
-            kwargs={"row_factory": dict_row, "options": f"-csearch_path={settings.schema},public"},
+            kwargs={"row_factory": dict_row, "options": f"-csearch_path={settings.schema},public",
+                    "connect_timeout": 5},
         )
         self._lock = Lock()
         self._opened = False
@@ -43,7 +44,12 @@ class Database:
                     raise KBError(
                         "MAINTENANCE", "备份期间暂缓写入，请稍后重试。", 503, retriable=True
                     )
-            yield conn
+            from .accounts import _identity_service
+            marker = _identity_service.set(getattr(self, 'dingtalk', None))
+            try:
+                yield conn
+            finally:
+                _identity_service.reset(marker)
 
     def close(self):
         self.pool.close()
@@ -77,6 +83,22 @@ class Database:
                     .read_text(encoding="utf-8-sig")
                 )
                 conn.execute("INSERT INTO schema_migrations VALUES (3)")
+            if not conn.execute("SELECT 1 FROM schema_migrations WHERE version=4").fetchone():
+                conn.execute(
+                    files("agico_kb")
+                    .joinpath("migrations/004_project_registry.sql")
+                    .read_text(encoding="utf-8")
+                )
+                conn.execute("INSERT INTO schema_migrations VALUES (4)")
+            if not conn.execute("SELECT 1 FROM schema_migrations WHERE version=5").fetchone():
+                conn.execute(files("agico_kb").joinpath("migrations/005_accounts.sql").read_text(encoding="utf-8"))
+                conn.execute("INSERT INTO schema_migrations VALUES (5)")
+            if not conn.execute("SELECT 1 FROM schema_migrations WHERE version=6").fetchone():
+                conn.execute(files("agico_kb").joinpath("migrations/006_feedback.sql").read_text(encoding="utf-8"))
+                conn.execute("INSERT INTO schema_migrations VALUES (6)")
+            if not conn.execute("SELECT 1 FROM schema_migrations WHERE version=7").fetchone():
+                conn.execute(files("agico_kb").joinpath("migrations/007_dingtalk.sql").read_text(encoding="utf-8"))
+                conn.execute("INSERT INTO schema_migrations VALUES (7)")
             data = json.loads(
                 files("agico_kb").joinpath("taxonomy.json").read_text(encoding="utf-8")
             )

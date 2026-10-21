@@ -78,6 +78,48 @@ function Test-ModelCacheLink($Item, [string]$Root) {
     return (Test-Path -LiteralPath $Target -PathType Leaf)
 }
 
+function Update-ProtectedRuntimeConfigs([string]$Master, [hashtable]$Sids, [string]$PythonExe = (Join-Path $AppRoot '.runtime/venv/Scripts/python.exe')) {
+    Assert-NoReparseParents $Master
+    # Protect the operator's master file explicitly: inherited ACLs fail the loader.
+    Set-ProtectedAccess $Master @{} -Secret
+    . (Join-Path $PWD 'deploy/windows/config-loader.ps1')
+    Import-ProtectedKbConfig $Master ([Security.Principal.WindowsIdentity]::GetCurrent().Name)
+    & $PythonExe -X utf8 -m agico_kb.api_keys --migrate --runtime $Master
+    if ($LASTEXITCODE -ne 0) { throw 'Could not prepare API key storage.' }
+    Import-ProtectedKbConfig $Master ([Security.Principal.WindowsIdentity]::GetCurrent().Name)
+    $Content = [IO.File]::ReadAllText($Master)
+    $Config = $Content | ConvertFrom-Json
+    $KeyDirectory = Join-Path (Split-Path $Master -Parent) 'api-keys'
+    if ([IO.Path]::GetFullPath([string]$Config.AGICO_KB_API_KEYS_DIR) -ne $KeyDirectory) { throw 'API key storage must use the protected server config directory.' }
+    Assert-NoReparseParents $KeyDirectory
+    Set-ProtectedAccess $KeyDirectory @{ $Sids.api = 'Modify'; $Sids.worker = 'ReadAndExecute' } -Children -Secret
+    $EncryptionMaterial = Join-Path (Split-Path $Master -Parent) '.api-key-encryption.key'
+    Assert-NoReparseParents $EncryptionMaterial
+    Set-ProtectedAccess $EncryptionMaterial @{ $Sids.api = 'Read'; $Sids.worker = 'Read' } -Secret
+    $SecretPaths = @()
+    foreach ($Key in @('AGICO_KB_VISION_CONFIG_FILE','AGICO_KB_VISION_FALLBACK_CONFIG_FILE','AGICO_KB_DINGTALK_CONFIG_FILE')) {
+        $Property = $Config.PSObject.Properties[$Key]
+        if ($Property -and $Property.Value) {
+            $Path = [IO.Path]::GetFullPath([string]$Property.Value)
+            $ExpectedParent = if ($Key -eq 'AGICO_KB_DINGTALK_CONFIG_FILE') { Split-Path $Master -Parent } else { $KeyDirectory }
+            if ((Split-Path $Path -Parent) -ne $ExpectedParent -or (Split-Path $Path -Leaf) -in @('runtime.json','maintenance.json','api.json','worker.json','deployment.json','accounts-setup.json')) { throw 'Credentials must use their protected server configuration directory.' }
+            Assert-NoReparseParents $Path
+            if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw 'Configured vision credentials are missing.' }
+            $SecretPaths += $Path
+        }
+    }
+    foreach ($Path in $SecretPaths) { Set-ProtectedAccess $Path @{ $Sids.api = 'Read'; $Sids.worker = 'Read' } -Secret }
+    foreach ($File in Get-ChildItem -LiteralPath $KeyDirectory -File) { Set-ProtectedAccess $File.FullName @{ $Sids.api = 'Modify'; $Sids.worker = 'Read' } -Secret }
+    foreach ($Role in @('api','worker')) {
+        $ConfigFile = Join-Path (Split-Path $Master -Parent) "$Role.json"
+        Assert-NoReparseParents $ConfigFile
+        if (-not (Test-Path -LiteralPath $ConfigFile)) { $null = New-Item -ItemType File -Path $ConfigFile }
+        Set-ProtectedAccess $ConfigFile @{ $Sids[$Role] = 'Read' } -Secret
+        # Replace stale service snapshots, retaining the administrator-only master.
+        [IO.File]::WriteAllText($ConfigFile, $Content, (New-Object Text.UTF8Encoding($false)))
+    }
+}
+
 function Set-ProtectedTree([string]$Path, [hashtable]$Grants, [string]$ManagedPythonVersion = '', [switch]$AllowModelCacheLinks) {
     # uv creates one minor-version alias beside the pinned interpreter. Only that
     # exact local alias is allowed; never recurse through it or accept arbitrary links.
@@ -249,6 +291,11 @@ if ($Action -eq 'Uninstall') {
 }
 if ($Action -eq 'Start') { Start-OwnedServices; return }
 
+foreach ($Role in @('api','worker')) {
+    $Service = Get-OwnedService $Names[$Role]
+    if ($Service -and $Service.State -ne 'Stopped') { throw 'Stop application services before refreshing deployment configuration.' }
+}
+
 $Junction = Get-Item -LiteralPath (Join-Path $AppRoot '.runtime/data') -Force
 if (-not ($Junction.Attributes -band [IO.FileAttributes]::ReparsePoint) -or (Get-CanonicalRoot ([string]@($Junction.Target)[0])) -ne $DataRoot) { throw 'Managed data junction does not match deployment.' }
 foreach ($Relative in @('.runtime/winsw.exe','.runtime/venv/Scripts/python.exe','.runtime/postgres/Library/bin/postgres.exe','deploy/windows/launch-server.ps1')) {
@@ -297,6 +344,13 @@ foreach ($Relative in @('config','services','logs','temp')) {
     $null = New-Item -ItemType Directory -Path $Path -Force
     Set-ProtectedAccess $Path $TraverseGrants
 }
+foreach ($SecretFile in @('runtime.json','maintenance.json')) {
+    $Path = Join-Path $DataRoot "config/$SecretFile"
+    if (Test-Path -LiteralPath $Path) { Set-ProtectedAccess $Path @{} -Secret }
+}
+Push-Location -LiteralPath $AppRoot
+try { Update-ProtectedRuntimeConfigs (Join-Path $DataRoot 'config/runtime.json') $Sids }
+finally { Pop-Location }
 Set-ProtectedTree (Join-Path $DataRoot 'models') @{ $Sids.api = 'ReadAndExecute'; $Sids.worker = 'ReadAndExecute' } -AllowModelCacheLinks
 Set-ProtectedTree (Join-Path $DataRoot 'originals') @{ $Sids.api = 'Modify'; $Sids.worker = 'Modify' }
 Set-ProtectedTree (Join-Path $DataRoot 'postgres') @{ $Sids.database = 'Modify' }
@@ -307,14 +361,6 @@ foreach ($Role in @('database','api','worker')) {
         $Path = Join-Path $DataRoot $Relative
         $null = New-Item -ItemType Directory -Path $Path -Force
         Set-ProtectedTree $Path @{ $Sids[$Role] = 'Modify' }
-    }
-    if ($Role -ne 'database') {
-        $ConfigFile = Join-Path $DataRoot "config/$Role.json"
-        if (-not (Test-Path -LiteralPath $ConfigFile)) {
-            $null = New-Item -ItemType File -Path $ConfigFile
-            Set-ProtectedAccess $ConfigFile @{ $Sids[$Role] = 'Read' } -Secret
-            [IO.File]::WriteAllText($ConfigFile, ($Runtime | ConvertTo-Json), (New-Object Text.UTF8Encoding($false)))
-        } else { Set-ProtectedAccess $ConfigFile @{ $Sids[$Role] = 'Read' } -Secret }
     }
     $Wrapper = Join-Path $DataRoot "services/$Name.exe"
     $XmlPath = Join-Path $DataRoot "services/$Name.xml"

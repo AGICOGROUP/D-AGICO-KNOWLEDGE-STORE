@@ -13,8 +13,16 @@ from .failures import log_failure
 
 
 def fingerprint(body):
+    data = body.model_dump(mode="json")
+    # Older in-flight submissions were hashed before naming metadata existed.
+    # Omitting the new default fields preserves their retry/idempotency hash.
+    if not data.get("naming_review_required"):
+        data.pop("naming_review_required", None)
+        data.pop("naming_reason", None)
+    if not data.get("naming_pending"):
+        data.pop("naming_pending", None)
     return hashlib.sha256(
-        json.dumps(body.model_dump(mode="json"), sort_keys=True).encode()
+        json.dumps(data, sort_keys=True).encode()
     ).hexdigest()
 
 
@@ -33,7 +41,8 @@ def duplicate_version(conn, checksum, exclude_upload_id=None):
     if not checksum:
         return None
     sql = """SELECT v.id AS version_id,v.state,d.id AS document_id,d.title,d.organization_id,
-        v.created_by,u.filename FROM versions v JOIN documents d ON d.id=v.document_id
+        d.visibility,d.created_by AS document_owner,d.active_version_id,
+        v.created_by AS version_owner,u.filename FROM versions v JOIN documents d ON d.id=v.document_id
         JOIN uploads u ON u.id=v.upload_id WHERE u.sha256=%s AND v.state <> 'withdrawn'"""
     params = [checksum]
     if exclude_upload_id is not None:
@@ -43,22 +52,32 @@ def duplicate_version(conn, checksum, exclude_upload_id=None):
     return conn.execute(sql, tuple(params)).fetchone()
 
 
-def duplicate_result(row, checksum):
+def duplicate_result(conn, principal, row, checksum):
     """Same bytes are already in the knowledge base: skip instead of storing a second copy."""
-    return {
+    result = {
         "status": "duplicate",
         "skipped": True,
         "message": "该文件与库中已有资料完全相同（SHA-256 一致），已自动跳过。",
         "sha256": checksum,
-        "duplicate_of": {
+    }
+    doc = {
+        "id": row["document_id"], "organization_id": row["organization_id"],
+        "visibility": row["visibility"], "created_by": row["document_owner"],
+    }
+    allowed = principal.publisher(row["organization_id"]) or row["version_owner"] == principal.id
+    if row["state"] == "published" and row["active_version_id"] == row["version_id"]:
+        allowed = allowed or can_read_document(conn, principal, doc)
+    allowed = allowed and principal.can_access_department(row['organization_id'])
+    if allowed:
+        result["duplicate_of"] = {
             "version_id": row["version_id"],
             "document_id": row["document_id"],
             "title": row["title"],
             "organization_id": row["organization_id"],
             "filename": row["filename"],
             "state": row["state"],
-        },
-    }
+        }
+    return result
 
 
 def prepare(db, settings, principal, body, key):
@@ -69,7 +88,7 @@ def prepare(db, settings, principal, body, key):
         # Declared hash lets a known duplicate be skipped before any bytes are transferred.
         existing = duplicate_version(conn, body.sha256)
         if existing:
-            return duplicate_result(existing, body.sha256), 200
+            return duplicate_result(conn, principal, existing, body.sha256), 200
         conn.execute(
             """INSERT INTO uploads(id,owner_id,filename,expected_size,expected_sha256,idempotency_key,request_hash)
             VALUES (%s,%s,%s,%s,%s,%s,%s) ON CONFLICT(owner_id,idempotency_key) DO NOTHING""",
@@ -188,13 +207,21 @@ def submit(db, principal, body):
             ).fetchone()
             result = version_result(get_version(conn, principal, row["id"]))
             return submission_response(result, 200)
+        # Two different uploads of the same bytes may submit at once. Serialize their
+        # duplicate lookup and version creation, so only the first creates a parse job.
+        conn.execute(
+            "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+            (upload["sha256"],),
+        )
         # Authoritative duplicate check: the hash is always computed by the server while receiving
         # the bytes, so identical content is skipped even when the client never declared a hash.
         existing = duplicate_version(conn, upload["sha256"], exclude_upload_id=body.upload_id)
         if existing:
-            return duplicate_result(existing, upload["sha256"]), 200
+            return duplicate_result(conn, principal, existing, upload["sha256"]), 200
         if body.organization_id not in principal.memberships:
             not_found()
+        if body.naming_pending and body.document_id:
+            raise KBError("INVALID_ARGUMENT", "替换稿请沿用现有资料名称。", 422)
         if not conn.execute("SELECT 1 FROM categories WHERE id=%s", (body.category_id,)).fetchone():
             raise KBError("INVALID_ARGUMENT", "用途分类不存在。", 422)
         if body.document_id:
@@ -232,12 +259,12 @@ def submit(db, principal, body):
                     document_id,
                     body.organization_id,
                     body.category_id,
-                    body.title,
+                    upload["filename"] if body.naming_pending else body.title,
                     principal.id,
                     body.visibility,
                     body.product,
                     body.model,
-                    body.project,
+                    None if body.naming_pending else body.project,
                     body.business_date,
                 ),
             )
@@ -253,6 +280,18 @@ def submit(db, principal, body):
                 body.base_revision,
             ),
         )
+        if body.naming_pending:
+            conn.execute(
+                "UPDATE versions SET capabilities=jsonb_set(capabilities,'{naming_review}',%s,true) WHERE id=%s",
+                (Jsonb({"state": "pending", "needs_review": True, "reason": "AI 正在分析文件名"}), version_id),
+            )
+        elif body.naming_review_required:
+            conn.execute(
+                "UPDATE versions SET capabilities=jsonb_set(capabilities,'{naming_review}',%s,true) WHERE id=%s",
+                (Jsonb({"needs_review": True, "reason": body.naming_reason or "名称需要人工核对"}), version_id),
+            )
+        # Keep upload and parsing separate: submission is fast, but review waits
+        # until the worker has assessed the drawing's native text.
         conn.execute("INSERT INTO jobs(id,version_id) VALUES (%s,%s)", (uuid4(), version_id))
         conn.execute(
             "UPDATE uploads SET state='submitted',submit_hash=%s WHERE id=%s",

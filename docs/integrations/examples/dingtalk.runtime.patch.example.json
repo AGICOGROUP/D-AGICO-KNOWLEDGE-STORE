@@ -1,0 +1,5 @@
+{
+  "AGICO_KB_DINGTALK_CONFIG_FILE": "D:\\ExampleAppData\\config\\dingtalk.json",
+  "AGICO_KB_PUBLIC_URL": "https://app.example.com",
+  "AGICO_KB_ALLOWED_HOSTS": "app.example.com"
+}

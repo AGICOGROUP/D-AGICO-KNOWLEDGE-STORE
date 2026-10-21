@@ -9,6 +9,7 @@ from psycopg.errors import UniqueViolation
 from pydantic import Field
 
 from .auth import token_hash
+from .catalog import ordered_organizations
 from .contracts import Contract
 from .errors import KBError
 
@@ -38,9 +39,9 @@ def router(db):
             require_admin(conn, request.state.principal)
             return {
                 "identity": request.state.principal.id,
-                "organizations": conn.execute(
+                "organizations": ordered_organizations(conn.execute(
                     "SELECT id,name FROM organizations ORDER BY name"
-                ).fetchall(),
+                ).fetchall()),
             }
 
     @routes.get("/access")
@@ -62,6 +63,8 @@ def router(db):
                 ORDER BY a.created_at DESC,a.id DESC LIMIT %s OFFSET %s""",
                 (limit + 1, offset),
             ).fetchall()
+            for row in rows:
+                row["organizations"] = ordered_organizations(row["organizations"] or [])
             return {"items": rows[:limit], "has_more": len(rows) > limit}
 
     @routes.post("/access", status_code=201)

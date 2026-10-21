@@ -1,6 +1,6 @@
 # Windows Server Installation
 
-The code directory and the knowledge base data directory are separate. For first-time installation, you only need to specify `DataRoot`; the script automatically installs pinned versions of Python, PostgreSQL/pgvector, application dependencies, and local models, initializes the database and access credentials, and registers three Windows services that start automatically.
+The code directory and the knowledge base data directory are separate. For first-time installation, specify `DataRoot`; the script installs pinned Python, PostgreSQL/pgvector, application dependencies and local models, prepares the database and protected runtime configuration, and registers three auto-start Windows services. Git synchronizes project files only, not credentials, accounts, uploaded originals, parsing results or operational backups.
 
 ## First-Time Installation
 
@@ -29,17 +29,17 @@ By default, the API is at `http://127.0.0.1:8765`, MCP at `http://127.0.0.1:8765
 | Data directory `config` | Installation ownership, protected credentials, and service configuration |
 | Data directory `logs`, `temp`, `services` | Runtime logs, temporary files, and service wrappers |
 
-After installation completes, the administrator reads the initial administrator's MCP address, token, and expiration time from `config/initial-access.json`. The token is valid for 30 days and carries initial administrator privileges. Open "Admin · Access Code Management" at the bottom of the web page; after logging in with this token for the first time, you can issue regular access codes for employees or teams. The administrator code must not be used as a company-wide shared account. Do not paste configuration contents into logs, chats, or Git.
+For a completely new instance, `config/accounts-setup.json` describes account initialization. Load protected runtime configuration and run `python -m agico_kb.accounts bootstrap --email administrator@example.com`; the initial password is entered interactively, never on the command line. The tool refuses to initialize when accounts already exist. The developer account must change its initial password after signing in. In email mode, authorized administrators register each user's email, role and divisions before issuing a single-use invitation. Managers cannot invite developers; ordinary users cannot invite others. See [account and invitation design](design/account-login-and-invitations.md).
 
-Visiting `/health/ready` in a browser checks readiness status; if opening `/mcp` directly returns `UNAUTHENTICATED`, it means credentials were not provided, not that installation failed. MCP clients need a Bearer token configured and must make calls using the MCP protocol.
+Visit `/health/ready` to check readiness. An unauthenticated `/mcp` request returning 401 with OAuth discovery information is expected. MCP clients configure the service URL and use account OAuth authorization; the human signs in and approves in the browser. Do not send employee passwords to an AI assistant or copy static Authorization headers into client configuration. Codex supports `codex mcp login agico-kb`.
 
-By default, the API only allows local access. To let other computers, existing web pages, or DingTalk adapter services connect, you must separately configure a trusted domain, an HTTPS reverse proxy and firewall, and caller identity. Merely selecting a folder cannot infer this network and identity information; the knowledge base itself does not build a duplicate employee chat entry point.
+The API defaults to local access. Configure a trusted domain, HTTPS reverse proxy, firewall rules, `AGICO_KB_PUBLIC_URL` and `AGICO_KB_ALLOWED_HOSTS` before external access. Temporary tunnel addresses are not permanent production invitation URLs.
 
-## Upgrading Access Code Management for Existing Installations (One-Time Operations Task)
+## Existing Accounts, Upgrades and Server Migration
 
-Back up first, stop the API and worker, then update the program and dependencies. Using the Python environment that runs this installation, load the protected configuration and then run `python -m agico_kb.admin migrate` (this round adds migration 003). Then explicitly designate a dedicated administrative identity, for example `python -m agico_kb.admin set-admin bootstrap-admin true`; that identity must already exist and must not have shared its token with employees. If no suitable identity exists, create a dedicated one via `set-identity`, then run `set-admin` and `issue-token`.
+Back up the current database and originals, stop API/worker, update code and dependencies, load the protected configuration and run `python -m agico_kb.admin migrate` using the maintenance identity. Migration 005 adds accounts, invitations, sessions and OAuth; migration 007 adds DingTalk bindings and challenges. Migrations must not rewrite original documents, parsing content, existing account identities or business audit.
 
-All existing identities from old installations and old backups default to having no new administrator privileges; the upgrade does not automatically promote publishers, nor does it re-enable administrators who were previously demoted. Only a brand-new first-time installation automatically authorizes bootstrap-admin. After an administrative identity's token expires, local operations staff must still issue a new administrator token (`issue-token`) to restore web administration; the web page can only issue regular member access codes. To revoke administrator privileges, use `set-admin <identity> false`.
+Accounts already registered in an operational instance are persistent production data. Source deployment does not migrate them. Transfer a fresh complete database and original-file backup through a protected channel; never initialize a replacement administrator or restore a test library over operational accounts. Preserve passwords, identity bindings, roles, division memberships, invitations, disabled state and account audit. Restore into a new database and an unoccupied original-storage target; do not clear existing business directories. Keep the target installation's database login, point its protected runtime configuration to the restored database/schema, grant its non-superuser runtime role access to newly added tables, and synchronize service configuration with Stop then Install. Existing users must pass login and permission checks before cutover. Users sign in again and AI clients reauthorize at the new public address; that does not require changing their existing account passwords.
 
 Example of loading the configuration (using a protected configuration file accessible to the current operator):
 
@@ -50,9 +50,35 @@ Import-ProtectedKbConfig -ConfigFile "<local-data-root>\config\runtime.json" -Ac
 $PythonExe = Join-Path $PWD.Path ".runtime\venv\Scripts\python.exe"
 if (-not (Test-Path -LiteralPath $PythonExe)) { throw "Please verify the current directory and the Python runtime path." }
 & $PythonExe -m agico_kb.admin migrate
-& $PythonExe -m agico_kb.admin set-admin bootstrap-admin true
+# Only for a completely new instance with no accounts; never repeat after restore.
+& $PythonExe -m agico_kb.accounts bootstrap --email administrator@example.com
 ```
-Proceed to the next step only after each step succeeds, and start the services at the end. Both existing backups in the 001/002 format and new backups containing 003 can be restored; when restoring an older backup, the missing database structure is filled in automatically, while administrator authorization still needs to be specified explicitly.
+Proceed only after each step succeeds, and start services at the end. The bootstrap command above is exclusively for a new empty account system, not a routine upgrade. Runtime database credentials are separate from application account and approval roles. Follow the [operations and recovery process](validation/operations.md).
+
+## API Model Configuration
+
+Only developers can manage the API configuration page. Each route keeps one current key, encrypted with Fernet authenticated encryption; the browser receives only its first three and last four characters. Replacing a key opens an empty password field and overwrites the old value without keeping a history. Connection testing uses saved server-side configuration without returning the full key.
+
+- Primary: `bigmodel.cn`, models `glm-5.3-flashx` and `glm-5.3-flash`.
+- Fallback: `cephalon.cloud`, those two GLMs plus `deepseek-v4.1-flash-1017` and `deepseek-v4.1-flash`. All four fallback candidates are allowed in image and text tasks; availability does not establish recognition accuracy.
+- Low, medium and high reasoning levels map to native `low`, `high` and `max`, with thinking enabled.
+- Try primary candidates in preference order. Only after they are unavailable, use fallback for a fixed 1,800 seconds from the route switch. Do not return early when an individual primary model's cooldown expires. Retry the primary preference after the interval; another complete primary failure begins another half-hour fallback period. Later fallback failures do not extend the current route interval. State is shared across API and workers and survives restarts. If all candidates are unavailable, preserve progress and wait without rewriting the preferred models.
+
+Profiles live outside source and original storage at `DataRoot\config\api-keys\primary.txt` and `fallback.txt`. Separate encryption material is generated at `config\.api-key-encryption.key`, with service and maintenance ACLs. Missing material fails closed; existing encrypted stores do not silently receive a replacement. No additional user-maintained encryption password is required. Subsequent requests read new keys without restarting, while an in-flight request may retain its previously read value.
+
+For migration, re-enter keys on the target page or securely transfer encrypted profiles together with their encryption material. Anyone possessing both can decrypt them. Source synchronization and newly generated deployment packages omit API and DingTalk secrets; historical private packages remain sensitive. Git ignore rules do not protect folders uploaded through ordinary cloud-drive synchronization.
+
+## Optional Preview Dependencies
+
+The base installer does not install LibreOffice, ODA File Converter, FFmpeg or Blender. Office full-document previews and legacy conversions use LibreOffice, DWG extraction and previews use ODA, video thumbnails use FFmpeg, and some 3D thumbnails use Blender. Set absolute executable paths in `AGICO_KB_OFFICE_CONVERTER`, `AGICO_KB_CAD_CONVERTER` and `AGICO_KB_BLENDER`, expose FFmpeg through the service PATH, and give API/worker identities the necessary read/execute access.
+
+## DingTalk Identity
+
+See the [H5 integration guide](integrations/dingtalk-h5-integration.md) and [identity design](design/dingtalk-identity.md). Without `AGICO_KB_DINGTALK_CONFIG_FILE`, existing email mode remains enabled. Use an independent database and storage directory for initial acceptance. Protect the application credentials on the server, explicitly map verified department IDs to divisions, and list only existing active developer principal IDs in `maintenance_principals`. Do not infer approval or developer roles from a DingTalk job title.
+
+Before enabling this mode on an operational instance, back up its current accounts and originals, stop API/worker and apply migration 007 with the maintenance identity. Put `dingtalk.json` beside protected `runtime.json`, configure its absolute path and synchronize services with Stop then Install. Configure client-reachable PC/mobile home URLs, actual allowed domains and a restricted pilot audience before publishing the enterprise application. Validate real client login, division visibility and approval boundaries, disablement and MCP authorization independently. A health check or mocked API result does not prove client login, and the H5 flow does not implement external-browser QR login.
+
+At production cutover preserve CorpId/userId bindings and migrate the latest operational database and protected configuration. Update public URL, allowed hosts, DingTalk home URLs and actual domain settings; do not replace operational accounts with a pilot database or rerun bootstrap.
 
 ## Service Management
 
@@ -64,6 +90,8 @@ The default service names are `AgicoKbDatabase`, `AgicoKbApi`, and `AgicoKbWorke
 ```
 
 For installation errors, see `logs/setup.log` and `logs/setup-errors.log` in the data directory; service logs are located in `logs/database`, `logs/api`, and `logs/worker`. Logs should also be treated as internal operations material. `-Action Uninstall` stops and removes the service registrations for this installation while keeping data and credentials; use `-Action Install` to re-register.
+
+After editing protected runtime configuration, use Stop then Install to synchronize API/worker configuration and ACLs. Start alone does not synchronize revised configuration. Installation refuses to refresh configuration while API/worker are running.
 
 ## Updates and Backups
 

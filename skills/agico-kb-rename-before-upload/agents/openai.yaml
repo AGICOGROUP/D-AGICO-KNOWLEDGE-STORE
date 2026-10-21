@@ -1,0 +1,4 @@
+interface:
+  display_name: "AGICO 知识库上传前改名"
+  short_description: "核对文件名和内容，生成符合公司规则的上传副本"
+  default_prompt: "Use $agico-kb-rename-before-upload to check these files and prepare correctly named copies for the AGICO knowledge base."

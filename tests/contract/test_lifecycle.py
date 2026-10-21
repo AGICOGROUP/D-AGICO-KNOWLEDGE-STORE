@@ -39,6 +39,39 @@ def test_failure_reason_and_warnings_reach_the_pending_list(kb):
     assert row["warnings"] == ["OCR 识别文字未经人工核对。"]
 
 
+def test_finished_submissions_move_to_top_before_pagination(kb):
+    client, db, _ = kb
+    states = [("queued", "queued"), ("ready", "complete"),
+              ("processing", "running"), ("partial", "complete"),
+              ("stored_only", "complete"), ("ready", "queued")]
+    versions = []
+    for index, (status, job_state) in enumerate(states):
+        response, _, _ = submit(client, title=f"Fresh sorting fixture {index}")
+        assert response.status_code == 201
+        version = response.json()["version_id"]
+        versions.append(version)
+        with db.connection(write=True) as conn:
+            conn.execute(
+                "UPDATE versions SET processing_status=%s,created_at="
+                "'2026-01-01'::timestamptz + %s * interval '1 minute' WHERE id=%s",
+                (status, index, version),
+            )
+            conn.execute("UPDATE jobs SET state=%s WHERE version_id=%s", (job_state, version))
+
+    def page(offset=0):
+        response = client.get(f"/v1/submissions?limit=2&offset={offset}", headers=headers("chief"))
+        assert response.status_code == 200
+        return [item["version_id"] for item in response.json()["items"]]
+
+    assert page() == [versions[1], versions[3]]
+    assert page(2) == [versions[4], versions[0]]
+    assert page(4) == [versions[2], versions[5]]
+    with db.connection(write=True) as conn:
+        conn.execute("UPDATE versions SET processing_status='ready' WHERE id=%s", (versions[0],))
+        conn.execute("UPDATE jobs SET state='complete' WHERE version_id=%s", (versions[0],))
+    assert page() == [versions[0], versions[1]]
+
+
 def test_interrupted_upload_is_recorded_in_the_failure_log(kb):
     """A transfer cut mid-flight leaves no API error the user can act on, so it must be logged."""
     from agico_kb.failures import failure_log_path, log_failure
@@ -235,6 +268,45 @@ def test_unit_approver_rejects_another_authors_draft(kb):
             (own_version,),
         ).fetchone()
         assert action["action"] == "withdraw_submission"
+
+
+def test_admin_renames_published_display_name_without_changing_original(kb):
+    client, db, _ = kb
+    created, _, content = submit(client, title="公司资料.md")
+    assert created.status_code == 201, created.text
+    document = created.json()["document_id"]
+    version = created.json()["version_id"]
+    assert publish(client, version, 0).status_code == 200
+    path = f"/v1/documents/{document}/title"
+    change = {"current_title": "公司资料.md", "title": "设备技术资料.md", "expected_revision": 1}
+
+    # Publishing rights alone do not grant the administrator's rename action.
+    assert client.patch(path, headers=headers("chief"), json=change).status_code == 404
+    with db.connection(write=True) as conn:
+        conn.execute("UPDATE principals SET is_admin=true WHERE id='chief'")
+    assert client.patch(path, headers=headers("chief"), json={**change, "expected_revision": 0}).status_code == 409
+    for bad in ("设备技术资料.pdf", "../设备技术资料.md", "设备*资料.md"):
+        assert client.patch(path, headers=headers("chief"), json={**change, "title": bad}).status_code == 422
+
+    renamed = client.patch(path, headers=headers("chief"), json=change)
+    assert renamed.status_code == 200, renamed.text
+    assert renamed.json()["revision"] == 2
+    assert client.patch(path, headers=headers("chief"), json=change).status_code == 409
+    listed = client.get("/v1/documents", headers=headers("chief")).json()["items"]
+    assert listed[0]["title"] == "设备技术资料.md"
+    result = client.post("/v1/search", headers=headers("chief"),
+                         json={"query": "设备技术资料", "mode": "files"}).json()["items"]
+    assert result[0]["title"] == "设备技术资料.md"
+    file_response = client.get(f"/v1/versions/{version}/content", headers=headers("chief"))
+    assert file_response.status_code == 200 and file_response.content == content
+    with db.connection() as conn:
+        event = conn.execute(
+            "SELECT action,details FROM audit_events WHERE document_id=%s AND action='rename_published'",
+            (document,),
+        ).fetchone()
+        assert event["details"]["previous_title"] == "公司资料.md"
+        assert event["details"]["title"] == "设备技术资料.md"
+        assert conn.execute("SELECT filename FROM uploads LIMIT 1").fetchone()["filename"] == "公司资料.md"
 
 
 def test_delete_document_permission_quarantine_and_audit(kb):

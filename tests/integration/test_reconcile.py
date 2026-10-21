@@ -2,6 +2,7 @@ import hashlib
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
+from pathlib import Path
 from threading import Event
 from types import SimpleNamespace
 from uuid import uuid4
@@ -10,6 +11,27 @@ import pytest
 from conftest import headers, submit
 
 from agico_kb import operations
+
+
+def test_deleted_file_receipt_does_not_block_backup_or_hide_live_original(kb):
+    client, db, root = kb
+    deleted, _, _ = submit(client)
+    kept, _, _ = submit(client)
+    response = client.request("DELETE", f"/v1/documents/{deleted.json()['document_id']}",
+                              headers=headers("chief"), json={"expected_revision": 0})
+    assert response.status_code == 200
+    report = operations.reconcile(db.settings)
+    assert report["missing"] == []
+    assert report["checked_references"] == 1
+    archive = root.parent / ("delete_backup_" + uuid4().hex)
+    manifest = operations.backup(db.settings, archive, Path("./.local/postgres/Library/bin"))
+    assert len(manifest["blobs"]) == 1
+    with db.connection() as conn:
+        kept_blob = conn.execute("SELECT u.blob_key FROM versions v JOIN uploads u ON u.id=v.upload_id WHERE v.id=%s",
+                                 (kept.json()["version_id"],)).fetchone()["blob_key"]
+        assert conn.execute("SELECT count(*) AS n FROM audit_events WHERE action='delete_document'").fetchone()["n"] == 1
+    (root / kept_blob).unlink()  # Fault injection only in the fresh test directory.
+    assert operations.reconcile(db.settings)["missing"] == [kept_blob]
 
 
 @pytest.mark.parametrize(

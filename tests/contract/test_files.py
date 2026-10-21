@@ -67,6 +67,9 @@ def test_identical_content_is_skipped_as_duplicate(kb):
     assert early.json()["skipped"] is True
     assert early.json()["duplicate_of"]["title"] == "重复资料"
     assert "upload_id" not in early.json()
+    with db.connection() as conn:
+        assert conn.execute("SELECT count(*) AS n FROM uploads").fetchone()["n"] == 1
+        assert conn.execute("SELECT count(*) AS n FROM jobs").fetchone()["n"] == 1
 
     # A client that declares no hash is still caught by the server-computed hash.
     silent = prepare(declared=False)
@@ -85,11 +88,42 @@ def test_identical_content_is_skipped_as_duplicate(kb):
     assert skipped.json()["skipped"] is True
     with db.connection() as conn:
         assert conn.execute("SELECT count(*) AS n FROM versions").fetchone()["n"] == 1
+        assert conn.execute("SELECT count(*) AS n FROM jobs").fetchone()["n"] == 1
 
     # A withdrawn file is no longer considered a duplicate, so it can be uploaded again.
     assert client.post(f"/v1/submissions/{version}/withdraw", headers=headers()).status_code == 200
     again = prepare()
     assert again.status_code == 201, again.text
+
+
+def test_duplicate_does_not_disclose_private_document_metadata(kb):
+    client, db, _ = kb
+    content = b"private same bytes " + uuid4().hex.encode()
+    digest = hashlib.sha256(content).hexdigest()
+    prepared = client.post(
+        "/v1/uploads", headers=headers("alice", uuid4().hex),
+        json={"filename": "private.txt", "size": len(content), "sha256": digest},
+    )
+    uid = prepared.json()["upload_id"]
+    assert client.put(
+        f"/v1/uploads/{uid}/content", headers=headers("alice"), content=content
+    ).status_code == 200
+    result = client.post(
+        "/v1/submissions", headers=headers("alice"),
+        json={"upload_id": uid, "organization_id": "baiste", "title": "机密报价", "visibility": "private"},
+    )
+    assert result.status_code == 201
+
+    duplicate = client.post(
+        "/v1/uploads", headers=headers("bob", uuid4().hex),
+        json={"filename": "unknown.txt", "size": len(content), "sha256": digest},
+    )
+    assert duplicate.status_code == 200
+    assert duplicate.json()["skipped"] is True
+    assert "duplicate_of" not in duplicate.json()
+    assert "机密报价" not in duplicate.text
+    with db.connection() as conn:
+        assert conn.execute("SELECT count(*) AS n FROM jobs").fetchone()["n"] == 1
 
 
 def test_lock_file_names_are_rejected(kb):

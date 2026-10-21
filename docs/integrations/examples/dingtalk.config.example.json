@@ -1,0 +1,12 @@
+{
+  "corp_id": "ding_REPLACE_WITH_COMPANY_CORP_ID",
+  "app_key": "REPLACE_WITH_THIS_APP_KEY",
+  "app_secret": "REPLACE_IN_PROTECTED_SERVER_CONFIG_ONLY",
+  "agent_id": "910000001",
+  "department_map": {
+    "101": ["baiste"],
+    "102": ["xingyuan"]
+  },
+  "maintenance_principals": [],
+  "refresh_seconds": 300
+}

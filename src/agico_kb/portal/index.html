@@ -5,21 +5,57 @@
   <meta name="color-scheme" content="light">
   <title>AGICO · 企业知识库</title>
   <link rel="stylesheet" href="/portal/styles.css">
+  <script src="/portal/folder-upload.js" defer></script>
+  <script src="/portal/document-preview.js" defer></script>
+  <script src="/portal/dingtalk.js" defer></script>
+  <script src="/portal/account.js" defer></script>
   <script src="/portal/app.js" defer></script>
   <script src="/portal/admin.js" defer></script>
+  <script src="/portal/feedback.js" defer></script>
+  <script src="/portal/api-keys.js" defer></script>
 </head>
 <body>
-  <a class="skip" href="#upload-form">跳至文件提交</a>
-  <header class="topbar"><a class="brand" href="/" aria-label="AGICO 企业知识库首页"><img class="brand-mark" src="/portal/agico-mark.png" alt="" width="46" height="45"><span>AGICO<span class="brand-sub">企业知识库</span></span></a><div class="top-actions"><span id="connection" class="connection">尚未连接</span><button id="agent-button" class="button secondary" type="button" disabled>连接 AI 助手</button><button id="account-button" class="button secondary" type="button">连接知识库 <span aria-hidden="true">↗</span></button></div></header>
-  <main>
-    <section class="intro"><div><p class="eyebrow">COMPANY KNOWLEDGE / 资料中心</p><h1>让每一份资料，都有所归。</h1><p class="intro-copy">汇集业务知识，让同事与 AI 找到可靠依据。</p></div><div class="intro-note"><span class="note-mark" aria-hidden="true">↗</span><p>一次提交，持续共享<span>资料审核发布后，向有权限的同事开放。</span></p></div></section>
-    <div class="workspace">
-      <section class="upload-panel panel" aria-labelledby="upload-heading">
+  <a class="skip" href="#main-content">跳至主要内容</a>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="主导航">
+      <a class="brand" href="/" aria-label="AGICO 企业知识库首页"><img class="brand-mark" src="/portal/agico-mark.png" alt="" width="46" height="45"><span>AGICO<span class="brand-sub">企业知识库</span></span></a>
+      <nav class="side-nav" aria-label="功能导航">
+        <button id="nav-library" class="nav-item active" type="button" aria-current="page" aria-label="查找资料"><span class="nav-symbol" aria-hidden="true">⌕</span><span>查找资料</span></button>
+        <button id="nav-upload" class="nav-item" type="button" aria-label="上传资料"><span class="nav-symbol" aria-hidden="true">↥</span><span>上传资料</span></button>
+        <button id="nav-pending" class="nav-item" type="button" aria-label="待审核文件" hidden><span class="nav-symbol" aria-hidden="true">▤</span><span>待审核文件</span><span id="pending-count" class="pending-count" hidden></span></button>
+        <button id="manage-access" class="nav-item" type="button" aria-label="账号管理" hidden><span class="nav-symbol" aria-hidden="true">⚙</span><span>账号管理</span></button>
+        <button id="manage-api-keys" class="nav-item" type="button" hidden><span class="nav-symbol" aria-hidden="true">⚿</span><span>API 配置</span></button>
+        <button id="nav-feedback" class="nav-item" type="button" aria-label="问题与建议" hidden><span class="nav-symbol" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 4h16v12H9l-5 4V4Z"/><path d="M8 8h8M8 12h5"/></svg></span><span>问题与建议</span></button>
+      </nav>
+      <div class="sidebar-bottom"><p>共享公司知识<br>连接团队与 AI</p><button id="agent-button" class="agent-nav" type="button" aria-label="连接 AI 助手" disabled><span class="agent-nav-icon" aria-hidden="true">✦</span><span><strong>连接 AI 助手</strong><small>Codex / Accio / 通用</small></span><span aria-hidden="true">↗</span></button></div>
+    </aside>
+    <div class="app-area">
+      <header class="topbar"><span class="topbar-title">AGICO <span>/</span> 企业知识库</span><div class="top-actions"><label class="sr-only" for="theme-picker">页面主题</label><select id="theme-picker" aria-label="页面主题"><option value="blue">深蓝</option><option value="graphite">石墨</option></select><span id="connection" class="connection">尚未登录</span><button id="change-password" class="text-button" type="button" hidden>修改密码</button><button id="dingtalk-bind" class="text-button" type="button" hidden>关联钉钉身份</button><button id="account-button" class="button secondary" type="button">登录</button></div></header>
+      <main id="main-content">
+        <section id="browse-view" class="view">
+          <div class="page-heading"><div><p class="eyebrow">GLOBAL KNOWLEDGE</p><h1 id="browse-heading">企业知识，连接每一次协作。</h1><p id="browse-intro" class="intro-copy">面向全球业务的统一资料入口。让团队与 AI 使用同一份可靠知识。</p></div><button id="heading-upload" class="button secondary heading-action" type="button">＋ 上传资料</button></div>
+          <div class="browse-layout">
+            <section class="library-panel" aria-labelledby="browse-heading">
+              <form id="search-form"><div class="search-box"><span aria-hidden="true">⌕</span><input id="query" type="search" maxlength="500" aria-label="搜索文件" placeholder="搜索文件名、型号、项目或关键词"><button class="button search-button" type="submit" disabled id="search-button">搜索</button></div><div class="filters"><label for="filter-org" class="sr-only">按事业部筛选</label><select id="filter-org" disabled><option value="">全部可见事业部</option></select><label for="filter-category" class="sr-only">按类型筛选</label><select id="filter-category" disabled><option value="">全部资料类型</option></select></div></form>
+              <div class="library-results"><div class="list-meta"><span id="list-caption">仅显示你有权访问的资料</span><button id="refresh" class="text-button" type="button" disabled>刷新 ↻</button></div>
+              <div class="result-head" aria-hidden="true"><span>文件名</span><span>所属事业部</span><span>文件类型</span><span>操作</span></div>
+              <div id="list-panel" role="region" aria-label="资料列表"><div id="results" aria-live="polite"><div class="empty"><span class="empty-art" aria-hidden="true">▤</span><h2>登录你的企业知识库</h2><p>使用邮箱和密码登录；新成员只能通过管理员邀请加入。</p><button class="button secondary" id="empty-connect" type="button">邮箱登录</button></div></div></div>
+              <p id="list-message" class="message" role="status"></p>
+              <nav class="pagination" aria-label="结果分页"><button id="previous" class="text-button" type="button" disabled>← 上一页</button><span id="page-label">第 1 页</span><button id="next" class="text-button" type="button" disabled>下一页 →</button></nav></div>
+            </section>
+            <aside class="help-rail" aria-labelledby="help-heading"><h2 id="help-heading"><span aria-hidden="true">ⓘ</span> 使用帮助</h2><div id="help-search-guide"><p>输入文件名、型号或关键词查找资料；也可按事业部和类型缩小范围。</p><p>文件经审核发布后，才会出现在搜索结果中。</p><p>想让 AI 阅读内容，请在左下角连接助手。</p></div><div id="help-pending-guide" hidden><p>这里显示你的待审核提交，以及你有权审核的资料。</p><p>审核人员可以查看解析结果，再选择通过或驳回。</p></div></aside>
+          </div>
+        </section>
+        <section id="upload-view" class="view" hidden>
+          <div class="page-heading"><div><p class="eyebrow">AGICO / CONTRIBUTE</p><h1>上传知识资料</h1><p class="intro-copy">批量选择文件，确认所属事业部，然后提交审核。</p></div></div>
+          <section class="upload-panel panel" aria-labelledby="upload-heading">
         <div class="panel-heading"><div><p class="eyebrow">CONTRIBUTE</p><h2 id="upload-heading">提交知识资料</h2></div><span class="pill">上传入口</span></div>
         <form id="upload-form">
           <fieldset id="upload-fields" disabled>
             <section class="file-section" aria-labelledby="file-heading"><h3 id="file-heading"><span class="step">01</span> 选择文件</h3>
-              <label class="dropzone" id="dropzone" for="file-input"><span class="upload-symbol" aria-hidden="true">↥</span><strong id="file-label">点击选择多个文件，或拖到这里</strong><span id="file-help">支持批量上传 Office、PDF、图片、CAD 等文件</span><input id="file-input" type="file" multiple aria-describedby="file-help"></label>
+              <label class="dropzone" id="dropzone" for="file-input"><span class="upload-symbol" aria-hidden="true">↥</span><strong id="file-label">点击选择文件，或拖入文件／文件夹</strong><span id="file-help">支持批量上传 Office、PDF、图片、CAD 等文件</span><input id="file-input" type="file" multiple aria-describedby="file-help"></label>
+              <div class="folder-upload-actions"><button id="choose-folder" class="button secondary" type="button">选择整个文件夹</button><span>也可将整个文件夹拖入上方区域，包含所有子文件夹中的文件。</span></div>
+              <input id="folder-input" type="file" webkitdirectory directory multiple hidden aria-label="选择整个文件夹">
               <div id="selected-files" class="selected-files" aria-label="已选择的文件"></div>
             </section>
             <fieldset class="division-section" id="division-fieldset" aria-describedby="division-help">
@@ -33,50 +69,130 @@
           <div class="submit-area"><p><span aria-hidden="true">◎</span> 提交后进入待审核区，解析由后台自动完成；与库中完全相同的文件会自动跳过。</p><button id="submit-button" class="button primary" type="submit" disabled>提交到知识库 <span aria-hidden="true">→</span></button><progress id="upload-progress" max="100" value="0" hidden aria-label="上传进度"></progress><p id="upload-message" class="message" role="status" aria-live="polite"></p><button id="reset-attempt" class="text-button" type="button" hidden>放弃未完成项，重新选择</button></div>
         </form>
       </section>
-      <section class="library-panel panel" aria-labelledby="library-heading">
-        <div class="panel-heading"><div><p class="eyebrow">EXPLORE</p><h2 id="library-heading">找到需要的资料</h2></div><span class="library-icon" aria-hidden="true">⌕</span></div>
-        <div class="tabs" role="tablist" aria-label="资料列表"><button id="tab-library" role="tab" aria-selected="true" aria-controls="list-panel" type="button">已发布资料</button><button id="tab-pending" role="tab" aria-selected="false" aria-controls="list-panel" type="button">待审核提交</button></div>
-        <form id="search-form"><div class="search-box"><span aria-hidden="true">⌕</span><input id="query" type="search" maxlength="500" aria-label="搜索文件" placeholder="搜索文件名称、型号或关键词"><button class="button search-button" type="submit" disabled id="search-button">搜索</button></div><div class="filters"><label for="filter-org" class="sr-only">按事业部筛选</label><select id="filter-org" disabled><option value="">全部可见事业部</option></select><label for="filter-category" class="sr-only">按类型筛选</label><select id="filter-category" disabled><option value="">全部资料类型</option></select></div></form>
-        <div class="list-meta"><span id="list-caption">仅显示你有权访问的资料</span><button id="refresh" class="text-button" type="button" disabled>刷新 ↻</button></div>
-        <div id="list-panel" role="tabpanel" aria-labelledby="tab-library"><div id="results" aria-live="polite"><div class="empty"><span class="empty-art" aria-hidden="true">▤</span><h3>你的企业资料，从这里连接</h3><p>输入访问码后，即可上传文件、查找资料。</p><button class="button secondary" id="empty-connect" type="button">连接知识库 ↗</button></div></div></div>
-        <p id="list-message" class="message" role="status"></p>
-        <nav class="pagination" aria-label="结果分页"><button id="previous" class="text-button" type="button" disabled>← 上一页</button><span id="page-label">第 1 页</span><button id="next" class="text-button" type="button" disabled>下一页 →</button></nav>
-        <aside class="library-note"><strong>找文件，也找依据。</strong><p>这里可以下载原始资料；需要理解文件内容时，让已连接知识库的 AI 助手帮你查阅。</p></aside>
-      </section>
+        </section>
+        <section id="feedback-view" class="view" hidden aria-labelledby="feedback-heading">
+          <div class="page-heading"><div><p class="eyebrow">AGICO / FEEDBACK</p><h1 id="feedback-heading">问题与建议</h1><p class="intro-copy">记录使用问题、提出新的需求，一起让知识库更好用。</p></div></div>
+          <div class="feedback-layout">
+            <section class="panel feedback-compose" aria-labelledby="feedback-compose-heading">
+              <h2 id="feedback-compose-heading">提交反馈</h2><p class="help">描述遇到的情况或期待的改进，开发人员会在这里跟进。</p>
+              <form id="feedback-form"><fieldset id="feedback-fields">
+                <label for="feedback-kind">反馈类型</label><select id="feedback-kind"><option value="problem">使用问题</option><option value="request">功能需求</option><option value="suggestion">改进建议</option></select>
+                <label for="feedback-title">标题</label><input id="feedback-title" required maxlength="120" placeholder="用一句话概括">
+                <label for="feedback-area">相关功能 <span class="optional">选填</span></label><select id="feedback-area"><option value="">请选择，可不填</option><option>查找资料</option><option>上传资料</option><option>解析与命名</option><option>预览与下载</option><option>账号与权限</option><option>其他</option></select>
+                <label for="feedback-description">详细说明</label><textarea id="feedback-description" required maxlength="6000" rows="7" placeholder="问题：进行了什么操作、发生了什么、期待怎样的结果？&#10;需求或建议：希望增加什么能力、解决什么问题？"></textarea>
+                <button id="feedback-submit" class="button primary" type="submit">提交反馈</button>
+              </fieldset><p id="feedback-message" class="message" role="status" aria-live="polite"></p></form>
+            </section>
+            <section class="panel feedback-history" aria-labelledby="feedback-history-heading">
+              <div class="admin-list-heading"><h2 id="feedback-history-heading">我的反馈</h2><button id="feedback-refresh" class="text-button" type="button">刷新 ↻</button></div>
+              <p id="feedback-privacy" class="help">你的反馈仅自己和开发人员可见。</p>
+              <div id="feedback-counts" class="feedback-counts" aria-live="polite"></div>
+              <div class="feedback-filters"><label class="sr-only" for="feedback-filter-kind">按反馈类型筛选</label><select id="feedback-filter-kind"><option value="">全部类型</option><option value="problem">使用问题</option><option value="request">功能需求</option><option value="suggestion">改进建议</option></select>
+                <label class="sr-only" for="feedback-filter-status">按处理状态筛选</label><select id="feedback-filter-status"><option value="">全部状态</option><option value="new">待查看</option><option value="planned">已采纳</option><option value="working">处理中</option><option value="done">已完成</option><option value="declined">暂不采纳</option></select>
+                <label class="sr-only" for="feedback-filter-scope">反馈范围</label><select id="feedback-filter-scope" hidden><option value="all">全部反馈</option><option value="mine">我的反馈</option></select>
+              </div>
+              <div id="feedback-list" aria-live="polite"></div><p id="feedback-list-message" class="message" role="status"></p>
+              <div class="pagination"><button id="feedback-prev" class="text-button" type="button">← 上一页</button><span id="feedback-page">第 1 页</span><button id="feedback-next" class="text-button" type="button">下一页 →</button></div>
+            </section>
+          </div>
+        </section>
+      </main>
     </div>
-    <footer><span>AGICO <span class="footer-divider">/</span> 企业知识，共同积累。</span><button id="manage-access" class="text-button" type="button">管理员 · 访问码管理</button></footer>
-  </main>
-  <dialog id="auth-dialog" aria-labelledby="auth-heading"><form id="auth-form"><div class="dialog-heading"><span class="eyebrow">ACCESS</span><button id="close-auth" class="text-button" type="button" aria-label="关闭连接窗口">✕</button></div><h2 id="auth-heading">连接企业知识库</h2><p class="help">请输入管理员提供的访问码。可操作的事业部由账号权限决定。</p><label for="access-token">访问码</label><input id="access-token" type="password" required autocomplete="off" spellcheck="false" placeholder="粘贴你的访问码"><p class="help">连接后在当前浏览器记住访问码，下次打开自动连接。点击“断开连接”即可清除。</p><p id="auth-message" class="message" role="alert"></p><button id="login-button" class="button primary" type="submit">连接并开始使用 →</button></form></dialog>
+  </div>
+  <dialog id="auth-dialog" aria-labelledby="auth-heading">
+    <div class="dialog-heading"><h2 id="auth-heading">登录企业知识库</h2><button id="close-auth" class="text-button" type="button" aria-label="关闭登录窗口">✕</button></div>
+    <p id="auth-help" class="help">使用已激活的邮箱账号登录。新成员请向所属事业部管理员索取邀请链接。</p>
+    <section id="dingtalk-entry" hidden><p id="auth-mode-help" class="help">使用公司钉钉身份进入，无需单独注册或设置密码。</p><button id="dingtalk-login" class="button primary" type="button">使用钉钉身份进入</button><button id="maintenance-login" class="text-button" type="button" hidden>开发维护登录</button></section>
+    <form id="auth-form"><label for="auth-email">邮箱账号</label><input id="auth-email" type="email" required autocomplete="username" maxlength="254">
+      <label id="auth-password-label" for="auth-password">密码</label><input id="auth-password" type="password" required autocomplete="current-password" maxlength="128">
+      <div id="auth-confirm-field" hidden><label for="auth-confirm">再次输入密码</label><input id="auth-confirm" type="password" autocomplete="new-password" minlength="8" maxlength="128"></div>
+      <p id="auth-message" class="message" role="alert"></p><button id="login-button" class="button primary" type="submit">登录</button>
+      <button id="invite-back" class="text-button" type="button" hidden>返回邮箱登录</button>
+    </form><p id="local-auth-help" class="help">忘记密码时，请联系邀请你的管理员生成密码重置链接。</p>
+  </dialog>
+  <dialog id="password-dialog" aria-labelledby="password-heading">
+    <div class="dialog-heading"><h2 id="password-heading">修改密码</h2><button id="close-password" class="text-button" type="button" aria-label="关闭修改密码">✕</button></div>
+    <p id="password-help" class="help"></p><form id="password-form">
+      <label for="password-current">当前密码</label><input id="password-current" type="password" required autocomplete="current-password" maxlength="1024">
+      <label for="password-new">新密码</label><input id="password-new" type="password" required autocomplete="new-password" minlength="8" maxlength="128">
+      <label for="password-confirm">再次输入新密码</label><input id="password-confirm" type="password" required autocomplete="new-password" minlength="8" maxlength="128">
+      <p id="password-message" class="message" role="alert"></p><button id="password-save" class="button primary" type="submit">保存新密码</button>
+      <button id="password-logout" class="text-button" type="button">退出登录</button>
+    </form>
+  </dialog>
+  <dialog id="oauth-dialog" aria-labelledby="oauth-heading">
+    <h2 id="oauth-heading">授权 AI 访问知识库</h2><p class="help">客户端：<strong id="oauth-client-name"></strong></p><p class="help">账号：<strong id="oauth-account-name"></strong></p>
+    <p class="help">此助手可使用你已获授权的知识库功能。普通用户不能审批；部门管理员仅能操作自己的事业部。不会获得你的密码或账号管理权限。</p>
+    <p id="oauth-message" class="message" role="alert"></p><div class="account-action-row"><button id="oauth-deny" class="button secondary" type="button">拒绝</button><button id="oauth-approve" class="button primary" type="button">允许授权</button></div>
+  </dialog>
   <dialog id="agent-dialog" aria-labelledby="agent-heading">
     <div class="dialog-heading"><span class="eyebrow">CONNECT YOUR AGENT</span><button id="close-agent" class="text-button" type="button" aria-label="关闭 AI 连接窗口">✕</button></div>
     <h2 id="agent-heading">把企业知识交给 AI</h2>
-    <p class="help">选择你使用的助手，复制接入指令并发送给它，让它完成本机配置与验证。自动使用当前访问码，无需重新填写。</p>
-    <label for="agent-client">你使用的 AI 助手</label><select id="agent-client"><option value="accio">Accio</option><option value="codex">Codex</option></select>
+    <p class="help">选择你使用的助手，复制接入指令并发送给它，让它完成本机配置与验证。客户端将打开网页登录与授权，由你本人确认。</p>
+    <label for="agent-client">你使用的 AI 助手</label><select id="agent-client"><option value="accio">Accio</option><option value="codex">Codex</option><option value="generic">通用 AI 助手</option></select>
     <p class="help">知识库地址：<span id="agent-endpoint"></span></p>
     <p id="agent-local-note" class="help" hidden>当前是本机地址，仅适用于这台电脑上的 Agent。其他电脑请从知识库服务器地址打开本页后生成配置。</p>
     <button id="copy-agent" class="button primary" type="button">复制接入指令 →</button>
     <button id="download-agent" class="text-button" type="button">下载配置文件</button>
-    <p class="help">指令和文件包含当前访问码，仅交给你要连接的助手。复制后尚未接通，以助手实际调用知识库成功为准；客户端可能需要重启。</p>
+    <p class="help">配置仅包含服务地址，不包含密码。复制后需要完成浏览器账号授权，以助手实际调用知识库成功为准；不支持 OAuth 的客户端不能连接。</p>
     <label id="agent-manual-label" for="agent-manual" hidden>自动复制不可用，请全选下方指令并复制</label><textarea id="agent-manual" readonly hidden spellcheck="false"></textarea>
     <p id="agent-message" class="message" role="status" aria-live="polite"></p>
   </dialog>
+  <dialog id="rename-dialog" aria-labelledby="rename-heading">
+    <div class="dialog-heading"><h2 id="rename-heading">重命名</h2><button id="close-rename" class="text-button" type="button" aria-label="关闭重命名">✕</button></div>
+    <p class="help">修改展示名称，请保留原文件扩展名。</p>
+    <form id="rename-form"><label for="rename-title">文件名称</label><input id="rename-title" required maxlength="300" autocomplete="off">
+      <p id="rename-message" class="message" role="status"></p><button id="rename-save" class="button primary" type="submit">保存名称</button>
+    </form>
+  </dialog>
   <dialog id="admin-dialog" aria-labelledby="admin-heading">
-    <div class="dialog-heading"><span class="eyebrow">ACCESS MANAGEMENT</span><button id="close-admin" class="text-button" type="button" aria-label="关闭访问码管理">✕</button></div>
-    <h2 id="admin-heading">访问码管理</h2>
-    <form id="admin-login"><p class="help">仅管理员可进入。已用管理员访问码连接知识库时可直接进入，无需重复填写；否则可在此使用独立管理员访问码登录。</p><label for="admin-token">管理员访问码</label><input id="admin-token" type="password" autocomplete="off" required><button class="button primary" id="admin-login-button" type="submit">进入管理</button></form>
-    <div id="admin-workspace" hidden>
-      <div class="admin-toolbar"><p id="admin-identity" class="help"></p><button id="admin-logout" class="text-button" type="button">退出管理并清除记忆</button></div>
-      <div class="admin-columns"><section class="admin-create"><h3>新建普通访问码</h3><p class="help">同一访问码可以分享给一个团队，所有使用者具有相同权限。不能用它管理访问码或审核发布。</p>
-        <form id="admin-create-form"><fieldset id="admin-create-fields">
-          <label for="access-name">用途 / 团队名称</label><input id="access-name" required maxlength="100" placeholder="例如：外地测试组">
-          <fieldset class="admin-orgs"><legend>可访问的事业部 <span class="required">至少选一个</span></legend><button id="admin-select-all" class="text-button" type="button">全选</button><div id="admin-org-options" class="division-grid"></div></fieldset>
-          <label for="access-days">有效期</label><select id="access-days"><option value="7">7 天</option><option value="30" selected>30 天</option><option value="90">90 天</option><option value="365">1 年</option></select>
-          <label for="access-count">生成数量</label><input id="access-count" type="number" min="1" max="100" step="1" value="1" required><p class="help">一次最多 100 个。每个码独立，可单独停用；同一批次使用相同事业部与有效期。</p>
-          <button id="admin-generate" class="button primary" type="submit">生成访问码</button>
-        </fieldset></form>
-        <div id="admin-issued" hidden><strong>已生成，请保存或复制分享</strong><p class="help">原访问码仅本次显示。关闭窗口后无法找回，遗失时请停用并新建。</p><label for="share-address">分享的网页地址</label><input id="share-address" type="url" spellcheck="false"><p id="share-address-note" class="help"></p><label for="admin-share-item">选择一个访问码，单独分享</label><select id="admin-share-item"></select><label for="admin-share">发给同事的说明</label><textarea id="admin-share" readonly spellcheck="false"></textarea><button id="admin-copy" class="button secondary" type="button">复制当前访问码及说明</button><div class="admin-batch-actions"><button id="admin-copy-all" class="text-button" type="button">复制本批全部</button><button id="admin-download" class="text-button" type="button">下载本批清单</button></div><p class="help">批量清单包含本批全部访问码，供管理员保存和分发。给单个同事请使用上面的单份复制。</p></div>
+    <div class="dialog-heading"><h2 id="admin-heading">账号管理</h2><button id="close-admin" class="text-button" type="button" aria-label="关闭账号管理">✕</button></div>
+    <p id="admin-identity" class="help"></p><div class="account-columns">
+      <section><h3 id="account-form-title">登记并邀请</h3><form id="account-invite-form"><fieldset id="account-fields">
+        <label for="account-email">对方邮箱账号</label><input id="account-email" type="email" required maxlength="254" autocomplete="off">
+        <label for="account-role">账号角色</label><select id="account-role"><option value="user">普通用户</option><option value="manager">管理员</option><option value="superadmin">开发人员</option></select>
+        <fieldset id="account-orgs"><legend>所属事业部</legend><div id="account-org-options" class="division-grid"></div></fieldset><p id="account-scope-note" class="help"></p>
+        <button id="account-submit" class="button primary" type="submit">登记并生成邀请链接</button><button id="account-cancel-edit" class="text-button" type="button" hidden>取消编辑</button>
+      </fieldset></form>
+      <section id="account-issued" hidden><h3>邀请链接</h3><label for="account-share-base">对方可访问的知识库地址</label><input id="account-share-base" type="url" spellcheck="false"><p id="account-share-note" class="help"></p>
+        <label for="account-share-link">发送给对方的链接</label><textarea id="account-share-link" readonly spellcheck="false"></textarea><p id="account-expiry" class="help"></p>
+        <button id="account-copy-invite" class="button secondary" type="button">复制邀请链接</button>
+      </section></section>
+      <section><div class="admin-list-heading"><h3>已登记账号</h3><button id="account-refresh" class="text-button" type="button">刷新</button></div><div id="account-list" aria-live="polite"></div>
+        <div class="pagination"><button id="account-prev" class="text-button" type="button">← 上一页</button><span id="account-page"></span><button id="account-next" class="text-button" type="button">下一页 →</button></div>
       </section>
-      <section class="admin-list"><div class="admin-list-heading"><h3>已签发的访问码</h3><button id="admin-refresh" class="text-button" type="button">刷新</button></div><p class="help">显示通过此页面生成的访问码。停用后，共用该码的人都将无法继续访问。</p><div id="admin-access-list" aria-live="polite"></div><div class="pagination"><button id="admin-prev" class="text-button" type="button">← 上一页</button><span id="admin-page"></span><button id="admin-next" class="text-button" type="button">下一页 →</button></div></section></div>
-    </div><p id="admin-message" class="message" role="status" aria-live="polite"></p>
+    </div><p id="admin-message" class="message" role="alert"></p>
+  </dialog>
+  <dialog id="api-keys-dialog" class="api-keys-dialog" aria-labelledby="api-keys-heading">
+    <header class="api-settings-header"><div><h2 id="api-keys-heading">API 配置</h2><p>管理调用线路、首选模型与推理强度。</p></div><button id="close-api-keys" class="api-close" type="button" aria-label="关闭 API 配置"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
+    <div class="api-settings-body"><div class="api-route-list">
+      <section id="api-route-primary" class="api-route-section" aria-labelledby="api-route-heading-primary">
+        <header class="api-route-heading"><div><h3 id="api-route-heading-primary">主线路</h3><span id="api-platform-primary" class="api-platform">bigmodel.cn</span></div><span id="api-key-status-primary" class="api-route-status">读取中</span></header>
+        <div class="api-key-section"><span class="api-field-label">API 密钥</span><div id="api-key-display-primary" class="api-key-display"><code id="api-key-mask-primary">未配置密钥</code><button id="api-key-change-primary" class="api-link-button" type="button">更换</button></div>
+          <form id="api-key-form-primary" class="api-key-editor" autocomplete="off" hidden><label class="sr-only" for="api-key-primary">新的主线路密钥</label><input id="api-key-primary" type="password" autocomplete="off" spellcheck="false" autocapitalize="none" maxlength="4096" placeholder="输入新密钥，保存后替换旧值"><div class="api-key-editor-actions"><button id="api-key-cancel-primary" class="api-link-button" type="button">取消</button><button class="button secondary" type="submit">保存密钥</button></div></form>
+          <p class="api-field-help">密钥加密保存，仅展示前三位和后四位。</p>
+        </div>
+        <form id="api-options-form-primary" class="api-options-form"><fieldset id="api-options-primary" disabled><legend class="sr-only">主线路调用设置</legend>
+          <div class="api-model-section"><span class="api-field-label" id="api-model-heading-primary">首选模型</span><div id="api-key-models-primary" class="api-model-options" role="radiogroup" aria-labelledby="api-model-heading-primary"></div></div>
+          <div class="api-effort-section"><div class="api-effort-heading"><label for="api-effort-primary" class="api-field-label">推理强度</label><output id="api-effort-value-primary" for="api-effort-primary">低</output></div><input id="api-effort-primary" class="api-effort-slider" type="range" min="0" max="2" step="1" value="0" aria-valuetext="低"><div class="api-effort-ticks" aria-hidden="true"><span>低</span><span>中</span><span>高</span></div></div>
+        </fieldset><p id="api-key-route-primary" class="api-route-description">先设置密钥，再选择模型。</p>
+        <div class="api-route-actions"><button id="api-key-test-primary" class="api-link-button" title="使用已保存的配置测试连接" type="button" disabled>测试连接</button><button id="api-options-save-primary" class="button primary" type="submit" disabled>保存设置</button></div></form>
+        <p id="api-key-message-primary" class="api-route-message" role="status" aria-live="polite"></p>
+      </section>
+      <section id="api-route-fallback" class="api-route-section" aria-labelledby="api-route-heading-fallback">
+        <header class="api-route-heading"><div><h3 id="api-route-heading-fallback">备用线路</h3><span id="api-platform-fallback" class="api-platform">cephalon.cloud</span></div><span id="api-key-status-fallback" class="api-route-status">读取中</span></header>
+        <div class="api-key-section"><span class="api-field-label">API 密钥</span><div id="api-key-display-fallback" class="api-key-display"><code id="api-key-mask-fallback">未配置密钥</code><button id="api-key-change-fallback" class="api-link-button" type="button">更换</button></div>
+          <form id="api-key-form-fallback" class="api-key-editor" autocomplete="off" hidden><label class="sr-only" for="api-key-fallback">新的备用线路密钥</label><input id="api-key-fallback" type="password" autocomplete="off" spellcheck="false" autocapitalize="none" maxlength="4096" placeholder="输入新密钥，保存后替换旧值"><div class="api-key-editor-actions"><button id="api-key-cancel-fallback" class="api-link-button" type="button">取消</button><button class="button secondary" type="submit">保存密钥</button></div></form>
+          <p class="api-field-help">密钥加密保存，仅展示前三位和后四位。</p>
+        </div>
+        <form id="api-options-form-fallback" class="api-options-form"><fieldset id="api-options-fallback" disabled><legend class="sr-only">备用线路调用设置</legend>
+          <div class="api-model-section"><span class="api-field-label" id="api-model-heading-fallback">首选模型</span><div id="api-key-models-fallback" class="api-model-options" role="radiogroup" aria-labelledby="api-model-heading-fallback"></div></div>
+          <div class="api-effort-section"><div class="api-effort-heading"><label for="api-effort-fallback" class="api-field-label">推理强度</label><output id="api-effort-value-fallback" for="api-effort-fallback">低</output></div><input id="api-effort-fallback" class="api-effort-slider" type="range" min="0" max="2" step="1" value="0" aria-valuetext="低"><div class="api-effort-ticks" aria-hidden="true"><span>低</span><span>中</span><span>高</span></div></div>
+        </fieldset><p id="api-key-route-fallback" class="api-route-description">先设置密钥，再选择模型。</p>
+        <div class="api-route-actions"><button id="api-key-test-fallback" class="api-link-button" title="使用已保存的配置测试连接" type="button" disabled>测试连接</button><button id="api-options-save-fallback" class="button primary" type="submit" disabled>保存设置</button></div></form>
+        <p id="api-key-message-fallback" class="api-route-message" role="status" aria-live="polite"></p>
+      </section>
+    </div><p id="api-keys-message" class="api-settings-error" role="alert"></p></div>
+    <footer class="api-settings-footer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.2 8a7 7 0 0 1 11.6-3L20 8M4 16l3.2 3A7 7 0 0 0 18.8 16"/></svg><span>主线路全部模型调用失败后启用备用线路，30 分钟后重试主线路。</span></footer>
   </dialog>
 </body></html>

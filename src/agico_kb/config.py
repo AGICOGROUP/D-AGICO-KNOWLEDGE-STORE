@@ -14,12 +14,38 @@ class Settings:
     parse_timeout_seconds: float = 120
     parse_timeout_max_seconds: float = 600
     worker_max_attempts: int = 3
+    worker_concurrency: int = 5
     embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     model_cache: Path = Path(".local/models")
     model_offline: bool = False
     expected_model_identity: str | None = None
     query_timeout_seconds: float = 5
     mcp_allowed_hosts: tuple[str, ...] = ("127.0.0.1:*", "localhost:*", "testserver")
+    public_url: str | None = None
+    dingtalk_config_file: Path | None = None
+    api_keys_dir: Path | None = None
+    # Vision is opt-in and runs only during document/image ingestion.
+    vision_config_file: Path | None = None
+    vision_fallback_config_file: Path | None = None
+    vision_fallback_api_url: str = 'https://cephalon.cloud/user-center/v1/model/chat/completions'
+    vision_max_calls_per_day: int = 0  # Zero means unlimited.
+    vision_max_images_per_file: int = 64
+    vision_fallback_model: str = "glm-5.3-flashx"
+    vision_pdf_model: str = ""  # Optional PDF-only route; other formats keep their configured model.
+    naming_fallback_models: tuple[str, ...] = ()  # Text-only optional pool, independent of vision.
+
+    @property
+    def provider_keys_directory(self):
+        return self.api_keys_dir or self.storage_root.parent / (self.storage_root.name + '.api-keys')
+
+    def provider_profile(self, profile='primary'):
+        if profile not in {'primary', 'fallback'}:
+            raise ValueError('Unknown API profile')
+        managed = self.provider_keys_directory / (profile + '.txt')
+        if managed.is_file():
+            return managed
+        legacy = self.vision_config_file if profile == 'primary' else self.vision_fallback_config_file
+        return legacy if legacy and legacy.is_file() else None
 
     def timeout_for(self, size_bytes: int) -> float:
         """Adaptive parse budget: ~1s per 512 KB on top of the baseline, capped.
@@ -37,6 +63,12 @@ class Settings:
             os.environ["AGICO_KB_DATABASE_URL"],
             Path(os.environ["AGICO_KB_STORAGE_ROOT"]),
             schema=os.environ.get("AGICO_KB_SCHEMA", "public"),
+            public_url=os.environ.get('AGICO_KB_PUBLIC_URL') or None,
+            dingtalk_config_file=(Path(os.environ['AGICO_KB_DINGTALK_CONFIG_FILE'])
+                if os.environ.get('AGICO_KB_DINGTALK_CONFIG_FILE') else None),
+            api_keys_dir=Path(os.environ.get('AGICO_KB_API_KEYS_DIR',
+                str(Path(os.environ['AGICO_KB_STORAGE_ROOT']).parent / 'config/api-keys'))),
+            worker_concurrency=max(1, min(5, int(os.environ.get("AGICO_KB_WORKER_CONCURRENCY", "5")))),
             model_offline=os.environ.get("AGICO_KB_MODEL_OFFLINE", "false").lower() == "true",
             expected_model_identity=os.environ.get("AGICO_KB_EXPECTED_MODEL_IDENTITY") or None,
             embedding_model=os.environ.get("AGICO_KB_EMBEDDING_MODEL", cls.embedding_model),
@@ -44,4 +76,17 @@ class Settings:
             mcp_allowed_hosts=tuple(
                 os.environ.get("AGICO_KB_ALLOWED_HOSTS", "127.0.0.1:*,localhost:*").split(",")
             ),
+            vision_config_file=(
+                Path(os.environ["AGICO_KB_VISION_CONFIG_FILE"])
+                if os.environ.get("AGICO_KB_VISION_CONFIG_FILE") else None
+            ),
+            vision_max_calls_per_day=int(os.environ.get("AGICO_KB_VISION_MAX_CALLS_PER_DAY", "0")),
+            vision_fallback_config_file=(Path(os.environ['AGICO_KB_VISION_FALLBACK_CONFIG_FILE'])
+                if os.environ.get('AGICO_KB_VISION_FALLBACK_CONFIG_FILE') else None),
+            vision_fallback_api_url=os.environ.get('AGICO_KB_VISION_FALLBACK_API_URL', cls.vision_fallback_api_url),
+            vision_max_images_per_file=int(os.environ.get("AGICO_KB_VISION_MAX_IMAGES_PER_FILE", "64")),
+            vision_fallback_model=os.environ.get("AGICO_KB_VISION_FALLBACK_MODEL", cls.vision_fallback_model),
+            vision_pdf_model=os.environ.get("AGICO_KB_VISION_PDF_MODEL", ""),
+            naming_fallback_models=tuple(dict.fromkeys(model.strip() for model in
+                os.environ.get('AGICO_KB_NAMING_FALLBACK_MODELS','').split(',') if model.strip())),
         )

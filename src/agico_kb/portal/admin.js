@@ -1,204 +1,113 @@
-/* Reuse a connected administrator credential; the server always verifies administrator rights. */
+/* Server-enforced account hierarchy; invitations contain no user passwords. */
 (() => {
   "use strict";
-  const el = (id) => document.getElementById(id);
-  const key = "agico.portal.adminToken.v1";
-  let token = "", usingPortal = false, busy = false, generation = 0, offset = 0, hasMore = false, requestId = null, issued = null, listSequence = 0;
-  const note = (text = "", error = false) => { el("admin-message").textContent = text; el("admin-message").classList.toggle("error", error); };
-  const textNode = (tag, text, cls = "") => { const node = document.createElement(tag); node.textContent = text; node.className = cls; return node; };
-  const save = (value) => { try { if(value) localStorage.setItem(key,value); else localStorage.removeItem(key); return true; } catch { return false; } };
-  const remembered = () => { try { return localStorage.getItem(key) || ""; } catch { return ""; } };
-  const date = (value) => value ? new Date(value).toLocaleString("zh-CN", {hour12:false}) : "未设置";
-  function lock(value) {
-    busy = value;
-    for (const id of ["admin-login-button","close-admin","admin-logout","admin-create-fields","admin-refresh","admin-prev","admin-next"]) el(id).disabled = value;
-    if (!value) { el("admin-prev").disabled = offset===0; el("admin-next").disabled = !hasMore; }
-    for (const button of el("admin-access-list").querySelectorAll("button")) button.disabled = value;
-  }
-  function clearIssued() { issued = null; el("admin-share").value = ""; el("admin-share-item").replaceChildren(); el("admin-issued").hidden = true; }
-  function reset() {
-    token = ""; usingPortal = false; generation++; listSequence++; offset = 0; hasMore = false; requestId = null;
-    clearIssued(); el("admin-token").value = ""; el("admin-access-list").replaceChildren(); el("admin-org-options").replaceChildren();
-    el("admin-create-form").reset(); updateSelectAll(); el("admin-workspace").hidden = true; el("admin-login").hidden = false;
-  }
-  async function api(path, options = {}, credential = token) {
-    let response;
-    try { response = await fetch(path, {...options, headers:{Authorization:`Bearer ${credential}`, ...(options.body ? {"Content-Type":"application/json"}: {})}, cache:"no-store", redirect:"error", signal:AbortSignal.timeout(30000)}); }
-    catch { throw new Error("网络中断或超时。生成结果可能已保存，请先刷新列表；重试原表单不会重复签发。"); }
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      const error = new Error(response.status===401 ? "管理员访问码无效或已过期，请重新登录。" : body.error?.message || "操作未完成，请检查输入或稍后重试。");
-      error.status = response.status;
-      if ((response.status===401 || response.status===403) && credential===token) { save(""); reset(); lock(false); }
-      throw error;
-    }
-    return body;
-  }
-  async function login(credential, fromPortal = false) {
-    const attemptGeneration=generation;
-    lock(true);note(fromPortal ? "正在使用当前访问码验证管理员权限…" : "正在验证管理员权限…");
-    if(fromPortal)el("admin-login").hidden=true;
-    try {
-      const session = await api("/v1/admin/session", {}, credential);
-      if(attemptGeneration!==generation)return 0;
-      token = credential; usingPortal=fromPortal;
-      // The portal already remembers this credential. Do not leave a second saved login on logout.
-      const saved = fromPortal || save(token);
-      el("admin-token").value = ""; el("admin-identity").textContent = `管理员：${session.identity}${fromPortal ? " · 使用当前登录" : ""}`;
-      el("admin-login").hidden = true; el("admin-workspace").hidden = false;
-      el("admin-org-options").replaceChildren();
-      for (const org of session.organizations) {
-        const label = textNode("label", "", "division-option"); const input = document.createElement("input");
-        input.type="checkbox";input.name="access-org";input.value=org.id;input.dataset.name=org.name;
-        label.append(input,textNode("span",org.name));el("admin-org-options").append(label);
-      }
-      updateSelectAll();
-      note(saved ? "" : "浏览器禁止保存管理员访问码，关闭后需要重新填写。"); await loadList();
-      return 200;
-    } catch (error) {
-      if(attemptGeneration!==generation)return 0;
-      if (!fromPortal && [401,403].includes(error.status)) save("");
-      // A list-only failure must not ask an already authenticated administrator to log in again.
-      el("admin-login").hidden=!!token;
-      note(fromPortal && error.status===403 ? "当前访问码是普通成员权限。如需管理，请使用管理员访问码。" : error.message,true);
-      return error.status || 0;
-    } finally { if(attemptGeneration===generation)lock(false); }
-  }
-  async function loadList() {
-    const ticket=++listSequence, authGeneration=generation;
-    const result=await api(`/v1/admin/access?limit=20&offset=${offset}`);
-    if(ticket!==listSequence || authGeneration!==generation) return;
-    hasMore=result.has_more;el("admin-access-list").replaceChildren();
-    if(!result.items.length) el("admin-access-list").append(textNode("p","暂无访问码，先在左侧新建。","help"));
-    for(const item of result.items) {
-      const row=textNode("article","","access-row");row.append(textNode("h4",item.name));
-      row.append(textNode("p",(item.organizations || []).map(o=>o.name).join("、")));
-      row.append(textNode("p",`创建：${date(item.created_at)}\n到期：${date(item.expires_at)}`));
-      row.append(textNode("span",{active:"有效",expired:"已过期",revoked:"已停用"}[item.status],"status-tag"));
-      if(item.status!=="revoked") {
-        const button=textNode("button","停用","text-button");button.type="button";button.disabled=busy;
-        button.addEventListener("click",async()=>{
-          if(busy || !confirm(`停用「${item.name}」？所有使用此访问码的人都将失去访问权限。`)) return;
-          lock(true);note("");
-          try { await api(`/v1/admin/access/${encodeURIComponent(item.id)}/revoke`,{method:"POST"});if(issued){issued.items=issued.items.filter(code=>code.id!==item.id);if(issued.items.length)renderIssued();else clearIssued();}await loadList();note("已停用，此访问码不能继续访问知识库。"); }
-          catch(error){note(error.message,true);} finally{lock(false);}
-        });row.append(button);
-      }
-      el("admin-access-list").append(row);
-    }
-    el("admin-page").textContent=`第 ${Math.floor(offset/20)+1} 页`;
-    el("admin-prev").disabled=busy || offset===0;el("admin-next").disabled=busy || !hasMore;
-  }
-  function updateSelectAll() {
-    const boxes=[...el("admin-org-options").querySelectorAll("input")];
-    el("admin-select-all").textContent=boxes.length && boxes.every(box=>box.checked) ? "取消全选" : "全选";
-  }
-  el("admin-select-all").addEventListener("click",()=>{
-    const boxes=[...el("admin-org-options").querySelectorAll("input")];
-    const checked=!boxes.every(box=>box.checked);for(const box of boxes)box.checked=checked;updateSelectAll();
-  });
-  el("admin-org-options").addEventListener("change",updateSelectAll);
-  function shareText(item, origin) {
-    return `企业知识库：${origin}/\n访问码：${item.token}\n用途：${item.name}\n可访问：${issued.orgNames.join("、")}\n有效至：${date(item.expires_at)}\n\n打开网页输入访问码即可使用。需要连接 Accio 或 Codex 时，点击“连接 AI 助手”，使用同一访问码。`;
-  }
-  function shareOrigin() {
-    const url=new URL(el("share-address").value.trim());
-    if(!["http:","https:"].includes(url.protocol) || url.username || url.password || url.search || url.hash || url.pathname!=="/") throw new Error();
-    return url;
-  }
-  function renderIssued() {
-    const selected=el("admin-share-item").value;
-    el("admin-share-item").replaceChildren();
-    for(const item of issued.items)el("admin-share-item").add(new Option(item.name,item.id));
-    if(issued.items.some(item=>item.id===selected))el("admin-share-item").value=selected;
-    sharing();
-  }
-  function sharing() {
+  const $=id=>document.getElementById(id);
+  const roles={superadmin:"开发人员",manager:"管理员",user:"普通用户"};
+  const statuses={invited:"等待设置密码",active:"已启用",disabled:"已停用"};
+  let catalog=null,offset=0,hasMore=false,busy=false,issued=null,editing=null,generation=0;
+  const node=(tag,text,cls="")=>{const value=document.createElement(tag);value.textContent=text;value.className=cls;return value;};
+  const note=(text="",error=false)=>{$("admin-message").textContent=text;$("admin-message").classList.toggle("error",error);};
+  const api=(path,options)=>window.agicoAccount.request(path,options);
+  const defaults=()=>new Set(catalog?.default_visible_organizations||["general-group","company-common"]);
+  const ding=()=>window.agicoAccount.current?.auth_mode==="dingtalk";
+  function lock(value){busy=value;$("account-fields").disabled=value;for(const id of ["account-refresh","account-prev","account-next"])$(id).disabled=value;
+    for(const button of $("account-list").querySelectorAll("button"))button.disabled=value;
+    if(!value){$("account-prev").disabled=offset===0;$("account-next").disabled=!hasMore;}}
+  function selected(){return [...$("account-org-options").querySelectorAll("input:checked")].map(value=>value.value);}
+  function scope(){const all=$("account-role").value==="superadmin";$("account-orgs").hidden=all;
+    $("account-scope-note").textContent=all?"开发人员可管理全部事业部及所有账号。":window.agicoAccount.current?.role==="manager"?"通用国际集团、公共知识库全员默认可见；只能登记和管理自己事业部内的子用户。":"通用国际集团、公共知识库全员默认可见；其他事业部请明确选择。";}
+  function resetForm(){editing=null;$("account-invite-form").reset();$("account-email").readOnly=false;
+    $("account-form-title").textContent="登记并邀请";$("account-submit").textContent="登记并生成邀请链接";$("account-cancel-edit").hidden=true;
+    $("account-fields").hidden=ding();if(ding())$("account-form-title").textContent="员工由钉钉管理；请在右侧选择账号编辑资料权限。";
+    const manager=window.agicoAccount.current?.role==="manager";
+    $("account-role").replaceChildren();
+    for(const value of manager?["user","manager"]:["user","manager","superadmin"]){const option=node("option",roles[value]);option.value=value;$("account-role").append(option);}
+    $("account-role").value="user";
+    const specific=catalog?.organizations.filter(org=>!defaults().has(org.id))||[];
+    for(const box of $("account-org-options").querySelectorAll("input"))box.checked=defaults().has(box.value)||(manager&&specific.length===1);
+    scope();}
+  function clearIssued(){issued=null;$("account-issued").hidden=true;$("account-share-link").value="";}
+  function sharing(){
     if(!issued)return;
-    try {
-      const url=shareOrigin();
-      const item=issued.items.find(item=>item.id===el("admin-share-item").value);
-      el("admin-share").value=shareText(item,url.origin);
-      const local=["localhost","127.0.0.1","[::1]"].includes(url.hostname);
-      el("share-address-note").textContent=local ? "当前地址仅限本机。跨城市测试请在公网接通后填写 https://kb.agicogroup.com/。" : "请确认同事能够访问该地址；此处填写地址不会自动配置域名或公网入口。";
-      for(const id of ["admin-copy","admin-copy-all","admin-download"])el(id).disabled=false;
-    } catch {
-      el("admin-share").value="";
-      for(const id of ["admin-copy","admin-copy-all","admin-download"])el(id).disabled=true;
-      el("share-address-note").textContent="请输入完整的网页根地址，例如 https://kb.agicogroup.com/，不要包含访问码或其他参数。";
-    }
+    try{
+      const base=new URL($("account-share-base").value);
+      if(!["http:","https:"].includes(base.protocol)||base.username||base.password)throw new Error();
+      base.pathname="/";base.search="";base.hash="invite="+encodeURIComponent(issued.invitation);
+      $("account-share-link").value=base.href;$("account-copy-invite").disabled=false;
+      $("account-share-note").textContent=["127.0.0.1","localhost","[::1]"].includes(base.hostname)?"这是本机地址，只有这台电脑能打开。邀请其他同事时，请填写他们可访问的知识库地址。":"链接绑定对方邮箱，仅供该受邀者设置密码；有效期内只能使用一次。";
+    }catch{$("account-share-link").value="";$("account-copy-invite").disabled=true;$("account-share-note").textContent="请填写完整的知识库访问地址。";}
   }
-  el("manage-access").addEventListener("click",async()=>{
-    if(busy)return;
-    reset();note("");el("admin-dialog").showModal();
-    const current=state.token, cached=remembered(), openingGeneration=generation;
-    if(current){
-      const status=await login(current,true);
-      if(generation!==openingGeneration || !el("admin-dialog").open || ![401,403].includes(status))return;
-    }
-    if(cached && cached!==current)await login(cached);
-    else {if(cached===current && current)save("");el("admin-token").focus();}
-  });
-  window.addEventListener("agico:disconnect",()=>{
-    if(remembered()===state.token)save("");
-    reset();lock(false);el("admin-dialog").close();
-  });
-  el("close-admin").addEventListener("click",()=>{if(!busy){reset();el("admin-dialog").close();}});
-  el("admin-dialog").addEventListener("cancel",e=>{if(busy)e.preventDefault();});
-  el("admin-dialog").addEventListener("close",reset);
-  el("admin-logout").addEventListener("click",()=>{
-    if(busy)return;
-    const shared=usingPortal;save("");
-    if(shared)disconnect();
-    else reset();
-    note(shared ? "已退出当前管理员登录并断开知识库。" : "已退出管理并清除本浏览器的管理员访问码。");
-  });
-  el("admin-login").addEventListener("submit",e=>{e.preventDefault();if(!busy)login(el("admin-token").value.trim());});
-  el("admin-create-form").addEventListener("submit",async e=>{
-    e.preventDefault();if(busy || !token)return;
-    const selected=[...el("admin-org-options").querySelectorAll("input:checked")];
-    if(!selected.length){note("请至少选择一个事业部。",true);return;}
-    const name=el("access-name").value.trim();if(!name){note("请填写用途或团队名称。",true);return;}
-    requestId ||= crypto.randomUUID();
-    const body={request_id:requestId,name,organizations:selected.map(i=>i.value),days:Number(el("access-days").value),count:Number(el("access-count").value)};
-    lock(true);clearIssued();note("正在生成…");
-    try {
-      const result=await api("/v1/admin/access",{method:"POST",body:JSON.stringify(body)});
-      issued={items:result.items,orgNames:selected.map(i=>i.dataset.name)};requestId=null;
-      el("admin-issued").hidden=false;el("share-address").value=location.origin+"/";renderIssued();
-      el("admin-create-form").reset();updateSelectAll();offset=0;
-      note(`已生成 ${issued.items.length} 个独立访问码，请复制或下载保存，原访问码仅本次显示。`);
-      try{await loadList();}catch(error){note(`访问码已生成，请先保存。列表刷新失败：${error.message}`,true);}
-    } catch(error){
-      note(error.message,true);if(error.status===409)requestId=null;
-      if(token)try{await loadList();}catch{/* Keep the original creation error. */}
-    } finally{lock(false);}
-  });
-  for(const [id,change] of [["admin-refresh",0],["admin-prev",-20],["admin-next",20]])el(id).addEventListener("click",async()=>{
-    if(busy)return;offset=Math.max(0,offset+change);lock(true);note("");try{await loadList();}catch(error){note(error.message,true);}finally{lock(false);}
-  });
-  el("share-address").addEventListener("input",sharing);
-  el("admin-share-item").addEventListener("change",sharing);
-  el("admin-copy").addEventListener("click",async()=>{
-    if(!issued)return;
-    sharing();
-    if(el("admin-copy").disabled)return;
-    try{await navigator.clipboard.writeText(el("admin-share").value);note("已复制，可以发给同事了。");}
-    catch{el("admin-share").focus();el("admin-share").select();note("浏览器不支持自动复制，已选中分享说明，请手动复制。");}
-  });
-  function batchText() {
-    return issued.items.map(item=>shareText(item,shareOrigin().origin)).join("\n\n--------------------\n\n");
+  async function showIssued(value){
+    issued=value;let base=location.origin;
+    try{base=(await api("/v1/accounts/entrypoint")).url;}catch{}
+    $("account-share-base").value=base;$("account-expiry").textContent=`受邀邮箱：${value.email} · 有效至 ${new Date(value.expires_at).toLocaleString("zh-CN",{hour12:false})}`;
+    $("account-issued").hidden=false;sharing();
   }
-  el("admin-copy-all").addEventListener("click",async()=>{
-    if(!issued)return;
-    const text=batchText();
-    try{await navigator.clipboard.writeText(text);note(`已复制本批 ${issued.items.length} 个访问码。请按编号分别分发。`);}
-    catch{el("admin-share").value=text;el("admin-share").focus();el("admin-share").select();note("已选中本批全部清单，请手动复制；单份分享可重新选择访问码。");}
+  async function loadList(){
+    const current=generation;
+    const data=await api(`/v1/accounts?tree=true&limit=20&offset=${offset}`);if(current!==generation)return;
+    hasMore=data.has_more;$("account-list").replaceChildren();
+    if(!data.items.length)$("account-list").append(node("p","还没有登记其他账号。","help"));
+    function renderAccount(account){
+      const row=node("article","","account-row");row.dataset.accountId=account.principal_id;
+      row.append(node("h4",account.display_name||account.email),node("p",`${roles[account.role]} · ${statuses[account.status]}`),node("p",account.organizations.map(org=>org.name).join("、")));
+      if(account.role==="superadmin")row.append(node("p","最高管理层 · 开发人员并列","account-owner"));
+      else if(account.creator_email)row.append(node("p",`登记人：${account.creator_email}`,"account-owner"));
+      else row.append(node("p","历史账号 · 未记录登记人","account-owner"));
+      const actions=node("div","","account-action-row");
+      function action(label,handler){const button=node("button",label,"text-button");button.type="button";button.addEventListener("click",handler);actions.append(button);return button;}
+      if(!ding()&&account.can_manage&&account.status!=="disabled")action(account.status==="invited"?"重发邀请":"生成密码重置链接",async()=>{
+        if(busy)return;lock(true);note("");
+        try{await showIssued(await api(`/v1/accounts/${encodeURIComponent(account.principal_id)}/invitation`,{method:"POST"}));note("新链接已生成，之前未使用的链接已撤销。");}catch(error){note(error.message,true);}finally{lock(false);}
+      });
+      if(account.can_manage)action("编辑权限",()=>{
+        if(busy)return;editing=account;$("account-fields").hidden=false;$("account-form-title").textContent="编辑账号权限";$("account-email").value=account.email;$("account-email").readOnly=true;
+        $("account-role").value=account.role;for(const box of $("account-org-options").querySelectorAll("input"))box.checked=defaults().has(box.value)||account.organizations.some(org=>org.id===box.value);
+        $("account-submit").textContent="保存权限";$("account-cancel-edit").hidden=false;scope();$("account-role").focus();
+      });
+      if(account.can_manage)action(account.status==="disabled"?"启用":"停用",async()=>{
+        if(busy)return;lock(true);note("");
+        try{await api(`/v1/accounts/${encodeURIComponent(account.principal_id)}`,{method:"PATCH",body:{role:account.role,organizations:account.organizations.map(org=>org.id),active:account.status==="disabled"}});await loadList();note(account.status==="disabled"?"账号已启用。":"账号已停用，其网页登录和 AI 授权均已撤销。");}catch(error){note(error.message,true);}finally{lock(false);}
+      });
+      row.append(actions);
+      if(account.children?.length){
+        const branch=node("details","","account-children");branch.open=account.role!=="superadmin";
+        branch.append(node("summary",`子账号（${account.children.length}）`));
+        const children=node("div","","account-child-list");
+        for(const child of account.children)children.append(renderAccount(child));
+        branch.append(children);row.append(branch);
+      }else if(account.role!=="user")row.append(node("p","暂无子账号","account-owner"));
+      return row;
+    }
+    for(const account of data.items)$("account-list").append(renderAccount(account));
+    $("account-page").textContent=`第 ${Math.floor(offset/20)+1} 页 · 共 ${data.total_accounts} 个账号`;
+  }
+  $("manage-access").addEventListener("click",async()=>{
+    const user=window.agicoAccount.current;if(!user||!["superadmin","manager"].includes(user.role))return;
+    generation++;offset=0;note("");clearIssued();$("admin-dialog").showModal();lock(true);
+    try{
+      catalog=await api("/v1/catalog");$("admin-identity").textContent=`${user.email} · ${roles[user.role]}`;$("account-org-options").replaceChildren();
+      for(const org of catalog.organizations){const label=node("label","","division-option");const box=document.createElement("input");box.type="checkbox";box.value=org.id;if(defaults().has(org.id)){box.checked=true;box.disabled=true;}label.append(box,node("span",org.name+(defaults().has(org.id)?" · 全员可见":"")));$("account-org-options").append(label);}
+      resetForm();await loadList();
+    }catch(error){note(error.message,true);}finally{lock(false);}
   });
-  el("admin-download").addEventListener("click",()=>{
-    if(!issued)return;
-    const url=URL.createObjectURL(new Blob(["\uFEFF"+batchText()],{type:"text/plain;charset=utf-8"}));
-    const link=document.createElement("a");link.href=url;link.download=`AGICO-访问码清单-${new Date().toISOString().slice(0,10)}.txt`;link.click();
-    setTimeout(()=>URL.revokeObjectURL(url),30000);note("已下载本批访问码清单，请妥善保存并按编号分发。");
+  $("close-admin").addEventListener("click",()=>$("admin-dialog").close());
+  $("admin-dialog").addEventListener("close",()=>{generation++;clearIssued();$("account-email").value="";});
+  $("account-role").addEventListener("change",scope);$("account-cancel-edit").addEventListener("click",resetForm);
+  $("account-invite-form").addEventListener("submit",async(event)=>{
+    event.preventDefault();if(busy)return;lock(true);note("");
+    try{
+      const body={role:$("account-role").value,organizations:selected()};
+      if(editing){await api(`/v1/accounts/${encodeURIComponent(editing.principal_id)}`,{method:"PATCH",body:{...body,active:editing.status!=="disabled"}});note("账号权限已保存，已有会话与 AI 授权已撤销，用户需重新登录。");}
+      else{await showIssued(await api("/v1/accounts/invitations",{method:"POST",body:{...body,email:$("account-email").value}}));note("邮箱已登记，请将邀请链接发送给对方设置初始密码。");}
+      resetForm();await loadList();
+    }catch(error){note(error.message,true);}finally{lock(false);}
   });
+  $("account-share-base").addEventListener("input",sharing);
+  $("account-copy-invite").addEventListener("click",async()=>{if(!issued)return;sharing();if($("account-copy-invite").disabled)return;
+    try{await navigator.clipboard.writeText($("account-share-link").value);note("邀请链接已复制。");}
+    catch{$("account-share-link").focus();$("account-share-link").select();note("已选中链接，请手动复制。");}
+  });
+  for(const [id,change] of [["account-refresh",0],["account-prev",-20],["account-next",20]])$(id).addEventListener("click",async()=>{if(busy)return;offset=Math.max(0,offset+change);lock(true);try{await loadList();}catch(error){note(error.message,true);}finally{lock(false);}});
+  window.addEventListener("agico:account-logout",()=>{$("admin-dialog").close();clearIssued();$("account-list").replaceChildren();$("account-org-options").replaceChildren();generation++;});
 })();
