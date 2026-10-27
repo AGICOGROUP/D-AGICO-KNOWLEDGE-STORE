@@ -57,6 +57,10 @@ class AccountUpdate(Body):
     active: bool = True
 
 
+class AccessUpdate(Body):
+    extra_organizations: list[str] = Field(max_length=100)
+
+
 def normalize_email(email):
     value = email.strip().lower()
     if not re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+', value):
@@ -286,7 +290,7 @@ def valid_invitation(conn, secret, *, lock=False):
 def account_tree(rows, actor_id, is_superadmin):
     """Paginate roots later, keeping each creator's complete branch together."""
     nodes = {row['principal_id']: {**row, 'children': [], 'parent_id': None,
-        'can_manage': is_superadmin or row['principal_id'] != actor_id} for row in rows}
+        'can_manage': row.get('can_manage', is_superadmin or row['principal_id'] != actor_id)} for row in rows}
     roots = []
     for row in rows:
         node = nodes[row['principal_id']]
@@ -414,7 +418,8 @@ def router(db):
                       tree: bool = False):
         with db.connection() as conn:
             actor = actor_row(conn, request.state.principal)
-            parameters = [actor['account_role']=='superadmin', tree, actor['principal_id'], actor['principal_id'],
+            ding = bool(getattr(db, 'dingtalk', None))
+            parameters = [actor['account_role']=='superadmin' or ding, tree, actor['principal_id'], actor['principal_id'],
                 [key for key in request.state.principal.memberships if request.state.principal.publisher(key)],
                 list(request.state.principal.memberships)]
             pagination = '' if tree else ' LIMIT %s OFFSET %s'
@@ -422,6 +427,8 @@ def router(db):
                 parameters.extend([limit+1, offset])
             rows = conn.execute("""SELECT u.principal_id,u.email,u.account_role AS role,u.status,u.created_at,
                 u.created_by,creator.email AS creator_email,di.display_name,di.organization_ids AS synchronized_organizations,
+                COALESCE((SELECT json_agg(organization_id ORDER BY organization_id) FROM account_access_extensions e
+                    WHERE e.principal_id=u.principal_id),'[]') AS extra_organizations,
                 COALESCE((SELECT json_agg(json_build_object('id',o.id,'name',o.name)) FROM memberships m
                 JOIN organizations o ON o.id=m.organization_id WHERE m.principal_id=u.principal_id),'[]') AS organizations
                 FROM account_users u LEFT JOIN account_users creator ON creator.principal_id=u.created_by
@@ -433,17 +440,55 @@ def router(db):
                 u.created_at,u.principal_id""" + pagination, parameters).fetchall()
             defaults = conn.execute('SELECT id,name FROM organizations WHERE id=ANY(%s)',(list(DEFAULT_VISIBLE_ORGANIZATIONS),)).fetchall()
             for row in rows:
-                if getattr(db, 'dingtalk', None) and row['synchronized_organizations'] is not None and row['role'] != 'superadmin':
+                row['assigned_organizations'] = [org['id'] for org in row['organizations']]
+                row['can_edit_access'] = ding and row['synchronized_organizations'] is not None and row['role'] != 'superadmin'
+                if ding:
+                    row['can_manage'] = actor['account_role'] == 'superadmin'
+                    if not row['can_manage'] and row['principal_id'] != actor['principal_id']:
+                        try:
+                            scope_check(conn, request.state.principal, row['role'], row['assigned_organizations'],
+                                        {'principal_id':row['principal_id'], 'account_role':row['role']})
+                            row['can_manage'] = True
+                        except KBError:
+                            pass
+                if ding and row['synchronized_organizations'] is not None and row['role'] != 'superadmin':
                     row['organizations'] = conn.execute('SELECT id,name FROM organizations WHERE id=ANY(%s)',
-                                                       (row['synchronized_organizations'],)).fetchall()
+                                                       (list(set(row['synchronized_organizations']) | set(row['extra_organizations'])),)).fetchall()
                 present = {org['id'] for org in row['organizations']}
                 row['organizations'].extend(org for org in defaults if org['id'] not in present)
                 row['organizations'] = ordered_organizations(row['organizations'])
+            options = ordered_organizations(conn.execute('SELECT id,name FROM organizations').fetchall()) if ding else []
             if tree:
                 roots = account_tree(rows, actor['principal_id'], actor['account_role']=='superadmin')
                 return {'items': roots[offset:offset+limit], 'has_more': len(roots)>offset+limit,
-                        'total_accounts': len(rows), 'total_roots': len(roots)}
-            return {'items':rows[:limit], 'has_more':len(rows)>limit}
+                        'total_accounts': len(rows), 'total_roots': len(roots), 'access_organizations':options}
+            return {'items':rows[:limit], 'has_more':len(rows)>limit, 'access_organizations':options}
+
+    @routes.patch('/v1/accounts/{principal_id}/access')
+    def update_access(principal_id: str, body: AccessUpdate, request: Request):
+        with db.connection(write=True) as conn:
+            actor = management_actor(conn, request)
+            target = conn.execute('SELECT * FROM account_users WHERE principal_id=%s FOR UPDATE', (principal_id,)).fetchone()
+            if not target:
+                raise KBError('NOT_FOUND', '账号不存在。', 404)
+            if target['account_role'] == 'superadmin':
+                raise KBError('FORBIDDEN', '开发人员已可访问全部事业部，无需扩展授权。', 403)
+            identity = conn.execute('SELECT 1 FROM dingtalk_identities WHERE principal_id=%s', (principal_id,)).fetchone()
+            if not getattr(db, 'dingtalk', None) or not identity:
+                raise KBError('DINGTALK_REQUIRED', '扩展访问适用于已关联钉钉的员工。', 409)
+            organizations = sorted(set(body.extra_organizations) - set(DEFAULT_VISIBLE_ORGANIZATIONS))
+            if len(conn.execute('SELECT id FROM organizations WHERE id=ANY(%s)', (organizations,)).fetchall()) != len(organizations):
+                raise KBError('INVALID_ORGANIZATION', '请选择有效的事业部。', 422)
+            before = [row['organization_id'] for row in conn.execute(
+                'SELECT organization_id FROM account_access_extensions WHERE principal_id=%s ORDER BY organization_id', (principal_id,)).fetchall()]
+            conn.execute('DELETE FROM account_access_extensions WHERE principal_id=%s', (principal_id,))
+            for organization in organizations:
+                conn.execute('INSERT INTO account_access_extensions(principal_id,organization_id,granted_by) VALUES (%s,%s,%s)',
+                             (principal_id, organization, actor.id))
+            audit(conn, actor.id, principal_id, 'access_extensions_updated', before=before, extra_organizations=organizations)
+            # Browser and OAuth requests reload authorization each time. Preserve
+            # login sessions while additions/removals take effect on the next request.
+            return {'extra_organizations':organizations}
 
     @routes.get('/v1/accounts/entrypoint')
     def entrypoint(request: Request):

@@ -1,0 +1,1083 @@
+{
+  "format": 1,
+  "version": "Current DingTalk release, 2026-10-27",
+  "source": "Current local source tree, based on acfd44f with subsequent development.",
+  "files": [
+    {
+      "path": ".gitattributes",
+      "sha256": "7adf6704550dd7221c156094b5fae0f3a2b45e94dd61657406d13e6935ea5c5b"
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "d5580a52b6066ddc4857cc92fb71c6b3ce642c2bfe793a253a0dfed34144158f"
+    },
+    {
+      "path": "agent.md",
+      "sha256": "7d3acc1035018da6b81106c8af8b4ca2c4c8531eaeafedfcde5ac147aeac8479"
+    },
+    {
+      "path": "BACKUP-NOTES.md",
+      "sha256": "ad8cb2ea150bd1a70004637b1dda91ee35b1614b878c676bc3cb355321a9cd8d"
+    },
+    {
+      "path": "client/__init__.py",
+      "sha256": "ce85e4c7b1be0a5fbdfaa418379efde8c94fc1ca6a4753ee73c5f33c13a92699"
+    },
+    {
+      "path": "client/agent-usage.md",
+      "sha256": "cb5730542552645d7f3e67d092109bbe676272d3e37a8ba19f9e93cb660824e7"
+    },
+    {
+      "path": "client/file_transfer.py",
+      "sha256": "dddcd28932051669f9865fdf51ed9b72d37b0b622478dec08b31bf90ad8dab71"
+    },
+    {
+      "path": "CONTRIBUTORS.md",
+      "sha256": "ca5d5631a64e5f1bed19ee2dd297c3e0242a188a8fb42d3260e9648e97eb4a76"
+    },
+    {
+      "path": "deploy/windows/api.xml",
+      "sha256": "ae1e3304cf77922ccee6a099c0b11d5489b65bd27315d29033135c2281225a74"
+    },
+    {
+      "path": "deploy/windows/bootstrap-lock.json",
+      "sha256": "cec43bb80c407da95cb0a798f67f75307c3a1dae652b8ca3238c4889894678f2"
+    },
+    {
+      "path": "deploy/windows/config-loader.ps1",
+      "sha256": "ecfca2182f629277bea99b1cbb714401a21c7239273e01493321e99fc3a7d2ae"
+    },
+    {
+      "path": "deploy/windows/https-lock.json",
+      "sha256": "4e4b28afb6a0cd0dff142e422a9e1f114ea7c813b5b14404610863dd9a1b0e1a"
+    },
+    {
+      "path": "deploy/windows/launch-server.ps1",
+      "sha256": "d91faff0a49b8a61acb2fb7550a626eadf487ee314b557ef5a0aa2b2dae9ae4d"
+    },
+    {
+      "path": "deploy/windows/launch-service.ps1",
+      "sha256": "cfe1e22202f62918b250351f7a5397fe54df562e51b480580a136e60befae231"
+    },
+    {
+      "path": "deploy/windows/postgres-explicit.txt",
+      "sha256": "057428376953f5af053b788c36da06dffcbf6afad3f25cab57611a6755c9b990"
+    },
+    {
+      "path": "deploy/windows/run-instance-worker.py",
+      "sha256": "0e9fe00a2737ccaf457d92d1361e4e6dfef6c4c21cc091cb13c1887b6e508ecb"
+    },
+    {
+      "path": "deploy/windows/runtime.example.json",
+      "sha256": "e36a935f8eac88d7fea31e9c8306bc52ba5135a909937262bb017fed92fb1654"
+    },
+    {
+      "path": "deploy/windows/worker.xml",
+      "sha256": "7f198c67ba0b998de1558398cd4e84137ac90f727d5dd6a694bbd8286943ecc4"
+    },
+    {
+      "path": "docs/AGICO-知识库文件分类与命名规则-AI执行指南.md",
+      "sha256": "04bf081ad0437c6bc3dc9fbe90a4d4ee3b24a1719f8f8a67a714208738216d93"
+    },
+    {
+      "path": "docs/design/account-login-and-invitations.md",
+      "sha256": "e365e2272368f4905b48017ae235baa5d53beef3d1bfa3dc0723cc33ce661939"
+    },
+    {
+      "path": "docs/design/dingtalk-identity.md",
+      "sha256": "0c563a00f9a88ea1ec6f04bc0ef9095ad3f922d2ac69e9e500b4ee1d22b05c8f"
+    },
+    {
+      "path": "docs/design/drawing-lookup-policy.md",
+      "sha256": "f18c09323e9713c8aceaacbd45f61f75e56525a6004f664024705b82331e189e"
+    },
+    {
+      "path": "docs/design/file-classification-and-naming-draft.md",
+      "sha256": "66878e4e01705c8c6999555e2c08a10cdbb250ee778fe99b3ddcb1eedcb2e500"
+    },
+    {
+      "path": "docs/design/naming-skill-integration.md",
+      "sha256": "83ae4b8dcd909f64b3a56d2306dc39ed0c84024d6451da5e100baf84cbc510fa"
+    },
+    {
+      "path": "docs/design/parse-notice-policy.md",
+      "sha256": "3646ff4fe7101b6eae4b89467718d5c4f398aee93b28c975f785fe71050f9ccd"
+    },
+    {
+      "path": "docs/design/project-feedback.md",
+      "sha256": "7676b898514bf1ec98242f533c966f9e23ed1933f7b804a13d6fbd80001c9b27"
+    },
+    {
+      "path": "docs/integrations/dingtalk-h5-integration.md",
+      "sha256": "ec2f76ad1eb8c173e582b598bf1ef24eca4c8b444c0806a73494c1561a160558"
+    },
+    {
+      "path": "docs/integrations/examples/dingtalk.config.example.json",
+      "sha256": "5c2630f671405c8e6fafb8b3db41d15f3f3baa2ce0c0a93bd23242eee82b7b9a"
+    },
+    {
+      "path": "docs/integrations/examples/dingtalk.runtime.patch.example.json",
+      "sha256": "b1519a7550503d7ae2a17c88cce2ef42f3cd4a9d02d3d3128121c8e07d5b3c45"
+    },
+    {
+      "path": "docs/server-setup.md",
+      "sha256": "cab24d4fc241e699d18198ec20768b59a80cddb7ceff4b434cec438f62a364cf"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-09-15-enterprise-knowledge-store.md",
+      "sha256": "6c05dd107cc057217ad2de93872563bfe3cb12883cc6d4eb64cd76c09bc3734d"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-09-16-one-folder-server-setup.md",
+      "sha256": "624843d9652ee67a589413d2fc4c10666d97da160244bbe431e1c4222e9a6f2f"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-09-30-cad-light-index.md",
+      "sha256": "f29bb7b9f79d6f014069cfdaaf26e9fa5aca3192027b35a91aec58e57f321ab1"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-19-dingtalk-identity.md",
+      "sha256": "045731d6ed899f00fe2ca821a093182a4f4246cbe5b1c06747c5cb3feb405c8c"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-27-company-access-and-empty-library.md",
+      "sha256": "919ab2772dfe7fd961fd4ddadb9ba00a8e9707772768bf280ccdda7b28670550"
+    },
+    {
+      "path": "docs/知识库分类方案.md",
+      "sha256": "9199d7f7784865f5372535491e4f4e6720556405c55e87294895da7958008105"
+    },
+    {
+      "path": "docs/项目设计基线.md",
+      "sha256": "2ab133aa1762c3ecda64f6066d57c05bbc915750fc50f726e5522563b46ed505"
+    },
+    {
+      "path": "pyproject.toml",
+      "sha256": "fc6300dbfefe1b5d78abc6078225390bf003f3b92bb7a98a7811e396eb27c7bb"
+    },
+    {
+      "path": "README.md",
+      "sha256": "8f556d78050352ee2fd487c071f81874a3b7dffd1e7ab9dddb641d8f37867afe"
+    },
+    {
+      "path": "scripts/backup.ps1",
+      "sha256": "350b0a9cb03cfa729f0ab3c2e80b34ea7aeadde8f286184df1340d095a5fb030"
+    },
+    {
+      "path": "scripts/benchmark_search.py",
+      "sha256": "921603bfbfe39e760741848ea26b98bb5117c3293e8c6e1a64f2527f3caa384c"
+    },
+    {
+      "path": "scripts/bootstrap-server.ps1",
+      "sha256": "3248a0b26981cff658647b656dd9444c1e8fd124520109f54500fcbe5b7d7742"
+    },
+    {
+      "path": "scripts/build-company-library-update.py",
+      "sha256": "20014df7fc8a1598936f736c6b8c5931691c53137200d58951930a519d9466ba"
+    },
+    {
+      "path": "scripts/check-server-ocr.ps1",
+      "sha256": "e5dc987ead6cce2e56752bda69a5fc798c806d0e6320ac1bbfc6d2882c472cff"
+    },
+    {
+      "path": "scripts/check-server-prerequisites.ps1",
+      "sha256": "136e2bb7817d121b4beb93d1e598a5e2287b81da8d6158f0811011f0f1ebe963"
+    },
+    {
+      "path": "scripts/company-library-maintenance.py",
+      "sha256": "0f9f57e7ad35d01bae27369fa7e9aff6cd0a7287b382971611623cb0ed4bb907"
+    },
+    {
+      "path": "scripts/configure-server-https.ps1",
+      "sha256": "b65b9877c96170ebaeb71d59dee3fe62c912c4756a327f85480ac6b996157565"
+    },
+    {
+      "path": "scripts/configure-server-services.ps1",
+      "sha256": "d64ba365fdf960e8ae4a185edd1a98c3131b81c18695ea02a0d22aa8f56d594a"
+    },
+    {
+      "path": "scripts/dev-db.ps1",
+      "sha256": "a755c6dfca9733ae5561cd4e7f96cbb85226a42f1f1bbd7f5bc72ca3a2ddc33e"
+    },
+    {
+      "path": "scripts/diagnose-opencv-loader.py",
+      "sha256": "6a95f07c347b1c1415f08cc2b4cd522c734e9a6596c50b1060c40c71ea41e396"
+    },
+    {
+      "path": "scripts/dingtalk-setup.py",
+      "sha256": "1817c5a9161dd5577133fa28b97a46dc2e0c6e9d7efa506dedf73e10ea32d575"
+    },
+    {
+      "path": "scripts/enable-server-https.ps1",
+      "sha256": "c64463467eaf1b4bde0a6887eed8ef1ae12fcdbb77ca294d4e32095cb91e971f"
+    },
+    {
+      "path": "scripts/https-ingress.py",
+      "sha256": "20dd3a9fb9ea9e6db1caec84b84170e3ea27f61f37f5c7278819df91328cf98a"
+    },
+    {
+      "path": "scripts/import-company-data.py",
+      "sha256": "82b7b4cf6c2832891f06d8534683c5e03a53287e3f5afcec5131744cdbe6a21d"
+    },
+    {
+      "path": "scripts/import-server-migration.ps1",
+      "sha256": "534afb836ce8190cb15edf7ccb5b3fe2f3084facbb0d13470caeeb92e30b261b"
+    },
+    {
+      "path": "scripts/initialize-server.py",
+      "sha256": "2523a435d0664376ec8cae28bcc1b59f7c18e2df83c804e841edfcde586e9b27"
+    },
+    {
+      "path": "scripts/install-services.ps1",
+      "sha256": "7885fddb6a4afa9396990a035c48eeb6071cc47e6fd70a5bd739f483de73e8a7"
+    },
+    {
+      "path": "scripts/mcp_load_client.py",
+      "sha256": "4c93c289e9e49f50c5d5ffd05ee68feb9f45caf417ade269e608f23c73cd1a9d"
+    },
+    {
+      "path": "scripts/prepare-https-certificate.py",
+      "sha256": "d839560e87b9c24fd821881de37914bec97b3dc177dc9bf7db14f375034213ea"
+    },
+    {
+      "path": "scripts/prepare_dev_db.py",
+      "sha256": "24484485ed092b2443195edcb10b25ef538e16933d34854476139df78e7a9012"
+    },
+    {
+      "path": "scripts/probe.ps1",
+      "sha256": "e9530ed424cc6be1d0e92f8923eb8ccd8b7c75077d724208a6e56780af9bbbb2"
+    },
+    {
+      "path": "scripts/probe_agent_usage.py",
+      "sha256": "7d12a6ce972f9a1ae4b73f97c5d8e9410fd21253ae91f6861f089051ffeae655"
+    },
+    {
+      "path": "scripts/probe_business_mcp.py",
+      "sha256": "758eda8b3ea257060971a082dee2d56b6b9883b8c10783ef6f0e2ad1bdc4bca5"
+    },
+    {
+      "path": "scripts/probe_components.py",
+      "sha256": "b5160e56b800d0c834b1cd5c72675cc2193dc6236e25088e68dccf2a6513111f"
+    },
+    {
+      "path": "scripts/probe_mcp.py",
+      "sha256": "b71c521511d73d3b61f1b1f73fa0572d7b51a42849828194c144e70f876a46cd"
+    },
+    {
+      "path": "scripts/rebuild-server-https.ps1",
+      "sha256": "08eb654c62dd14a431622627150cdcdae16b4ea5b3edc72df96c8ba40e26a7f4"
+    },
+    {
+      "path": "scripts/restore.ps1",
+      "sha256": "9ec93acb4106f56fd3262e95617a3fb8fc46b7a0e070cb668a6f4f2529076904"
+    },
+    {
+      "path": "scripts/run_load_probe.py",
+      "sha256": "260f5aa4dece15fb92b504fb53be91f30a7ab87a49a8a7bea512ba8841bbbb63"
+    },
+    {
+      "path": "scripts/score_ingestion.py",
+      "sha256": "9b6436cab23316879082a60a72a7e736931e33f42f3162b18061207172870c3f"
+    },
+    {
+      "path": "scripts/start-dingtalk-vm-test.ps1",
+      "sha256": "45384e43c3633622e06e5cdb90afa66b5b9ff08ff61115986041d3f6fb849bec"
+    },
+    {
+      "path": "scripts/test-runtime.ps1",
+      "sha256": "60de67ccd51956b1385c0cca80efa2bcc1e1dc63148145f8e8d198a2840f20cd"
+    },
+    {
+      "path": "scripts/update-company-library.ps1",
+      "sha256": "aee0fc4eae5c6cb43942ebc76ff41ee0b78cb46830a6204d537acb1d3038ebec"
+    },
+    {
+      "path": "setup.ps1",
+      "sha256": "7af01d1b44a5b75a5d2a9d6a496c959544f31d270dacb21fbbabcb6fc09e1b44"
+    },
+    {
+      "path": "skills/agico-kb-rename-before-upload/agents/openai.yaml",
+      "sha256": "8597931d96987395bb4115789dca0aad0c6293eaf938d42466636676b46fdf0c"
+    },
+    {
+      "path": "skills/agico-kb-rename-before-upload/references/naming-rules.md",
+      "sha256": "14d13c6b44e4133cb4ebe0fda695a950519cb63d167cb464266c81b7e3915be9"
+    },
+    {
+      "path": "skills/agico-kb-rename-before-upload/scripts/prepare_upload.py",
+      "sha256": "f64bcd734d62c67fd6c27ba32bc09ec60ef17770e0ce65b66089116a5aa0ffb7"
+    },
+    {
+      "path": "skills/agico-kb-rename-before-upload/SKILL.disabled.md",
+      "sha256": "3e9c2750f26de214a65e17ac2927be3234d6d3f0720a67f8e0b42c07d7dce98a"
+    },
+    {
+      "path": "src/agico_kb/__init__.py",
+      "sha256": "9b1a73277def0059b6da22bc21f4a519b751cffbee35336e5303511f827bef8a"
+    },
+    {
+      "path": "src/agico_kb/access_management.py",
+      "sha256": "263e838c63dba131e2e99d3b2e2b32d678e8cfc95fa7f08094fb69c951ba05b2"
+    },
+    {
+      "path": "src/agico_kb/account_oauth.py",
+      "sha256": "f1ea9f7359fc348c7548e9c0eb2fcaea3720da871440d593010a80b80043be6c"
+    },
+    {
+      "path": "src/agico_kb/account_security.py",
+      "sha256": "24b8be237f9da470489a506c57002ff430e8981e591661b02b3142b1161ee10c"
+    },
+    {
+      "path": "src/agico_kb/accounts.py",
+      "sha256": "e180b1312cd620d42f734f7904cff8648483b03211e87deb1013fec941c2658e"
+    },
+    {
+      "path": "src/agico_kb/admin.py",
+      "sha256": "919d672efe53a3d0e068eaa66cc8c7336169d498df65f1eb649be5c81c325628"
+    },
+    {
+      "path": "src/agico_kb/ai_naming_rules.md",
+      "sha256": "1fc7b30987d21e56a6b79e30ffd850f726287a9d03621c2b1c0f87d3740a6b3d"
+    },
+    {
+      "path": "src/agico_kb/api_keys.py",
+      "sha256": "b8d2ca9486dc24cc4807bbcf73727f8c2514cefd4604720648e4c5dcf7a55d09"
+    },
+    {
+      "path": "src/agico_kb/auth.py",
+      "sha256": "1bba072fd91437103a88c260da8873196663ca8232e0c21fcfb94b6e4e283a98"
+    },
+    {
+      "path": "src/agico_kb/cad.py",
+      "sha256": "9b5da0b1c08835c9fd7984ead51229d52b8b78d46353705efaaeca15e7a539e2"
+    },
+    {
+      "path": "src/agico_kb/catalog.py",
+      "sha256": "d60f1e61dae070f164c0ecd3e3c566eec5494aa96a325cf62c855555428a7e4d"
+    },
+    {
+      "path": "src/agico_kb/chunking.py",
+      "sha256": "ef24ecde8fd42531ccfe64a6dcfc66ebbf106396b799b8bbd9122ce73cb27c64"
+    },
+    {
+      "path": "src/agico_kb/config.py",
+      "sha256": "82e6411e2d87edec7146ceeb439edd9957f541424af6acb9b89dc8a52ee0e18c"
+    },
+    {
+      "path": "src/agico_kb/contracts.py",
+      "sha256": "90cfccca092e3cd278eb251f6c2a98ccdc89ce695d5584c8734f94c3a4abf949"
+    },
+    {
+      "path": "src/agico_kb/convert.py",
+      "sha256": "1243e8e3dd0e489ab92f5690e7d6e14f353bd40188cfe8e5c35c7ca4e4446d21"
+    },
+    {
+      "path": "src/agico_kb/credential_crypto.py",
+      "sha256": "e89b64e7da9cd9b73321b2295f3257f0b16ab5b385bf1ae91721419899ad8014"
+    },
+    {
+      "path": "src/agico_kb/db.py",
+      "sha256": "4692292f8c9ea517c64788292f942ef60fd6e778a8cc38fb56e63911e1e319be"
+    },
+    {
+      "path": "src/agico_kb/dingtalk_client.py",
+      "sha256": "8d13e4d7cac1379873052970f5c44689b73d3ea3c00c79e314b2ac2a7a5cd5bf"
+    },
+    {
+      "path": "src/agico_kb/dingtalk_identity.py",
+      "sha256": "3c1d4af87c686adb82269d9f1d8fc803c1957702d8c791ee694a7bcb330b2c20"
+    },
+    {
+      "path": "src/agico_kb/dingtalk_login.py",
+      "sha256": "d632a67d9def41ebe94e54a57eeb3fd049c781162fd92a5e7701444bed0711e3"
+    },
+    {
+      "path": "src/agico_kb/dingtalk_setup.py",
+      "sha256": "f55153caab15c7d6a18957009ff34cd7dc137dd4bd58ff55fe16a282f3958ead"
+    },
+    {
+      "path": "src/agico_kb/drawing_index.py",
+      "sha256": "1aeef894bcc6255ec01913f5b7686a7c163af839be8ca88b6f817792d0a8bfbe"
+    },
+    {
+      "path": "src/agico_kb/embeddings.py",
+      "sha256": "2672057c1540592c82669f9ff5a2c216fbaf9370b90626818219e1391ee48ad1"
+    },
+    {
+      "path": "src/agico_kb/errors.py",
+      "sha256": "0d73c8706985423f21be79e3bf5ff5dc844fa9d5590c14c8cb0d7ce73a4cf547"
+    },
+    {
+      "path": "src/agico_kb/excel_visuals.py",
+      "sha256": "2a10266313b6c3261ae9e5a6e88d81d173a94993870134a62560db2f00a723dd"
+    },
+    {
+      "path": "src/agico_kb/failures.py",
+      "sha256": "2c6213ece1d32e3d719b88f8161b464085944381e6e2e92342560f958a61436c"
+    },
+    {
+      "path": "src/agico_kb/fallback_parse.py",
+      "sha256": "82efad1bdff9265e89168f4c5a92c93401b4140dc925f917418ab38833a50631"
+    },
+    {
+      "path": "src/agico_kb/feedback.py",
+      "sha256": "90226f176f1421c0650e7f939c6aff9a932e4c043e28eb912973290c50b6486d"
+    },
+    {
+      "path": "src/agico_kb/files.py",
+      "sha256": "25ddd577524b09af418fdae8fe4dceafe34d64bf7170761d0085aa26a1dd11b2"
+    },
+    {
+      "path": "src/agico_kb/ingestion.py",
+      "sha256": "b18c18ce47ecbd9399ceb6a2c5d41312760fb724c7ee9d6b31ec1e061ab7d10d"
+    },
+    {
+      "path": "src/agico_kb/library_maintenance.py",
+      "sha256": "42cb82e9803c24e8157dbe6ef0678e17cb944b56bcdf16ac4c6edf88329bdb5a"
+    },
+    {
+      "path": "src/agico_kb/lifecycle.py",
+      "sha256": "c451f7a4df5ffd44961e8c76df13c88a6c08eb09693e7705ac4373e6810b9381"
+    },
+    {
+      "path": "src/agico_kb/main.py",
+      "sha256": "49b93917e833e608bb1fb215c2f5cae04f1202464c8667123d702601a8545efe"
+    },
+    {
+      "path": "src/agico_kb/mcp_server.py",
+      "sha256": "6cb26c424ae082af8c77bbdba9384cfb67690897eeb9e68d78a2bf077aeeeab4"
+    },
+    {
+      "path": "src/agico_kb/migrations/001_initial.sql",
+      "sha256": "3ab5907ff04bb7c92a621aa9bf447eb280741b8dac9a9b93127baa0b9fe72587"
+    },
+    {
+      "path": "src/agico_kb/migrations/002_ingestion.sql",
+      "sha256": "cbacfe1d47404bec66b5228d3fa0c6666cdf0b6c7f4cf8c8635a118c3ae63358"
+    },
+    {
+      "path": "src/agico_kb/migrations/003_access_management.sql",
+      "sha256": "bde9f68fb7ff8d7fbafe6f4539b58d42557b4dbba151ca5bb92212a781146b55"
+    },
+    {
+      "path": "src/agico_kb/migrations/004_project_registry.sql",
+      "sha256": "6cd55da4dcd183c3b2742d1d1844df471db1ddb0e572bfe24c7cbecc6767db0a"
+    },
+    {
+      "path": "src/agico_kb/migrations/005_accounts.sql",
+      "sha256": "81f865bfeb1c9c1dd5cd0e9afb821ea59749e7c35c6fa1d66508cff2bbdfe34d"
+    },
+    {
+      "path": "src/agico_kb/migrations/006_feedback.sql",
+      "sha256": "819fdb3b828846c47d3922cc4f0ae852bd2bd00832036d820715ae7e0ee85d4e"
+    },
+    {
+      "path": "src/agico_kb/migrations/007_dingtalk.sql",
+      "sha256": "9178e234a3f959dbf3c3194d6e3ba171fa6a3e2407118c3f60eeed7881929433"
+    },
+    {
+      "path": "src/agico_kb/migrations/008_access_extensions.sql",
+      "sha256": "e94329e6df42436e1fceac847edc95018a5359a8eb6567306a9843b920669f36"
+    },
+    {
+      "path": "src/agico_kb/model_preview_blender.py",
+      "sha256": "d5c8ee9b74fda6da9fe1374c3ef33779b86a73ca590a4b5e8883804ebe7d5494"
+    },
+    {
+      "path": "src/agico_kb/naming.py",
+      "sha256": "1fda9c8c349c792ce7d932688321afc0a06eac6f1f7fb3414c38151b692880e0"
+    },
+    {
+      "path": "src/agico_kb/naming_preview.py",
+      "sha256": "d234fdd8e771494b4799f8b5df0e42b12ced78814fd157bb2d53d5efcc8e25a6"
+    },
+    {
+      "path": "src/agico_kb/operations.py",
+      "sha256": "3627713494d67f79ee85dedd873e4f8afb276920466df62c08d6dbb1e3787b93"
+    },
+    {
+      "path": "src/agico_kb/parse_notices.py",
+      "sha256": "069da3114746fb77bff0da8459f3bb99a1ae4adade99a9911c29b40a6368bfa4"
+    },
+    {
+      "path": "src/agico_kb/pdf_integrity.py",
+      "sha256": "996e8bc42fc01ab43152d49c66d7e1cf1bd5f24a03a8f458071a26a92b4ff7ad"
+    },
+    {
+      "path": "src/agico_kb/pdf_screening.py",
+      "sha256": "256171e3131e7f9e3f2d85f0027e9d985eff7b07c6873bbbedb75a50591c1214"
+    },
+    {
+      "path": "src/agico_kb/portal/account.js",
+      "sha256": "587cee3983a39ace7a621204a4a1adfab8bdccdfeded057675f6a7393f1ffa03"
+    },
+    {
+      "path": "src/agico_kb/portal/admin.js",
+      "sha256": "5ac22dfa94d8bae36a5837f39690ff271ceb16c5106f8eb492be04e22a3b669a"
+    },
+    {
+      "path": "src/agico_kb/portal/agico-logo.png",
+      "sha256": "69e1cf966a8db319011ef7eb891217c3f54a25d260442a05ec4818581e2c333e"
+    },
+    {
+      "path": "src/agico_kb/portal/agico-mark.png",
+      "sha256": "e630e6f8a55341c3597ce3a5fa2c2797f0b9a2c447f5bd002c29e1a11ba4cb5e"
+    },
+    {
+      "path": "src/agico_kb/portal/api-keys.js",
+      "sha256": "9feea7ced3171ab6d34798136d6f65a1c77c0503d76e980aa8a532a9dfe667b0"
+    },
+    {
+      "path": "src/agico_kb/portal/app.js",
+      "sha256": "039ee1d002eaa8b0436c770930fb00376480d8378418623ae90d16c1b6b566c4"
+    },
+    {
+      "path": "src/agico_kb/portal/dingtalk.js",
+      "sha256": "a2029b074ccd210c19913f15dd390940d0b1030e8dd69a0ab13c64ce5b94b01d"
+    },
+    {
+      "path": "src/agico_kb/portal/document-preview.js",
+      "sha256": "78f37053cfce0a54b84695af798c1c0977f628b4a0113eb873ef470ad4269eb3"
+    },
+    {
+      "path": "src/agico_kb/portal/feedback.js",
+      "sha256": "dcb7eddaee1b1b9f927cf610ea81edfdf6e7744fcaa1c6211383a78037680491"
+    },
+    {
+      "path": "src/agico_kb/portal/folder-upload.js",
+      "sha256": "1bc5000faac2f223a26a7e236f752a817edb59f97d0fb6144ed4ad15831607b1"
+    },
+    {
+      "path": "src/agico_kb/portal/index.html",
+      "sha256": "29aeffa65b417c955d6fc8af1c74097b815d065fd64ee13cedb8414473d72161"
+    },
+    {
+      "path": "src/agico_kb/portal/styles.css",
+      "sha256": "f0726e64fc561be69490a111f7465ba94e63972bc299eef60dc3dac53ea3f1bd"
+    },
+    {
+      "path": "src/agico_kb/previews.py",
+      "sha256": "40c472eb339f1288489e7831b0a8879a1648a838955b617da35cb618a4310094"
+    },
+    {
+      "path": "src/agico_kb/project_registry.py",
+      "sha256": "529f4aea9eaa31c5da9ba9b3b3bcab0f613d3fbf4a9b51ba97a5c77d7462cc96"
+    },
+    {
+      "path": "src/agico_kb/provider_catalog.py",
+      "sha256": "f36a27d6a1b673645ec7683b065d54e855136f891f7669b25f7e8d01b06d2b94"
+    },
+    {
+      "path": "src/agico_kb/provider_config.py",
+      "sha256": "a2c192d648a3606dbf029e13a2bdb31af6a725b0cdead2aa1c2974cf4f064d31"
+    },
+    {
+      "path": "src/agico_kb/provider_health.py",
+      "sha256": "cbaae2be4d1f2178ba1b32d708a3ac6446cdd3220f8bf39b85b6d080270e9f51"
+    },
+    {
+      "path": "src/agico_kb/provider_limits.py",
+      "sha256": "666709e8799a5055e050cc88794b9f7a85ba8fbb202a008585440e46409b8085"
+    },
+    {
+      "path": "src/agico_kb/quality.py",
+      "sha256": "25b25f507ffa7a28136a55991f0cca5741507675b3f088c1c44debcbd9c9cfe9"
+    },
+    {
+      "path": "src/agico_kb/search.py",
+      "sha256": "02faf286a4c1eeffe52ff621910d1977bc7bac2f4691ff804c466c5902a40d7c"
+    },
+    {
+      "path": "src/agico_kb/server_setup.py",
+      "sha256": "55d30bc6871780ca86b3236e94c1df7fb43c30e042a696a61b6f29a9d5026e26"
+    },
+    {
+      "path": "src/agico_kb/taxonomy.json",
+      "sha256": "1db4ad5c6dfe418cda3d48237c6966c3f1741f60ceb8eb7e04b5870153be2ebd"
+    },
+    {
+      "path": "src/agico_kb/thumbnails.py",
+      "sha256": "a446db5d957571dfde848106c983025bdc8c0dc36965b7a4c2ec017d2d30b5f7"
+    },
+    {
+      "path": "src/agico_kb/tokenizer.py",
+      "sha256": "f884ea982cf2436e33ea0dfbee81b2c549af45e43ac558d1e3aa44df2f8ef9eb"
+    },
+    {
+      "path": "src/agico_kb/vision.py",
+      "sha256": "816a69eaa7ad2221af12b0110f61eaaa2c4e548c6c1616a4615ea0a74871df01"
+    },
+    {
+      "path": "src/agico_kb/worker.py",
+      "sha256": "64479e848e39cef34739c6556f4d2e0248246477e90bbb09d43178ecfbb8dd35"
+    },
+    {
+      "path": "tests/conftest.py",
+      "sha256": "544916b4bf349299396f0d362b55828ec89c25bd12f10ebd9161c84a7352f3e5"
+    },
+    {
+      "path": "tests/contract/test_admin.py",
+      "sha256": "46f13ef80d7b7f874576b9b9cd960251290125e687623ff046871d6d7510a833"
+    },
+    {
+      "path": "tests/contract/test_auth.py",
+      "sha256": "bb6687cdab58157ba00a9f737d955b8333da5b58bc93318ffe765c22c72e5f2b"
+    },
+    {
+      "path": "tests/contract/test_cad_library.py",
+      "sha256": "702897f28755ad7851203c96eee8168eb22a7c7489b2c4d043065547e1e1de3e"
+    },
+    {
+      "path": "tests/contract/test_disconnect.py",
+      "sha256": "88c5b1131242889310e7a8f4d2da9c8543b4fa88dfb13c5e138bb07073687fb0"
+    },
+    {
+      "path": "tests/contract/test_edges.py",
+      "sha256": "b22146dc06ff019abd85b8810301234546d16fe526e943731ce9cb853fcbe611"
+    },
+    {
+      "path": "tests/contract/test_files.py",
+      "sha256": "93990c821858a9f334f299ea38742fb72be00304643fb099775b9879a61c749e"
+    },
+    {
+      "path": "tests/contract/test_lifecycle.py",
+      "sha256": "7bdb2b21f5ab234a197b9ea80023f2dbbe095619e7f382ddd61470f0bafc30b2"
+    },
+    {
+      "path": "tests/contract/test_naming_api.py",
+      "sha256": "2b919954a16566cb66ff0fe0300d75428550e244c6873d4f0f0d4785e173ab09"
+    },
+    {
+      "path": "tests/contract/test_naming_service_recovery.py",
+      "sha256": "235a8e93488fd67055a3a94b30cab0ea851741737ac48f84cdbab1581e6266e8"
+    },
+    {
+      "path": "tests/contract/test_organization_order.py",
+      "sha256": "777506e23172d3fb52de2726a67160c51d7b32b0401a07beab58cf1955c8304b"
+    },
+    {
+      "path": "tests/contract/test_pending_rename.py",
+      "sha256": "05af01210d93003b6efaa40fe821cf6ab89b44f5c066ae72a783e74f6976f83b"
+    },
+    {
+      "path": "tests/contract/test_project_registry.py",
+      "sha256": "e842a1c996d2a6fb3f30f22e5ea036c04b5f804832081f2ccf14a82c3cd1cd0d"
+    },
+    {
+      "path": "tests/contract/test_publish_category.py",
+      "sha256": "f98a787a6cbdf21363314a02b376e2a56875fcb8681429a7b370b49a7f3d0ffe"
+    },
+    {
+      "path": "tests/fixtures/manifest.json",
+      "sha256": "b2c3cbad8e9abdbbbe0dea3a1378f71e81a30a602625d41de1c28e106d72108e"
+    },
+    {
+      "path": "tests/integration/test_access_extension_migration.py",
+      "sha256": "3ef9ba5f9afb263143f4dbad18073455a2cc4f2c72606c95aebd3d32f7469bbe"
+    },
+    {
+      "path": "tests/integration/test_access_management.py",
+      "sha256": "9341a032a86858ee992a23f817d48db064af9ada240070e8329362acb014ecf5"
+    },
+    {
+      "path": "tests/integration/test_account_file_access.py",
+      "sha256": "a7e39d702c9d75ca5a347a3798e543a470fea9c43a04a9a85a627b26bee1d8b9"
+    },
+    {
+      "path": "tests/integration/test_account_hierarchy.py",
+      "sha256": "80481b0f3cf8366c592c4008f10844fe0f97e4cb57c35fd1dcaa3b01bcdfc558"
+    },
+    {
+      "path": "tests/integration/test_account_login.py",
+      "sha256": "ae4cb9b88bfc15f701a1ff4909719693e4690e180a4edf499a116f4b104d9b2b"
+    },
+    {
+      "path": "tests/integration/test_account_mcp_transport.py",
+      "sha256": "557290e5444579aec759ac2cd7f3bc4e14f1010863eb96e7f8785c5310d58650"
+    },
+    {
+      "path": "tests/integration/test_account_oauth.py",
+      "sha256": "630c8f7f523133dbddc15bc63ffe485c02b53dc34b01f81339516af2c49c7f71"
+    },
+    {
+      "path": "tests/integration/test_account_restore.py",
+      "sha256": "42dd2044a66db3a3b823fae552ab02e58ae191f598d03871d324cf4632d4bf53"
+    },
+    {
+      "path": "tests/integration/test_api_keys.py",
+      "sha256": "26ee9e348a7416febfb91937aaee83a10d77b0cff533ee05f1846f7d52076daf"
+    },
+    {
+      "path": "tests/integration/test_cad_indexing.py",
+      "sha256": "fe768ddfc20b44ff0535d3efbb29865c366f55b6d8150a8c15ddbe05e0fa4bb8"
+    },
+    {
+      "path": "tests/integration/test_default_visible_departments.py",
+      "sha256": "5f295f880f5bbc0c284987d2c68556c15e0d50438264f3f4e2d4d774bf4607a0"
+    },
+    {
+      "path": "tests/integration/test_dingtalk_access_extensions.py",
+      "sha256": "48acee5ab64b51d33318d9a055b33e966081e9e74f3fd3d0da5cd5cdb5403794"
+    },
+    {
+      "path": "tests/integration/test_dingtalk_identity.py",
+      "sha256": "074b337f6ef03817a0d1b9f4778727484027cf80302b597377feaf17160f9108"
+    },
+    {
+      "path": "tests/integration/test_document_preview_access.py",
+      "sha256": "ac36434e8e840b94efa8064dd82793249d6181462e19f0c63c066a00f2618c64"
+    },
+    {
+      "path": "tests/integration/test_feedback.py",
+      "sha256": "f4bbfa639639e833e8bf5925f06de317dda1483c3a24db53b811474a502ebca0"
+    },
+    {
+      "path": "tests/integration/test_file_links.py",
+      "sha256": "23b1a09b84e00d9fb376d346b1665d0e58e1a7caa27eec9502da7171035800fc"
+    },
+    {
+      "path": "tests/integration/test_file_transfer.py",
+      "sha256": "56e3c0ea0fc10aa677eea7dc157062f61a3cb6e2ceef6fd49b776d25c4ba94ba"
+    },
+    {
+      "path": "tests/integration/test_ingestion.py",
+      "sha256": "9bf192b16efacfbbbef26c5baf05f30f360058fac4c116f0ba0e9dc1c2c85f27"
+    },
+    {
+      "path": "tests/integration/test_library_maintenance.py",
+      "sha256": "e33870ecd25284c37ce84d869f38c8670b2ec7527246ecaba93cc43cb0742d75"
+    },
+    {
+      "path": "tests/integration/test_manager_department_scope.py",
+      "sha256": "4631c677402706508ae3c53eb22142541aa61aeafdd6bbd59c44fcb5c9561b30"
+    },
+    {
+      "path": "tests/integration/test_mcp.py",
+      "sha256": "028ce13d466be03d9b30aad54a2578136f9a4301c804e2822a63943cbff47d0e"
+    },
+    {
+      "path": "tests/integration/test_notice_presentation.py",
+      "sha256": "7dbf90bb4546ae2fe9f537eaabf3001ffc595cadf516299ceecb60a698038522"
+    },
+    {
+      "path": "tests/integration/test_portal.py",
+      "sha256": "ec35110088953af7fe248f091d023f8a08855015719f8f8da53d9ee93adab285"
+    },
+    {
+      "path": "tests/integration/test_process_restarts.py",
+      "sha256": "7f089467955f14be5bc4bbf273fbf2be6c1555d954a50982543b4a9a45e9882c"
+    },
+    {
+      "path": "tests/integration/test_reconcile.py",
+      "sha256": "8851a238fb1445b0e42837272ff0360bde15e55caa8fbbfe85bd3ee33a518a55"
+    },
+    {
+      "path": "tests/integration/test_restore.py",
+      "sha256": "fcb7c837e132699e51e78c90a6393bb2269630927408fd488363370c58f14cbe"
+    },
+    {
+      "path": "tests/integration/test_search.py",
+      "sha256": "1dd9db42152699d22ec194fc50f2c5f7bfbbf747863ffbd430f10c3d70c7f311"
+    },
+    {
+      "path": "tests/integration/test_search_efficiency.py",
+      "sha256": "906406da75811811ab74149cb9d55a65fa22929c4c96f7e4db72e40dca917c4e"
+    },
+    {
+      "path": "tests/integration/test_source_read.py",
+      "sha256": "d5ed76e6560cf829a176a216eb2cc6b2840182462c36c31b158d91cd188c7813"
+    },
+    {
+      "path": "tests/integration/test_thumbnail_access.py",
+      "sha256": "0f3f9ac7bbfe1ed1259e3b25f4c63548bbb328c0b436ca8289a3a053e9ad27fe"
+    },
+    {
+      "path": "tests/integration/test_worker_recovery.py",
+      "sha256": "dfa712ac38cb20342d90fa03b41101d60322e4bca02794fdce440d7059cdb578"
+    },
+    {
+      "path": "tests/integration/test_worker_slots.py",
+      "sha256": "532765971bac090a21750b561cbf256cca89322b6b2d50aea699baafdcdddbb4"
+    },
+    {
+      "path": "tests/load/acceptance-profile.json",
+      "sha256": "22a075fceee964602984300a7135a75c419169fb916f335c81719e222e86829d"
+    },
+    {
+      "path": "tests/load/development-profile.json",
+      "sha256": "cf4214c048b116f57ed5f4df601a48641c7c153068288bf96452392ed420f8bf"
+    },
+    {
+      "path": "tests/load/harness.py",
+      "sha256": "bd19cffa6f7f36cd0cbc3519ea59587f23035e8ba0f6970537f13eb0542de0e1"
+    },
+    {
+      "path": "tests/load/locustfile.py",
+      "sha256": "290567bf3ad59d313a29b50ecc16203a810543b77ba9350f58a53848cb68556d"
+    },
+    {
+      "path": "tests/load/test_acceptance.py",
+      "sha256": "502ed5bbbef5917dddeb913d86bb072a30110f13c3a6c053a15bd50ff8e5325a"
+    },
+    {
+      "path": "tests/load/test_harness.py",
+      "sha256": "8596db205627876228cb4c2c68c528e346a59f12951c98d9d8eab84ac77bf478"
+    },
+    {
+      "path": "tests/load/test_mcp_probe.py",
+      "sha256": "e0f2a405fac4e728c308497ad852a36531adc6859f70a5c8b242013f12548a80"
+    },
+    {
+      "path": "tests/load/test_runner.py",
+      "sha256": "e8ef3cedef11532f40b44799bdb461f020766820102c54a753e603c711b4901e"
+    },
+    {
+      "path": "tests/test_bootstrap_cpp_runtime.py",
+      "sha256": "a4f9052fbfde91acfc29d2cf2332f5d04d26cf652a3063ce91110dd19ac55544"
+    },
+    {
+      "path": "tests/test_bootstrap_native_output.py",
+      "sha256": "200db23e3fbd1ae0562f06a88a3b62432dcce1c99cde46a0847012acac3c61ec"
+    },
+    {
+      "path": "tests/test_bootstrap_server.py",
+      "sha256": "e26f8cf0748e0f4a5eb031ba5edc9acc44d054a6faaf810949aae27ac3c2be0f"
+    },
+    {
+      "path": "tests/unit/test_access_extensions_portal.py",
+      "sha256": "e7ac853818b2b6f96bba728be6ed9c799de0be8dea2f974905b4ed7de960087e"
+    },
+    {
+      "path": "tests/unit/test_account_security.py",
+      "sha256": "844a7d53334b34311790dfab6bafb9253f82f3261b9bc1fda59bb56493dd4940"
+    },
+    {
+      "path": "tests/unit/test_agent_instructions.py",
+      "sha256": "e7900615a89041e50b156c6e58e218f49372ed589b296afe33570114257704e1"
+    },
+    {
+      "path": "tests/unit/test_api_key_portal.py",
+      "sha256": "63327ee589103688bf982470cd51795db59e20615e56f1f9870541455a1a0d30"
+    },
+    {
+      "path": "tests/unit/test_api_key_store.py",
+      "sha256": "b02947b24590cc1a7e0f49e2f6bed286d646da1e0eb827e1d808e9310d43af4b"
+    },
+    {
+      "path": "tests/unit/test_cad_parsing.py",
+      "sha256": "e928cb937f26cf3780eedee954c3f537b94d26acc1f1d70dad84be250fdc1289"
+    },
+    {
+      "path": "tests/unit/test_chunking.py",
+      "sha256": "2fb6767ddaa0dca7696eb80e282e7c49242518096b293a909373f6524a7c1395"
+    },
+    {
+      "path": "tests/unit/test_company_library_release.py",
+      "sha256": "62749577aa268116bc1bad8536b93ad5b41e77dff0c39102dcb276bb6fa8b966"
+    },
+    {
+      "path": "tests/unit/test_company_migration_payload.py",
+      "sha256": "73b51aca8e3546e086d3427630d10bbac9179cc2c6f19443a336ae8364cb3abf"
+    },
+    {
+      "path": "tests/unit/test_conversion_timeout.py",
+      "sha256": "53a4b9499486f0d0c4547e9a9b7a3f4edeed7771d866ac25d63d8ec11d6e27eb"
+    },
+    {
+      "path": "tests/unit/test_deployment_runtime.py",
+      "sha256": "0dd73962648d13da244bf5c137bf9dd45fb0c47b30bd09581ba8b6feedeca174"
+    },
+    {
+      "path": "tests/unit/test_dingtalk_client.py",
+      "sha256": "dfbc20bf80561f4fc3b0c26e6910a6300a6e657c49404f4db31e2f0796fa127e"
+    },
+    {
+      "path": "tests/unit/test_dingtalk_portal.py",
+      "sha256": "681f687b25521acdbb3e3d2c7256a180edbb6af07b72ee38379e82bcac663cca"
+    },
+    {
+      "path": "tests/unit/test_dingtalk_setup.py",
+      "sha256": "5b02b2424ddebcf236e9d0bf654c847fe20835f4bd25cd67fc617ca838271ba7"
+    },
+    {
+      "path": "tests/unit/test_document_preview.py",
+      "sha256": "58b534bedc657ecc89ff6523212abb1cf3e2d9d2298048a027aa1f6bd099045f"
+    },
+    {
+      "path": "tests/unit/test_drawing_lookup.py",
+      "sha256": "acfced16a8d2990537a1c1c0ce3374edc8a21338baf07413d6be76681d273620"
+    },
+    {
+      "path": "tests/unit/test_excel_sparse_ranges.py",
+      "sha256": "b2abc4401daf4c4668621fea62f3c19f1ab1ea448dfd1911b6bf89f42ef365e6"
+    },
+    {
+      "path": "tests/unit/test_excel_visuals.py",
+      "sha256": "c96e610d1ce22752e11dbd81259c99c77dd8ac83b1736895cabedf7967749fdb"
+    },
+    {
+      "path": "tests/unit/test_folder_upload.py",
+      "sha256": "808df69f8fd880c48cea7eba134df087f2d454a77530e1db238680c3cf91b504"
+    },
+    {
+      "path": "tests/unit/test_https_activation_windows.py",
+      "sha256": "bdec691001b2483a781c3f8b67845afaf6576b286246b11f86918bbce1f0e0e6"
+    },
+    {
+      "path": "tests/unit/test_https_certificate_bundle.py",
+      "sha256": "8428f1212322dcccaf43bd64a3d536fff720caeb1d27cdb44d705034d113d490"
+    },
+    {
+      "path": "tests/unit/test_https_ingress.py",
+      "sha256": "88cc10ee533039ffa69b9522161e6e10cb26b94edb17105e6a62866b142178f3"
+    },
+    {
+      "path": "tests/unit/test_image_routing.py",
+      "sha256": "261dd2a11a0886b9f5e05cff318214e92ea88070c8a5f2b7c8ade46f85fc32bf"
+    },
+    {
+      "path": "tests/unit/test_instance_worker.py",
+      "sha256": "a5699e7da110a3f1785f296d69d42fbaf936bc81b788639fc0e0c55b14957f5f"
+    },
+    {
+      "path": "tests/unit/test_naming.py",
+      "sha256": "2709982df8703b15fb8680528ab0a903e574962f0d69ae6eebfb65339e2111f7"
+    },
+    {
+      "path": "tests/unit/test_naming_model_pool.py",
+      "sha256": "14a938b2fba80a0c3520bdd34965afc1a1d737016ba072e81fde4013a39f23e4"
+    },
+    {
+      "path": "tests/unit/test_naming_opening_formats.py",
+      "sha256": "d7823e1541492cec7e57c4754f12ce43bbcdf9f3bb7dd8b976be67086253a090"
+    },
+    {
+      "path": "tests/unit/test_naming_precheck.py",
+      "sha256": "9dc1d26af67964cd04bce3f0a66e3250337657a186283f2c518d01baa792270f"
+    },
+    {
+      "path": "tests/unit/test_naming_response_recovery.py",
+      "sha256": "bb82ea5be6cf5bac8a8540469689f2df3de75d381c199cd5b19291cb42f15cb6"
+    },
+    {
+      "path": "tests/unit/test_offline_model_bundle.py",
+      "sha256": "8273ec17b7cdd8054a8c42d7bdb1c0dda99cc640d525fc597ef65a1606b70266"
+    },
+    {
+      "path": "tests/unit/test_parse_notices.py",
+      "sha256": "290e0477c2ece316b838529ebcea7de5c0a25ae65aa079ebf2a529dbbefe1b22"
+    },
+    {
+      "path": "tests/unit/test_pdf_capability_recovery.py",
+      "sha256": "5a37320be0efe3e7e684ec9c6ba16f1b367134295663299b7d958107e26d6cdc"
+    },
+    {
+      "path": "tests/unit/test_pdf_numeric_integrity.py",
+      "sha256": "69d4ad29226d6c48f00534a145bdbc9460ec02eae0e983a42cb051b46b8351b2"
+    },
+    {
+      "path": "tests/unit/test_pdf_ocr_route.py",
+      "sha256": "27959b6675abcc66aaecbb954de9bd35dd1cfa3c1a4fdfbff8a66c8717730288"
+    },
+    {
+      "path": "tests/unit/test_pdf_performance.py",
+      "sha256": "f5d364a80dc7c01543beb692d1570f9d5e1f754bd5904df96a70bae6b3dd8ba0"
+    },
+    {
+      "path": "tests/unit/test_pdf_review.py",
+      "sha256": "6049bad50a0a8c190e63305bb0b685e1ad9b4e10566b0b1aa259ce47e9690948"
+    },
+    {
+      "path": "tests/unit/test_pdf_routing.py",
+      "sha256": "4c2e586d085c6373063fee9ce16815a62a0b085ebab4c63c4768d0da3cfcd3e8"
+    },
+    {
+      "path": "tests/unit/test_pending_ready_count.py",
+      "sha256": "42be3e9b7a9bfa7308ce25bdcbd9bd052a48883a2ff42167a5046870aa6cba45"
+    },
+    {
+      "path": "tests/unit/test_portal_navigation_permissions.py",
+      "sha256": "9261358d22caf82c827e44b6b32dd4f068b694cd2d39770ef43d239ceaf46a50"
+    },
+    {
+      "path": "tests/unit/test_portal_row_refresh.py",
+      "sha256": "f7a4583c4f15d89fe3a4e150cc51166d22dcb1bbeb561303d19f4f35e10d6d0d"
+    },
+    {
+      "path": "tests/unit/test_portal_upload_compatibility.py",
+      "sha256": "864c570ce52ba1ca0d6ad9acc0071c8c20717f379ddec2b31a2d69ccca5070b5"
+    },
+    {
+      "path": "tests/unit/test_private_deployment_package.py",
+      "sha256": "cad9bd74c1bc093c5cb1e5e84a7630a87a15ade3182e0b6c1e930199e4eb7233"
+    },
+    {
+      "path": "tests/unit/test_provider_limits.py",
+      "sha256": "e17a324c8d49d4cbd5d4f3c17b91abcf53fd6a950e96fb5429f4495bc29ee7d4"
+    },
+    {
+      "path": "tests/unit/test_provider_model_rotation.py",
+      "sha256": "8c2973571f176f7f899e99b0631a8fd211b87d42b56542c5d59f0b58b21b7ea7"
+    },
+    {
+      "path": "tests/unit/test_provider_portability.py",
+      "sha256": "a5bddda0a6b3c30510262989350959718f60274669c59819d4a9fd7b9fcd6e99"
+    },
+    {
+      "path": "tests/unit/test_provider_route_failover.py",
+      "sha256": "cc74a676df971e17dfa153ba632a34664b404682b1293355605eeefe3c056a33"
+    },
+    {
+      "path": "tests/unit/test_provider_settings_redesign.py",
+      "sha256": "5e6c665ce4198325ea91f96fe20c269f7ad9d7a4486447df393e5b669746e2a1"
+    },
+    {
+      "path": "tests/unit/test_quality.py",
+      "sha256": "609abc3896a009901b3a220b47fa944e9954c5973755d58b31883dcc5d2e722c"
+    },
+    {
+      "path": "tests/unit/test_query_cache.py",
+      "sha256": "7c38e34536347977ef72379ea447e9d34869785170cf5572b3df23d04d630c74"
+    },
+    {
+      "path": "tests/unit/test_query_embedding.py",
+      "sha256": "7a1470607554c543c974848c89df0409a459cba9f795c80719f1e82f9328130d"
+    },
+    {
+      "path": "tests/unit/test_server_setup.py",
+      "sha256": "99501bfd326614ea9eff6811d9bb31f905a178ffbe9c45fd58ecbb4c4250bd6b"
+    },
+    {
+      "path": "tests/unit/test_text_nul.py",
+      "sha256": "e88ee90d37346e6ec0c746ef178781ba9811e2f38eb9b4421f935749c5a6a21d"
+    },
+    {
+      "path": "tests/unit/test_thumbnails.py",
+      "sha256": "cf8f767ff6e406939f47bdfd9bd0ba4169374a13319b231edd9a7cd20912e085"
+    },
+    {
+      "path": "tests/unit/test_vision.py",
+      "sha256": "2bee131ea9b289e9d0adfeb9671636e9e5834c8cce0eb8017f083af6f20c7503"
+    },
+    {
+      "path": "tests/unit/test_vision_provider_selection.py",
+      "sha256": "0a0d5cb64c8ec920cf17ab67c2ae02b58154e30314c1634f855f544278747143"
+    },
+    {
+      "path": "tests/unit/test_visual_screening.py",
+      "sha256": "1db730af24abfd85d690c2fa332c3746b99c554e221be4e3a34e143b580e17c1"
+    },
+    {
+      "path": "tests/unit/test_worker_pool.py",
+      "sha256": "c3ea7df0bf01a0483460948645c092556f7581ab6dce6a49747f737bceb9436f"
+    },
+    {
+      "path": "tests/windows-server-services.ps1",
+      "sha256": "716684b0141ac31ca55f97e7f213540745ce04b049bf0604bb616a207ba1c25f"
+    },
+    {
+      "path": "uv.lock",
+      "sha256": "2b902f3b0cc7f2416b70c8ee995757e1b876506ce0b575b50bade458f3931e12"
+    }
+  ]
+}

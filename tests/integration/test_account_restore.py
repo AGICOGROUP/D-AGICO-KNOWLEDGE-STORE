@@ -54,8 +54,10 @@ def test_restore_preserves_account_password_role_and_unused_invitation(kb):
     with db.connection(write=True) as conn:
         conn.execute("""INSERT INTO dingtalk_identities(corp_id,user_id,principal_id,display_name,department_ids,organization_ids,verified_at)
             VALUES ('ding-synthetic-restore','synthetic-employee',%s,'全新合成身份','[10]','["baiste"]',now())""", (manager_invite['principal_id'],))
+        conn.execute("""INSERT INTO account_access_extensions(principal_id,organization_id,granted_by)
+            SELECT %s,'aijike',principal_id FROM account_users WHERE email=%s""", (manager_invite['principal_id'],email))
     manifest = operations.backup(db.settings, archive, binary)
-    assert manifest['migrations'] == [1, 2, 3, 4, 5, 6, 7]
+    assert manifest['migrations'] == [1, 2, 3, 4, 5, 6, 7, 8]
     target = 'restore_test_' + uuid4().hex
     runtime_role = 'test_restore_app_' + uuid4().hex
     runtime_password = uuid4().hex
@@ -79,6 +81,8 @@ def test_restore_preserves_account_password_role_and_unused_invitation(kb):
                 identity = conn.execute("SELECT * FROM dingtalk_identities WHERE corp_id='ding-synthetic-restore'").fetchone()
                 assert identity['principal_id'] == manager_invite['principal_id']
                 assert identity['organization_ids'] == ['baiste']
+                assert conn.execute('SELECT organization_id FROM account_access_extensions WHERE principal_id=%s',
+                    (manager_invite['principal_id'],)).fetchone()['organization_id']=='aijike'
             assert recovered.get('/v1/auth/settings').json()['enabled']
             assert recovered.get('/v1/catalog', headers={'Authorization': 'Bearer chief'}).status_code == 401
             login = recovered.post('/v1/auth/login', json={'email': email, 'password': password})

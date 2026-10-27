@@ -51,6 +51,7 @@ function updateApprovalButton(button, item) {
   button.setAttribute("aria-label", `${button.textContent}：${item.title}`);
 }
 function processingLabel(item) {
+  if (item.naming_review?.state === "pending" && item.naming_review.retryable) return "等待命名重试";
   if (["pending", "running"].includes(item.naming_review?.state)) return "AI 命名中";
   if (item.naming_review?.needs_review) return "命名待核对";
   if (item.processing_status === "failed" || item.job_state === "failed") return "解析失败";
@@ -610,6 +611,7 @@ function rows(items) {
     const notices = parseMessages(item.warnings);
     status.classList.toggle("warning", item.processing_status === "failed" || (item.processing_status === "partial" && notices.issues.length > 0)); info.append(status);
     if (pending && item.naming_review?.needs_review && !["pending", "running"].includes(item.naming_review.state)) info.append(element("p", "file-warning", `命名待人工核对：${item.naming_review.reason || "项目归属不确定"}`));
+    if (pending && item.naming_review?.state === "pending" && item.naming_review.retryable) info.append(element("p", "file-note", "命名服务暂不可用，已保存任务，稍后自动重试。"));
     if (pending && !finished && item.progress) {
       const p = item.progress;
       const label = p.stage === "vision" ? `图片识别：第 ${p.page}/${p.pages} 页 · 分区 ${p.region}/${p.regions} · 已完成 ${p.completed_pages} 页`

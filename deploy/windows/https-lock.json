@@ -1,0 +1,7 @@
+{
+  "version": "1.31.8",
+  "url": "https://nginx.org/download/nginx-1.31.8.zip",
+  "archive_sha256": "fbb1501009be34655cc238d460714cf20391b639013f4c73859813d7938783fd",
+  "exe_sha256": "c321bdc2a6eccdaad3c702e4da37e2f7bbfa4ffb3cabb9e70c586f5a5e95da44",
+  "provenance": "Official nginx.org Windows ZIP over HTTPS; hashes computed from downloaded bytes."
+}

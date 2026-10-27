@@ -296,6 +296,7 @@ def validate_backup(archive):
         [1, 2], [1, 2, 3], [1, 2, 4], [1, 2, 3, 4], [1, 2, 4, 5], [1, 2, 3, 4, 5],
         [1, 2, 4, 5, 6], [1, 2, 3, 4, 5, 6],
         [1, 2, 4, 5, 6, 7], [1, 2, 3, 4, 5, 6, 7],
+        [1, 2, 3, 4, 5, 6, 7, 8],
     ):
         raise ValueError("Unsupported database migrations")
     for name, key in [("database.dump", "dump_sha256"), ("uv.lock", "lock_sha256")]:

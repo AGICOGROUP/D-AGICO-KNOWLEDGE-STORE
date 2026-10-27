@@ -1,6 +1,7 @@
 """Initialize an explicitly owned, new server installation; never print credentials."""
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -10,6 +11,7 @@ import sys
 import traceback
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
+from dataclasses import replace
 from pathlib import Path
 from uuid import uuid4
 
@@ -19,6 +21,33 @@ from psycopg.conninfo import make_conninfo
 
 from .config import Settings
 from .db import Database
+
+
+def verified_offline_models(root, embedding_model):
+    """A seeded cache is usable offline only after its complete manifest verifies."""
+    root = Path(root)
+    manifest_path = root / 'agico-offline-models.json'
+    if not manifest_path.is_file():
+        return False
+    manifest = json.loads(manifest_path.read_text(encoding='utf-8-sig'))
+    if (not isinstance(manifest, dict) or manifest.get('version') != 1
+            or manifest.get('embedding_model') != embedding_model
+            or not isinstance(manifest.get('files'), dict) or not manifest['files']):
+        raise ValueError('Offline model bundle does not match this installation')
+    for name, expected in manifest['files'].items():
+        if (not isinstance(name, str) or '\\' in name or ':' in name
+                or Path(name).is_absolute() or '..' in Path(name).parts):
+            raise ValueError('Offline model bundle contains an unsafe path')
+        path = root / name
+        if not path.resolve().is_relative_to(root.resolve()) or not path.is_file():
+            raise ValueError('Offline model bundle file is missing or outside its directory')
+        digest = hashlib.sha256()
+        with path.open('rb') as stream:
+            for block in iter(lambda: stream.read(1024 * 1024), b''):
+                digest.update(block)
+        if digest.hexdigest() != expected:
+            raise ValueError('Offline model bundle file failed SHA-256 verification')
+    return True
 
 
 def load_deployment(app_root, data_root, api_port, database_port, service_prefix):
@@ -295,6 +324,9 @@ def _initialize_owned(app_root, data_root, api_port, database_port, service_pref
         finally:
             db.close()
         print("Database initialized. Provisioning local embedding and OCR models...", flush=True)
+        if verified_offline_models(settings.model_cache, settings.embedding_model):
+            settings = replace(settings, model_offline=True)
+            print('Verified offline model bundle; loading embedding model without network access.', flush=True)
         from .embeddings import LocalEmbedding
         from .ingestion import _ocr_engine
 

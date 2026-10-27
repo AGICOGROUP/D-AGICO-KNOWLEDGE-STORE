@@ -84,3 +84,27 @@ def test_slider_values_are_validated_and_key_replacement_preserves_preferences(t
     replace_key(s,'primary','fresh-'+uuid4().hex)
     data=status(s)['profiles']['primary']
     assert data['selected_model']=='glm-5.3-flash' and data['reasoning_effort']=='medium'
+
+
+@pytest.mark.parametrize('kind', ['naming', 'vision'])
+def test_next_task_reads_changed_model_and_effort_without_restart(tmp_path,monkeypatch,kind):
+    from agico_kb.api_keys import select_model
+    from agico_kb import naming,vision
+    s=settings(tmp_path);seen=[]
+    monkeypatch.setattr(vision,'_png',lambda *a,**kw:b'fresh-png')
+    def respond(request):
+        payload=json.loads(request.content);seen.append(payload)
+        return httpx.Response(200,request=request,json={'choices':[{'message':{'content':'{"items":[]}'},'finish_reason':'stop'}]})
+    original=httpx.Client
+    monkeypatch.setattr(vision.httpx,'Client',lambda **kw:original(transport=httpx.MockTransport(respond),**kw))
+    monkeypatch.setattr(naming.httpx,'post',lambda url,**kw:respond(httpx.Request('POST',url,json=kw['json'])))
+    for model,effort,native in [('glm-5.3-flash','high','max'),('glm-5.3-flashx','medium','high'),('glm-5.3-flash','low','low')]:
+        select_model(s,'primary',model,reasoning_effort=effort)
+        if kind=='naming':
+            naming._call_model(s,['fresh-'+uuid4().hex+'.pdf'],[])
+        else:
+            vision._describe(uuid4().bytes,s,version=uuid4().hex,prompt='read',call_model=vision._call_model,screen=False)
+        assert seen[-1]['model']==model
+        assert seen[-1]['reasoning_effort']==native
+        assert seen[-1]['thinking']['type']=='enabled'
+    assert len(seen)==3

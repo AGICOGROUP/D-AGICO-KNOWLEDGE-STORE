@@ -37,6 +37,8 @@ vm.createContext(context);vm.runInContext(code.polling+code.visibility+code.mana
    assert.equal($('manage-access').hidden,!manage,role+' account management');
    assert.equal($('nav-pending').hidden,!review,role+' review visibility');
    assert.equal($('nav-upload').hidden,false,'Upload remains visible');
+   context.me.auth_mode='dingtalk';context.managementVisibility();
+   assert.equal($('manage-access').hidden,!manage,role+' DingTalk account management');
  }
  await context.refreshPendingState();assert.equal(calls,1);assert.equal(scheduled,1);
  context.me=null;context.state.authenticated=false;context.state.session=null;

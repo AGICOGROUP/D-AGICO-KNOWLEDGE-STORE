@@ -311,7 +311,10 @@ $ReadGrants = @{}; $TraverseGrants = @{}; $Sids = @{}
 foreach ($Role in $Names.Keys) {
     $Sids[$Role] = Get-ServiceSid $Names[$Role]
     $ReadGrants[$Sids[$Role]] = 'ReadAndExecute'
-    $TraverseGrants[$Sids[$Role]] = 'Traverse'
+    # pathlib's symlink/junction guard reads attributes on every parent. Traverse
+    # alone lets a service read a known file but makes that guard fail with error 5.
+    # This grant applies to the folder itself, never to its private child files.
+    $TraverseGrants[$Sids[$Role]] = 'Traverse, ReadAttributes'
 }
 # Never recurse through AppRoot: it can contain another development/preview deployment.
 foreach ($Directory in @($AppRoot, (Join-Path $AppRoot '.runtime'))) {

@@ -1,3 +1,4 @@
+#Requires -Version 5.1
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)][string]$DataRoot,
@@ -18,6 +19,64 @@ function Invoke-Checked([string]$Executable, [string[]]$Arguments) {
         $nativeExit = $LASTEXITCODE
     } finally { $ErrorActionPreference = $previousPreference }
     if ($nativeExit -ne 0) { throw "Dependency command failed: $Executable (exit $nativeExit)" }
+}
+function Assert-MicromambaRuntime([string]$Executable) {
+    # New MSVC mutex initialization is incompatible with pre-14.40 runtimes.
+    # Prefer application-local DLLs; never replace the server's global runtime.
+    foreach ($name in @('msvcp140.dll','vcruntime140.dll','vcruntime140_1.dll')) {
+        $dll = Join-Path (Split-Path -Parent $Executable) $name
+        if (-not (Test-Path -LiteralPath $dll -PathType Leaf)) {
+            $dll = Join-Path ([Environment]::SystemDirectory) $name
+        }
+        if (-not (Test-Path -LiteralPath $dll -PathType Leaf)) {
+            throw "C++ runtime missing: $name. Extract the verified app-local runtime bundle into AppRoot before retrying."
+        }
+        $version = [Diagnostics.FileVersionInfo]::GetVersionInfo($dll)
+        if ($version.FileMajorPart -lt 14 -or ($version.FileMajorPart -eq 14 -and $version.FileMinorPart -lt 40)) {
+            throw "C++ runtime is too old for micromamba: $name ($($version.FileVersion)). Extract the verified app-local runtime bundle into AppRoot; do not replace System32 DLLs."
+        }
+    }
+}
+function Install-PythonCppRuntime([string]$RuntimeRoot) {
+    Import-Module (Join-Path $PSHOME 'Modules/Microsoft.PowerShell.Utility/Microsoft.PowerShell.Utility.psd1') -ErrorAction Stop
+    $names = @('msvcp140.dll','vcruntime140.dll','vcruntime140_1.dll')
+    $sources = @($names | Where-Object { Test-Path -LiteralPath (Join-Path $RuntimeRoot $_) -PathType Leaf })
+    if ($sources.Count -eq 0) { return } # A suitable system runtime remains valid.
+    if ($sources.Count -ne $names.Count) { throw 'Application-local C++ runtime bundle is incomplete.' }
+    $RuntimeRoot = [IO.Path]::GetFullPath($RuntimeRoot).TrimEnd('\')
+    Assert-NoReparse $RuntimeRoot
+    $python = Join-Path $RuntimeRoot 'venv/Scripts/python.exe'
+    Assert-NoReparse $python
+    $base = & $python -I -c 'import sys; print(sys._base_executable)'
+    if ($LASTEXITCODE -ne 0 -or -not $base -or @($base).Count -ne 1) { throw 'Cannot identify the owned base Python interpreter.' }
+    $base = [IO.Path]::GetFullPath([string]$base)
+    if (-not $base.StartsWith($RuntimeRoot + '\', [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'Refusing to change Python outside this installation.'
+    }
+    Assert-NoReparse $base
+    $directories = @((Split-Path -Parent $python), (Split-Path -Parent $base)) | Select-Object -Unique
+    foreach ($directory in $directories) {
+        Assert-NoReparse $directory
+        foreach ($name in $names) {
+            $source = Join-Path $RuntimeRoot $name
+            $destination = Join-Path $directory $name
+            Assert-NoReparse $source
+            Assert-NoReparse $destination
+            $digest = (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash
+            if ((Test-Path -LiteralPath $destination -PathType Leaf) -and
+                (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash -eq $digest) { continue }
+            $temporary = Join-Path $directory ('.cpp-runtime-' + [Guid]::NewGuid().ToString('N') + '.tmp')
+            try {
+                Copy-Item -LiteralPath $source -Destination $temporary
+                if ((Get-FileHash -LiteralPath $temporary -Algorithm SHA256).Hash -ne $digest) { throw 'Python C++ runtime copy failed verification.' }
+                # Replace the directory entry, without modifying any possible hard-link source.
+                Move-Item -LiteralPath $temporary -Destination $destination -Force
+            } finally {
+                if (Test-Path -LiteralPath $temporary -PathType Leaf) { Remove-Item -LiteralPath $temporary -Force }
+            }
+        }
+    }
+    Write-Host 'Application-local C++ runtime prepared for owned base Python and virtual environment.'
 }
 function Assert-NoReparse([string]$Path) {
     $cursor = $Path
@@ -163,6 +222,7 @@ $uv = Join-Path $Runtime 'uv/uv.exe'
 if (-not (Test-Path -LiteralPath $uv)) { throw 'uv archive layout changed' }
 Get-Verified $lock.artifacts.micromamba (Join-Path $Runtime 'micromamba.exe')
 Get-Verified $lock.artifacts.winsw (Join-Path $Runtime 'winsw.exe')
+Assert-MicromambaRuntime (Join-Path $Runtime 'micromamba.exe')
 $env:UV_CACHE_DIR = Join-Path $Runtime 'cache/uv'
 $env:UV_PYTHON_INSTALL_DIR = Join-Path $Runtime 'python'
 $env:UV_PYTHON_BIN_DIR = Join-Path $Runtime 'python-bin'
@@ -173,6 +233,8 @@ $env:MAMBA_ROOT_PREFIX = Join-Path $Runtime 'mamba'
 $env:PYTHONNOUSERSITE = '1'
 Invoke-Checked $uv @('python','install',$lock.python_version,'--no-bin','--no-registry','--no-config')
 Invoke-Checked $uv @('sync','--project',$AppRoot,'--locked','--no-dev','--no-default-groups','--python',$lock.python_version,'--managed-python','--no-config')
+Install-PythonCppRuntime $Runtime
+Invoke-Checked (Join-Path $Runtime 'venv/Scripts/python.exe') @('-c','import onnxruntime, fastembed, rapidocr; print(onnxruntime.__version__)')
 $mambaAction = 'create'
 if (Test-Path -LiteralPath (Join-Path $Runtime 'postgres/conda-meta/history')) { $mambaAction = 'install' }
 Invoke-Checked (Join-Path $Runtime 'micromamba.exe') @($mambaAction,'--yes','--no-rc','--prefix',(Join-Path $Runtime 'postgres'),'--file',(Join-Path $AppRoot 'deploy/windows/postgres-explicit.txt'))

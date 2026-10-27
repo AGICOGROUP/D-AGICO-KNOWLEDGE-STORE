@@ -180,4 +180,9 @@ def effective_identity(conn, principal_id, account_role, memberships, current):
         for organization in result:
             if memberships.get(organization) == 'publisher':
                 result[organization] = 'publisher'
+    # Explicit additions grant reading only. Never turn an out-of-department
+    # legacy publisher membership into publishing authority through an extension.
+    for grant in conn.execute('SELECT organization_id FROM account_access_extensions WHERE principal_id=%s',
+                              (principal_id,)).fetchall():
+        result.setdefault(grant['organization_id'], 'member')
     return result, True

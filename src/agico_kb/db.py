@@ -99,6 +99,9 @@ class Database:
             if not conn.execute("SELECT 1 FROM schema_migrations WHERE version=7").fetchone():
                 conn.execute(files("agico_kb").joinpath("migrations/007_dingtalk.sql").read_text(encoding="utf-8"))
                 conn.execute("INSERT INTO schema_migrations VALUES (7)")
+            if not conn.execute("SELECT 1 FROM schema_migrations WHERE version=8").fetchone():
+                conn.execute(files("agico_kb").joinpath("migrations/008_access_extensions.sql").read_text(encoding="utf-8"))
+                conn.execute("INSERT INTO schema_migrations VALUES (8)")
             data = json.loads(
                 files("agico_kb").joinpath("taxonomy.json").read_text(encoding="utf-8")
             )

@@ -308,7 +308,7 @@ dd.ready(() => {
 
 本项目当前 PC 试用实例为 `C:\AGICO-DingTalk-Test-20261019`，API 端口 8766，独立数据库 `agico_dingtalk_test_20261019`；后台任务为 `AgicoKbDingTalkWorker`，配置开机启动、单实例、异常重启和无限执行时限。原 `AgicoKbWorker` 服务运行并不表示它会消费这个独立数据库。
 
-可参考 [run-instance-worker.py](../../deploy/windows/run-instance-worker.py) 的显式配置启动方式和 worker 修复记录（内部验收记录，不随源码发布）。翻译应用应部署对应翻译队列，订单应用应部署必要的异步任务；其是否需要 worker 由实际业务决定，不能只复制知识库的任务名称。
+可参考 [run-instance-worker.py](../../deploy/windows/run-instance-worker.py) 的显式配置启动方式和 [worker 修复记录](../validation/dingtalk-worker-20261020.md)。翻译应用应部署对应翻译队列，订单应用应部署必要的异步任务；其是否需要 worker 由实际业务决定，不能只复制知识库的任务名称。
 
 ### 8.4 切换已有正式应用
 
@@ -365,13 +365,13 @@ dd.ready(() => {
 | 旧 Office 一直处理中 | 转换子进程、超时和备用解析；部分解析不应伪装为完整处理 |
 | HTTPS 下 Cookie 或 CSRF 异常 | 代理传入的 Host/协议、可信代理范围、同源请求和 Cookie 属性 |
 
-HTTP 内网环境尤其需要单独验收：本项目曾因 `crypto.randomUUID()` 在非安全上下文不可用，导致上传在发送请求之前中断。现在使用 `crypto.getRandomValues()` 生成上传标识，并捕获准备阶段错误。正式 HTTPS 仍应独立验收，不能把内网兼容补丁当成域名和 TLS 已完成。上传修复记录（内部验收记录，不随源码发布）
+HTTP 内网环境尤其需要单独验收：本项目曾因 `crypto.randomUUID()` 在非安全上下文不可用，导致上传在发送请求之前中断。现在使用 `crypto.getRandomValues()` 生成上传标识，并捕获准备阶段错误。正式 HTTPS 仍应独立验收，不能把内网兼容补丁当成域名和 TLS 已完成。[上传修复记录](../validation/dingtalk-http-upload-20261020.md)
 
 ## 11 源码入口和进一步阅读
 
 - 设计与边界：[钉钉身份接入设计](../design/dingtalk-identity.md)。其中事件加速、正式迁移等设计意图，应结合本文和实际源码判断完成范围。
-- 已验收和未验收范围：钉钉身份验证记录（内部验收记录，不随源码发布）。
-- 配置与正式部署：[服务器安装说明](../server-setup.md#dingtalk-identity)。
+- 已验收和未验收范围：[钉钉身份验证记录](../validation/dingtalk-identity-20261019.md)。
+- 配置与正式部署：[服务器安装说明](../server-setup.md#钉钉身份模式可选先在独立实例验收)。
 - 身份与绑定测试：[test_dingtalk_identity.py](../../tests/integration/test_dingtalk_identity.py)。
 - 客户端协议测试：[test_dingtalk_client.py](../../tests/unit/test_dingtalk_client.py)。
 - 官方 H5 接入实现参考：[open-dingtalk/h5app-auth-demo](https://github.com/open-dingtalk/h5app-auth-demo)。示例中的密钥演示方式不代替本项目的受保护凭据要求。

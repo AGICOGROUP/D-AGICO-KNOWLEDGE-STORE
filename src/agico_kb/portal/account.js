@@ -24,7 +24,7 @@
     return body;
   }
   function managementVisibility() {
-    $("manage-access").hidden=!me || !["superadmin","manager"].includes(me.role) || me.must_change_password || (me.auth_mode==="dingtalk"&&me.role!=="superadmin");
+    $("manage-access").hidden=!me || !["superadmin","manager"].includes(me.role) || me.must_change_password;
     $("change-password").hidden=!me || me.must_change_password || me.auth_provider==="dingtalk";
     if($("dingtalk-bind"))$("dingtalk-bind").hidden=!(me?.auth_mode==="dingtalk"&&me.auth_provider==="local"&&!me.must_change_password);
   }
