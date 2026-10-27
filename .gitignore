@@ -18,5 +18,38 @@ dist/
 .coverage
 *.log
 
+# Local uploads, runtime state, private credentials, and generated deliverables.
+/tmp/
+/output/
+/logs/
+/originals/
+/uploads/
+/storage/
+/backups/
+# Local validation captures can contain company material and parsed excerpts.
+/docs/validation/
+/config/runtime.json
+/config/api-keys/
+**/.api-key-encryption.key
+*.credential.xml
+*.pem
+*.pfx
+*.p12
+*.sqlite
+*.sqlite3
+*.dump
+*.backup
+
 # 分析脚手架：含内部文档正文与本地 DSN，不入仓库
 .gt-work/
+
+# Backup repository excludes operational data and private credentials.
+/config/
+/maintenance/
+/postgres/
+*.key
+*.pem
+*.pfx
+*.p12
+*.db
+*.sql.gz

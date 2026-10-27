@@ -1,3 +1,5 @@
+> Archived email-login source (2026-10-19), before DingTalk identity integration. See [backup scope and restore notes](BACKUP-NOTES.md). Runtime data and credentials are excluded.
+
 # AGICO Enterprise Knowledge Store
 
 This project adds enterprise knowledge and file capabilities to existing agents such as Codex and Accio while reusing the current web and DingTalk entry points. It includes file storage, identity and version management, parsing and indexing, hybrid search, business MCP tools, publication review, original-file reconciliation, backup and restore, and Windows deployment support. Codex has been validated with synthetic materials in ordinary tasks.
